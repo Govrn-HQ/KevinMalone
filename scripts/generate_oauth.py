@@ -1,5 +1,4 @@
 import os
-from discord import Client
 from discord.permissions import Permissions
 from discord.utils import oauth_url
 

@@ -28,7 +28,7 @@ jobs:
         run: |
           poetry install
 
-      - name: Lint the code with flake8
+      - name: Check format with black
         run: |
           poetry run make format_check
 
