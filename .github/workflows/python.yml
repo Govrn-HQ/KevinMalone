@@ -1,0 +1,42 @@
+name: Raise and nuture Kevin Malone
+
+on:
+  pull_request:
+    branches:
+      - "master"
+
+jobs:
+  # Run code tests before building the image, to ensure it is good to go
+  build:
+    name: Run code tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setting up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      - name: Install Dependencies
+        run: |
+          poetry install -D
+          poetry shell
+
+      - name: Lint the code with flake8
+        run: |
+          make format_check
+
+      - name: Lint the code with flake8
+        run: |
+          flake8 . --count
+
+      - name: Test with unittest
+        run: |
+          pytest .
