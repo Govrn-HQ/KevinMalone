@@ -27,16 +27,15 @@ jobs:
       - name: Install Dependencies
         run: |
           poetry install
-          poetry shell
 
       - name: Lint the code with flake8
         run: |
-          make format_check
+          poetry run make format_check
 
       - name: Lint the code with flake8
         run: |
-          flake8 . --count
+          poetry run make lint
 
       - name: Test with unittest
         run: |
-          pytest .
+          poetry run make test
