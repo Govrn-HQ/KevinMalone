@@ -2,6 +2,9 @@ import logging
 import os
 import sys
 from discord.ext import commands
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +19,8 @@ if TOKEN is None:
 
 
 @bot.command(help="Example")
-async def suggest(ctx):
-    await ctx.send(ctx.message)
+async def test(ctx):
+    print("hi")
 
 
 # Need to generate token
