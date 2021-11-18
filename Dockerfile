@@ -7,5 +7,4 @@ EXPOSE 443
 RUN pip install poetry
 COPY . /service
 
-RUN poetry install
-CMD poetry run python ./bot
+CMD poetry install && poetry run python ./bot
