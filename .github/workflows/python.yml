@@ -5,6 +5,10 @@ on:
     branches:
       - "master"
 
+env:
+  HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+  APP_NAME: ${{ 'dotnet-docker-heroku-app' }}
+
 jobs:
   # Run code tests before building the image, to ensure it is good to go
   build:
@@ -19,7 +23,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-
       - name: Install Poetry
         run: |
           pip install poetry
