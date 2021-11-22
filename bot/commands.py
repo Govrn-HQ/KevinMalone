@@ -11,7 +11,7 @@ async def report(ctx):
     if not ctx.guild_id:
         await ctx.respond("Please run command in a guild!")
     elif airtableLink:
-        user = await bot.fetch_user(int(ctx.user.id))
+        await bot.fetch_user(int(ctx.user.id))
         await ctx.respond(f"Add contributions to the following airtable {airtableLink}")
     else:
         await ctx.respond("No airtable link was provided for this Discord server")
