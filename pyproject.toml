@@ -9,7 +9,7 @@ license = "MIT"
 python = ">=3.9,<4"
 python-dotenv = "^0.19.1"
 boto3 = "^1.20.5"
-py-cord = {git = "git@github.com:Pycord-Development/pycord.git", rev = "92f26c2f6d02abaa926f1c3fed22d77ebb0f4fd2"}
+alpha-cord = "^2.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
