@@ -7,9 +7,9 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
-"discord.py" = "^1.7.3"
 python-dotenv = "^0.19.1"
 boto3 = "^1.20.5"
+alpha-cord = "^2.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"

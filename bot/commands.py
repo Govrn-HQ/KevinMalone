@@ -1,21 +1,17 @@
-from discord.ext import commands
-from config import read_file
+import discord
+from config import read_file, GUILD_IDS
 
-bot = commands.Bot(command_prefix="!")
-
-
-@bot.group(help="All commands for kevin malone")
-async def malone(ctx):
-    if ctx.invoked_subcommand is None:
-        await ctx.send(f"Subcommand {ctx.subcommand_passed} is not a valid subcommand!")
+bot = discord.Bot()
 
 
-@malone.command(help="Send users link to report engagement")
+@bot.slash_command(guild_id=GUILD_IDS, help="Send users link to report engagement")
 async def report(ctx):
     airtableLinks = read_file()
-    airtableLink = airtableLinks.get(str(ctx.guild.id))
-    if airtableLink:
-        user = await bot.fetch_user(int(ctx.author.id))
-        await user.send(f"Add contributions to the following airtable {airtableLink}")
+    airtableLink = airtableLinks.get(str(ctx.guild_id))
+    if not ctx.guild_id:
+        await ctx.respond("Please run command in a guild!")
+    elif airtableLink:
+        await bot.fetch_user(int(ctx.user.id))
+        await ctx.respond(f"Add contributions to the following airtable {airtableLink}")
     else:
-        await ctx.send("No airtable link was provided for this Discord server")
+        await ctx.respond("No airtable link was provided for this Discord server")
