@@ -1,8 +1,24 @@
+# For more information, please refer to https://aka.ms/vscode-docker-python
 FROM python:3.9-slim-bullseye as base
 
-WORKDIR /service
+# Keeps Python from generating .pyc files in the container
+ENV PYTHONDONTWRITEBYTECODE=1
 
-RUN pip install poetry
-COPY . /service
+# Turns off buffering for easier container logging
+ENV PYTHONUNBUFFERED=1
 
-CMD poetry install && poetry run python ./bot
+# Install pip requirements
+COPY requirements.txt .
+COPY requirements-dev.txt .
+RUN python -m pip install -r requirements-dev.txt
+
+WORKDIR /app
+COPY . /app
+
+# Creates a non-root user with an explicit UID and adds permission to access the /app folder
+# For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
+RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
+USER appuser
+
+# During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
+CMD ["python", "bot/__main__.py"]

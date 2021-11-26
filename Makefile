@@ -3,9 +3,8 @@ REGISTRY_NAME=$(shell grep REGISTRY_NAME .env | cut -d "=" -f2)
 IMAGE_PATH = /guild/govrn
 TAG = latest
 
-# Make sure poetry virtual env is active
 local:
-	poetry run python ./bot
+	python ./bot
 
 test:
 	pytest .

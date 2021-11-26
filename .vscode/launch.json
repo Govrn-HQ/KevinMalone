@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Python: Bot",
+            "type": "python",
+            "request": "launch",
+            "program": "bot/",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Docker: Python - General",
+            "type": "docker",
+            "request": "launch",
+            "module": "poetry",
+            "preLaunchTask": "docker-run: debug",
+            "python": {
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder}",
+                        "remoteRoot": "/bot"
+                    }
+                ],
+                "projectType": "general"
+            }
+        }
+    ]
+}
