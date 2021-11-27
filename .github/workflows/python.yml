@@ -13,14 +13,21 @@ jobs:
   build:
     name: Run code tests
     runs-on: ubuntu-latest
-steps:
-  - name: Checkout
-    uses: actions/checkout@v2
-  - name: Build docker image
-    run: docker build -t local < Dockerfile
-  - name: Run tests
-    run: docker run -it -v $PWD:/app -w/app local pytest .
-  - name: Check format with black
-    run: docker run -it -v $PWD:/app -w/app local black . --check
-  - name: Lint the code with flake8
-    run: docker run -it -v $PWD:/app -w/app local flake8 .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Create env file
+        run: |
+          touch .env
+          echo API_TOKEN=FAKEAPITOKEN >> .env
+          echo CLIENT_ID=FAKECLIENTID >> .env
+          echo BOT_DEBUG=true >> .env
+          cat .env
+      - name: Build docker image
+        run: docker build -t local .
+      - name: Run tests
+        run: docker run local pytest .
+      - name: Check formatting with black
+        run: docker run local black . --check
+      - name: Lint with flake8
+        run: docker run local flake8 .
