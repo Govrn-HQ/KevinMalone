@@ -19,8 +19,8 @@ jobs:
       - name: Build docker image
         run: docker build -t local .
       - name: Run tests
-        run: docker run -it -v $PWD:/app -w/app local pytest .
+        run: docker run local pytest .
       - name: Check formatting with black
-        run: docker run -it -v $PWD:/app -w/app local black . --check
+        run: docker run local black . --check
       - name: Lint with flake8
-        run: docker run -it -v $PWD:/app -w/app local flake8 .
+        run: docker run local flake8 .
