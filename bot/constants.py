@@ -15,6 +15,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
 import logging
+
 logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
@@ -23,6 +24,7 @@ import yaml
 basepath = Path()
 basedir = str(basepath.cwd())
 load_dotenv()
+
 
 def _env_var_constructor(loader, node):
     """
@@ -40,7 +42,7 @@ def _env_var_constructor(loader, node):
     default = None
 
     # Check if the node is a plain string value
-    if node.id == 'scalar':
+    if node.id == "scalar":
         value = loader.construct_scalar(node)
         key = str(value)
     else:
@@ -114,7 +116,7 @@ def check_required_keys(keys):
     for key_path in keys:
         lookup = _CONFIG_YAML
         try:
-            for key in key_path.split('.'):
+            for key in key_path.split("."):
                 lookup = lookup[key]
                 if lookup is None:
                     raise KeyError(key)
@@ -126,7 +128,7 @@ def check_required_keys(keys):
 
 
 try:
-    required_keys = _CONFIG_YAML['config']['required_keys']
+    required_keys = _CONFIG_YAML["config"]["required_keys"]
 except KeyError:
     pass
 else:
@@ -178,11 +180,14 @@ class YAMLGetter(type):
                 return _CONFIG_YAML[cls.section][cls.subsection][name]
             return _CONFIG_YAML[cls.section][name]
         except KeyError as e:
-            dotted_path = '.'.join(
+            dotted_path = ".".join(
                 (cls.section, cls.subsection, name)
-                if cls.subsection is not None else (cls.section, name)
+                if cls.subsection is not None
+                else (cls.section, name)
             )
-            print(f"Tried accessing configuration variable at `{dotted_path}`, but it could not be found.")
+            print(
+                f"Tried accessing configuration variable at `{dotted_path}`, but it could not be found."
+            )
             raise AttributeError(repr(name)) from e
 
     def __getitem__(cls, name):
@@ -201,6 +206,7 @@ class Bot(metaclass=YAMLGetter):
     prefix: str
     token: str
 
+
 class Colors(metaclass=YAMLGetter):
     section = "style"
     subsection = "colors"
@@ -216,6 +222,7 @@ class Colors(metaclass=YAMLGetter):
     white: int
     yellow: int
 
+
 class Emojis(metaclass=YAMLGetter):
     section = "style"
     subsection = "emojis"
@@ -228,6 +235,7 @@ class Emojis(metaclass=YAMLGetter):
 
     ok_hand: str
 
+
 class Icons(metaclass=YAMLGetter):
     section = "style"
     subsection = "icons"
@@ -236,10 +244,10 @@ class Icons(metaclass=YAMLGetter):
     crown_green: str
     crown_red: str
 
-    defcon_denied: str    # noqa: E704
+    defcon_denied: str  # noqa: E704
     defcon_shutdown: str  # noqa: E704
-    defcon_unshutdown: str   # noqa: E704
-    defcon_update: str   # noqa: E704
+    defcon_unshutdown: str  # noqa: E704
+    defcon_update: str  # noqa: E704
 
     filtering: str
 
@@ -283,9 +291,11 @@ class Icons(metaclass=YAMLGetter):
     voice_state_green: str
     voice_state_red: str
 
+
 class Guilds(metaclass=YAMLGetter):
     section = "guilds"
     guilds: List[dict]
+
 
 # Debug mode
 DEBUG_MODE: bool = _CONFIG_YAML["debug"] == "true"

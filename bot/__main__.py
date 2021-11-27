@@ -13,6 +13,6 @@ def main():
     if TOKEN is None:
         sys.exit("Environment variable API_TOKEN must be supplied")
     bot.run(TOKEN)
-   
+
 
 main()
