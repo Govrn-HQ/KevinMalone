@@ -7,13 +7,14 @@ from bot import constants
 def is_annotation_instance(value: typing.Any, annotation: typing.Any) -> bool:
     """
     Return True if `value` is an instance of the type represented by `annotation`.
-    This doesn't account for things like Unions or checking for homogenous types in collections.
+    This doesn't account for things like Unions or checking for homogenous types
+    in collections.
     """
     origin = typing.get_origin(annotation)
 
     # This is done in case a bare e.g. `typing.List` is used.
-    # In such case, for the assertion to pass, the type needs to be normalised to e.g. `list`.
-    # `get_origin()` does this normalisation for us.
+    # In such case, for the assertion to pass, the type needs to be
+    # normalised to e.g. `list`. `get_origin()` does this normalisation for us.
     type_ = annotation if origin is None else origin
 
     return isinstance(value, type_)
@@ -32,16 +33,18 @@ class ConstantsTests(unittest.TestCase):
     """Tests for our constants."""
 
     def test_section_configuration_matches_type_specification(self):
-        """"The section annotations should match the actual types of the sections."""
+        """ "The section annotations should match the actual types of the sections."""
 
         sections = (
             cls
             for (name, cls) in inspect.getmembers(constants)
-            if hasattr(cls, 'section') and isinstance(cls, type)
+            if hasattr(cls, "section") and isinstance(cls, type)
         )
         for section in sections:
             for name, annotation in section.__annotations__.items():
-                with self.subTest(section=section.__name__, name=name, annotation=annotation):
+                with self.subTest(
+                    section=section.__name__, name=name, annotation=annotation
+                ):
                     value = getattr(section, name)
                     origin = typing.get_origin(annotation)
                     annotation_args = typing.get_args(annotation)
