@@ -20,6 +20,6 @@ async def report(ctx):
 
     if airtableLink:
         await bot.fetch_user(int(ctx.author.id))
-        await ctx.send(f"Add contributions to the following airtable {airtableLink}")
+        await ctx.respond(f"Add contributions to the following airtable {airtableLink}")
     else:
-        await ctx.send("No airtable link was provided for this Discord server")
+        await ctx.respond("No airtable link was provided for this Discord server")
