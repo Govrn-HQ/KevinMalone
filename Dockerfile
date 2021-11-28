@@ -7,6 +7,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
 
+# install git to pull code for installation
+RUN apt update
+RUN apt install -y git
+
 # Install pip requirements
 COPY requirements.txt .
 COPY requirements-dev.txt .
