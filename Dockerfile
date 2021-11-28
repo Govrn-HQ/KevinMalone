@@ -12,8 +12,6 @@ COPY requirements.txt .
 COPY requirements-dev.txt .
 RUN python -m pip install -r requirements-dev.txt
 
-RUN python -m pip install https://github.com/Pycord-Development/pycord/archive/master.zip
-
 WORKDIR /app
 COPY . /app
 
