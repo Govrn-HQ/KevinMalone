@@ -4,7 +4,6 @@ from commands import bot
 import constants
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 logger.info("Starting...")
 
 

@@ -1,9 +1,0 @@
-[flake8]
-max-line-length=88
-docstring-convention=all
-import-order-style=pycharm
-application_import_names=bot,tests
-exclude=.cache,.git,constants.py
-ignore=
-    W503, E203, B305
-per-file-ignores=tests/*:D,ANN
