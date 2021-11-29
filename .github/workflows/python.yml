@@ -6,39 +6,28 @@ on:
       - "master"
 
 env:
-  HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-  APP_NAME: ${{ 'dotnet-docker-heroku-app' }}
+  APP_NAME: ${{ 'kevin-malone-test' }}
 
 jobs:
   # Run code tests before building the image, to ensure it is good to go
   build:
     name: Run code tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.9]
     steps:
-      - uses: actions/checkout@v2
-      - name: Setting up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install Poetry
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Create env file
         run: |
-          pip install poetry
-
-      - name: Install Dependencies
-        run: |
-          poetry install
-
-      - name: Check format with black
-        run: |
-          poetry run make format_check
-
-      - name: Lint the code with flake8
-        run: |
-          poetry run make lint
-
-      - name: Test with unittest
-        run: |
-          poetry run make test
+          touch .env
+          echo API_TOKEN=FAKEAPITOKEN >> .env
+          echo CLIENT_ID=FAKECLIENTID >> .env
+          echo BOT_DEBUG=true >> .env
+          cat .env
+      - name: Build docker image
+        run: docker build -t local .
+      - name: Run tests
+        run: docker run local pytest .
+      - name: Check formatting with black
+        run: docker run local black . --check
+      - name: Lint with flake8
+        run: docker run local flake8 .

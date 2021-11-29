@@ -1,8 +1,8 @@
 import json
 
-GUILD_IDS = [747131845317230695]
+GUILD_IDS = [747131845317230695, 799328534988193793]
 
 
 def read_file():
-    with open("govern_config.json") as f:
+    with open("govrn_config.json") as f:
         return json.load(f)

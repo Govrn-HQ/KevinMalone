@@ -9,9 +9,12 @@ load_dotenv()
 
 def generate_oauth():
     client_id = os.getenv("CLIENT_ID", "")
-    # Has send messages permisison
+
+    # FIXME: adjust Permissions
     permissions = Permissions(permissions=2684356608)
-    generated_url = oauth_url(client_id, permissions=permissions)
+    generated_url = oauth_url(
+        client_id, permissions=permissions, scopes=("bot", "applications.commands")
+    )
     print(f"Generated oauth for given client id: {generated_url}")
 
 
