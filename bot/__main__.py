@@ -1,8 +1,9 @@
 import logging
 import sys
-from commands import bot
+from setup import bot
 import constants
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.info("Starting...")
 
