@@ -83,10 +83,10 @@ async def join(ctx):
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
         title="Welcome",
-        description=f"Thank you for joining the Govrn ecosystem! To help automate  gathering your contributions to {ctx.guild.name} we need you to provide some information. Any of the following data requests cabn be skipped with the ⏭️  emoji!",
+        description=f"Thank you for joining the Govrn ecosystem! To help automate  gathering your contributions to {ctx.guild.name} we need you to provide some information. Any of the following data requests can be skipped with the ⏭️  emoji!",
     )
     await ctx.author.send(embed=embed)
-    await ctx.response.is_done()
+    ctx.response.is_done()
 
 
 # Event listners
