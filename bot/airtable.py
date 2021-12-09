@@ -1,4 +1,4 @@
-from pyairtable import Api, Base, Table
+from pyairtable import Table
 from pyairtable.formulas import match
 from config import AIRTABLE_BASE, AIRTABLE_KEY
 
@@ -44,7 +44,8 @@ def find_guild(guild_id):
 
 def update_user(record_id, id_field, id_val):
 
-    """Add or update user ID info given ID field, value, and user table airtable record number."""
+    """Add or update user ID info given ID field, value,
+     and user table airtable record number."""
 
     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
     table.update(record_id, {id_field: id_val})
@@ -52,12 +53,11 @@ def update_user(record_id, id_field, id_val):
 
 def create_user(user_id, guild_id):
 
-    """Create and return new airtable record number in users table given user_id and guild_id combo.
-    If user table record for said combo already exists, return existing record_id. """
+    """Return new airtable record # in users table given user_id & guild_id.
+    If user table record for combo already exist, return existing record_id."""
 
     global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Global")
     user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
-    guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Guilds")
 
     record_id = find_user(user_id, guild_id)
 
