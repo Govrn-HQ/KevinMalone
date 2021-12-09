@@ -8,4 +8,4 @@ def get_user(user):
 
 
 def store_user_ids(guild_id, user_id):
-    logging.infor(f"Storing user_id: {user_id} and guild_id: {guild_id}")
+    logging.info(f"Storing user_id: {user_id} and guild_id: {guild_id}")
