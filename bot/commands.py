@@ -1,17 +1,24 @@
 import logging
 import discord
 
-from setup import bot
 from config import read_file, GUILD_IDS, INFO_EMBED_COLOR
 from checks import is_guild_msg
 from stubs import get_user, store_user_ids
+from exceptions import NotGuildException
+from exceptions import ErrorHandler
 
 logger = logging.getLogger(__name__)
 
+intents = discord.Intents.all()
+bot = discord.Bot(intents=intents)
+
 
 @bot.slash_command(guild_id=GUILD_IDS, help="Send users link to report engagement")
-@is_guild_msg()
 async def report(ctx):
+    is_guild = bool(ctx.guild)
+    if not is_guild:
+        raise NotGuildException("Command was executed outside of a guild")
+
     airtableLinks = read_file()
     airtableLink = airtableLinks.get(str(ctx.guild.id))
 
@@ -48,8 +55,11 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, help="Get started with Govern")
-@is_guild_msg()
 async def join(ctx):
+    is_guild = bool(ctx.guild)
+    if not is_guild:
+        raise NotGuildException("Command was executed outside of a guild")
+
     is_user = get_user(ctx.author)
     if is_user:
         # Send welcome message and
@@ -77,3 +87,17 @@ async def join(ctx):
     )
     await ctx.author.send(embed=embed, ephemeral=True)
     await ctx.response.is_done()
+
+
+# Event listners
+@bot.event
+async def on_application_command_error(ctx, exception):
+    # All commands will be slash commands
+    # Commands will be sent back from where they come from
+    err = ErrorHandler(exception)
+    logger.info(f"Command error type {type(exception)}")
+    await ctx.response.send_message(err.msg)
+    ctx.response.is_done()
+
+
+bot.on_application_command_error = on_application_command_error

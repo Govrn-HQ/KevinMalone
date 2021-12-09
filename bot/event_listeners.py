@@ -1,13 +1,13 @@
 import logging
 
 from commands import bot
-from .exceptions import ErrorHandler
+from exceptions import ErrorHandler
 
 logger = logging.getLogger(__name__)
 
 
 @bot.event
-async def on_command_error(ctx, error):
+async def on_application_command_error(ctx, error):
     # All commands will be slash commands
     # Commands will be sent back from where they come from
     err = ErrorHandler(error)
@@ -16,4 +16,4 @@ async def on_command_error(ctx, error):
     ctx.response.is_done()
 
 
-bot.on_command_error = on_command_error
+bot.on_application_command_error = on_application_command_error

@@ -1,6 +1,6 @@
 from discord.ext import commands
 
-from .exceptions import NotGuildException
+from exceptions import NotGuildException
 
 
 def is_guild_msg():

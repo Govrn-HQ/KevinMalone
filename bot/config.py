@@ -9,4 +9,4 @@ def read_file():
         return json.load(f)
 
 
-INFO_EMBED_COLOR = discord.blue
+INFO_EMBED_COLOR = discord.Colour.blue
