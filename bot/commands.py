@@ -80,11 +80,15 @@ async def join(ctx):
     # Get guild
 
     # Send messsage explaining we need to get some
+    # Add a bunch of fields inline
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
         title="Welcome",
         description=f"Thank you for joining the Govrn ecosystem! To help automate  gathering your contributions to {ctx.guild.name} we need you to provide some information. Any of the following data requests can be skipped with the ⏭️  emoji!",
     )
+    # Add user to the internal cache with with appropriate stage type
+    # Thread Type, thread type will have a numer of steps,
+    # key:user -> value: thread_type+step
     await ctx.author.send(embed=embed)
     ctx.response.is_done()
 
