@@ -1,7 +1,8 @@
 import logging
 import discord
 
-from config import read_file, GUILD_IDS, INFO_EMBED_COLOR
+from cache import get_thread, build_cache_value, StepKeys, ThreadKeys
+from config import read_file, GUILD_IDS, INFO_EMBED_COLOR, Redis
 from checks import is_guild_msg
 from stubs import get_user, store_user_ids
 from exceptions import NotGuildException
@@ -89,6 +90,9 @@ async def join(ctx):
     # Add user to the internal cache with with appropriate stage type
     # Thread Type, thread type will have a numer of steps,
     # key:user -> value: thread_type+step
+    await Redis.set(
+        ctx.author.id, build_cache_value(ThreadKeys.ONBOARDING.value, ""),
+    )
     await ctx.author.send(embed=embed)
     ctx.response.is_done()
 
@@ -102,6 +106,28 @@ async def on_application_command_error(ctx, exception):
     logger.info(f"Command error type {type(exception)}")
     await ctx.response.send_message(err.msg)
     ctx.response.is_done()
+
+
+@bot.event
+async def on_message(message):
+    if message.author.bot is True:
+        return
+
+    # Check channel DM channel
+    if not isinstance(message.channel, discord.DMChannel):
+        return
+
+    # Check if user has open thread
+    thread_key = Redis.get(message.author.id)
+    if not thread_key:
+        # TODO: It may make sense to send some sort of message here
+        return
+
+    thread = get_thread(message.author.id, thread_key)
+    await thread.send()
+
+    print(message)
+    print(message.author)
 
 
 bot.on_application_command_error = on_application_command_error
