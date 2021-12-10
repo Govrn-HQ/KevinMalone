@@ -8,6 +8,10 @@ REDIS_HOST = os.getenv("REDIS_HOST")
 AIRTABLE_KEY = os.getenv("AIRTABLE_KEY")
 AIRTABLE_BASE = os.getenv("AIRTABLE_BASE")
 
+YES_EMOJI = "\U0001F44D"
+NO_EMOJI = "\U0001F44E"
+SKIP_EMOJI = "\U000023ED"
+
 
 def read_file():
     with open("govrn_config.json") as f:

@@ -1,10 +1,9 @@
 import logging
 import discord
 
+from airtable import find_user, create_user
 from cache import get_thread, build_cache_value, StepKeys, ThreadKeys
 from config import read_file, GUILD_IDS, INFO_EMBED_COLOR, Redis
-from checks import is_guild_msg
-from stubs import get_user, store_user_ids
 from exceptions import NotGuildException
 from exceptions import ErrorHandler
 
@@ -14,7 +13,9 @@ intents = discord.Intents.all()
 bot = discord.Bot(intents=intents)
 
 
-@bot.slash_command(guild_id=GUILD_IDS, help="Send users link to report engagement")
+@bot.slash_command(
+    guild_id=GUILD_IDS, description="Send users link to report engagement"
+)
 async def report(ctx):
     is_guild = bool(ctx.guild)
     if not is_guild:
@@ -55,20 +56,30 @@ async def report(ctx):
 # If true than DM requesting information
 
 
-@bot.slash_command(guild_id=GUILD_IDS, help="Get started with Govern")
+@bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govern")
 async def join(ctx):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
 
-    is_user = get_user(ctx.author)
+    is_user = await find_user(ctx.author.id, ctx.guild.id)
     if is_user:
         # Send welcome message and
         # And ask what journey they are
         # on by sending all the commands
-        pass
+        application_commands = bot.application_commands()
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR, title="Welcome Back", description=f"",
+        )
+        for cmd in application_commands:
+            if isinstance(cmd, discord.SlashCommand):
+                embed.add_field(name=cmd.name, value=cmd.description, inline=False)
+        await ctx.author.send(embed=embed)
+        ctx.response.is_done()
+        return
+
     # store guild_id and disord_id
-    store_user_ids(ctx.guild, ctx.author.id)
+    await create_user(ctx.guild, ctx.author.id)
     # check if user can be DMed
     can_send_message = ctx.can_send(discord.Message)
     if not can_send_message:
@@ -91,7 +102,7 @@ async def join(ctx):
     # Thread Type, thread type will have a numer of steps,
     # key:user -> value: thread_type+step
     await Redis.set(
-        ctx.author.id, build_cache_value(ThreadKeys.ONBOARDING.value, ""),
+        ctx.author.id, build_cache_value(ThreadKeys.ONBOARDING.value, "", ""),
     )
     await ctx.author.send(embed=embed)
     ctx.response.is_done()
@@ -124,7 +135,7 @@ async def on_message(message):
         return
 
     thread = get_thread(message.author.id, thread_key)
-    await thread.send()
+    await thread.send(message)
 
     print(message)
     print(message.author)
