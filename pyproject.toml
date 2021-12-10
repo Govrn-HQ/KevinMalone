@@ -2,10 +2,10 @@
 name = "kevinmalone"
 version = "0.1.0"
 description = ""
-authors = ["christinevandev <54376653+christinevandev@users.noreply.github.com>"]
+authors = ["Alex Keating <keating.dev@protonmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 
 [tool.poetry.dev-dependencies]
 

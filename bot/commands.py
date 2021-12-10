@@ -2,7 +2,7 @@ import logging
 import discord
 
 from airtable import find_user, create_user
-from cache import get_thread, build_cache_value, StepKeys, ThreadKeys
+from cache import get_thread, build_cache_value, StepKeys, ThreadKeys, Onboarding
 from config import read_file, GUILD_IDS, INFO_EMBED_COLOR, Redis
 from exceptions import NotGuildException
 from exceptions import ErrorHandler
@@ -63,30 +63,35 @@ async def join(ctx):
         raise NotGuildException("Command was executed outside of a guild")
 
     is_user = await find_user(ctx.author.id, ctx.guild.id)
+    print(is_user)
     if is_user:
         # Send welcome message and
         # And ask what journey they are
         # on by sending all the commands
-        application_commands = bot.application_commands()
+        application_commands = bot.application_commands
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR, title="Welcome Back", description=f"",
         )
         for cmd in application_commands:
             if isinstance(cmd, discord.SlashCommand):
-                embed.add_field(name=cmd.name, value=cmd.description, inline=False)
+                embed.add_field(
+                    name=f"/ {cmd.name}", value=cmd.description, inline=False
+                )
         await ctx.author.send(embed=embed)
         ctx.response.is_done()
         return
 
     # store guild_id and disord_id
-    await create_user(ctx.guild, ctx.author.id)
+    print(ctx.guild.id)
+    print(ctx.author.id)
+    await create_user(ctx.author.id, ctx.guild.id)
     # check if user can be DMed
     can_send_message = ctx.can_send(discord.Message)
     if not can_send_message:
         await ctx.response.send_message(
             "I cannot onboard you. Please turn on DM's from this server!"
         )
-        ctx.is_done()
+        ctx.response.is_done()
         return
 
     # Get guild
@@ -101,10 +106,16 @@ async def join(ctx):
     # Add user to the internal cache with with appropriate stage type
     # Thread Type, thread type will have a numer of steps,
     # key:user -> value: thread_type+step
-    await Redis.set(
-        ctx.author.id, build_cache_value(ThreadKeys.ONBOARDING.value, "", ""),
+    logger.info(
+        f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"
     )
-    await ctx.author.send(embed=embed)
+    message = await ctx.author.send(embed=embed)
+    await Onboarding(
+        ctx.author.id, StepKeys.USER_DISPLAY_CONFIRM.value, message.id, ctx.guild.id
+    ).send(message)
+    await ctx.response.send_message(
+        "Check your Dms to continue onboarding", ephemeral=True
+    )
     ctx.response.is_done()
 
 
@@ -129,7 +140,7 @@ async def on_message(message):
         return
 
     # Check if user has open thread
-    thread_key = Redis.get(message.author.id)
+    thread_key = await Redis.get(message.author.id)
     if not thread_key:
         # TODO: It may make sense to send some sort of message here
         return
