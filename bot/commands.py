@@ -77,7 +77,7 @@ async def join(ctx):
                 embed.add_field(
                     name=f"/ {cmd.name}", value=cmd.description, inline=False
                 )
-        await ctx.author.send(embed=embed)
+        await ctx.response.send_message(embed=embed, ephemeral=True)
         ctx.response.is_done()
         return
 
@@ -119,6 +119,20 @@ async def join(ctx):
     ctx.response.is_done()
 
 
+# @bot.slash_command(
+#     guild_id=GUILD_IDS, description="Update your profile for a given Dao"
+# )
+# async def update(ctx):
+#     is_guild = bool(ctx.guild)
+#     # If sent from guild see if user has onboarded
+#     # If user has onboarded show them their profile and tell them how to update with reactions
+#     #
+#     # If DM show user a bunch of guilds they are in and they can choose which to update
+#     # by selecting an emoji
+#     #
+#     # After updating a field send a thank you
+
+
 # Event listners
 @bot.event
 async def on_application_command_error(ctx, exception):
@@ -132,13 +146,16 @@ async def on_application_command_error(ctx, exception):
 
 @bot.event
 async def on_message(message):
+    print("Message")
     if message.author.bot is True:
         return
 
+    print("Is DM")
     # Check channel DM channel
     if not isinstance(message.channel, discord.DMChannel):
         return
 
+    print("Getting thread key")
     # Check if user has open thread
     thread_key = await Redis.get(message.author.id)
     if not thread_key:
@@ -146,10 +163,44 @@ async def on_message(message):
         return
 
     thread = get_thread(message.author.id, thread_key)
+    print(thread)
     await thread.send(message)
 
     print(message)
     print(message.author)
+
+
+@bot.event
+async def on_raw_reaction_add(payload):
+    from commands import bot
+
+    reaction = payload
+    user = await bot.fetch_user(int(payload.user_id))
+    channel = await bot.fetch_channel(int(reaction.channel_id))
+    if user.bot is True:
+        return
+
+    print("first line")
+    print(payload)
+    print(reaction)
+    print(user)
+    print(channel)
+    print(reaction.channel_id)
+    # Check channel DM channel
+    if not isinstance(channel, discord.DMChannel):
+        return
+
+    # Check if user has open thread
+    thread_key = await Redis.get(user.id)
+    if not thread_key:
+        # TODO: It may make sense to send some sort of message here
+        return
+
+    thread = get_thread(user.id, thread_key)
+    await thread.handle_reaction(reaction, user)
+
+    print(reaction)
+    print("hi")
 
 
 bot.on_application_command_error = on_application_command_error

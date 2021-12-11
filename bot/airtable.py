@@ -11,6 +11,8 @@ async def find_user(user_id, guild_id):
     loop = asyncio.get_running_loop()
 
     def _find_user():
+        print(user_id)
+        print(guild_id)
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
         records = table.all(
             formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
@@ -64,7 +66,11 @@ async def update_user(record_id, id_field, id_val):
 
     def _update_user():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
-        table.update(record_id, {id_field: id_val})
+        print("updating table")
+        print(table)
+        resp = table.update(record_id, {id_field: id_val})
+        print("updated")
+        print(resp)
 
     return await loop.run_in_executor(None, _update_user)
 

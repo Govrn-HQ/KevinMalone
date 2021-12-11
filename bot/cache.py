@@ -33,6 +33,9 @@ class StepKeys(Enum):
     USER_DISPLAY_CONFIRM_EMOJI = "user_display_confirm_emoji"
     USER_DISPLAY_SUBMIT = "user_display_submit"
     ADD_USER_TWITTER = "add_user_twitter"
+    ONBOARDING_CONGRATS = "onboarding_congrats"
+    ADD_USER_WALLET_ADDRESS = "add_user_wallet_address"
+    ADD_USER_DISCOURSE = "add_user_discourse"
 
 
 class BaseThread:
@@ -72,12 +75,12 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     emoji = True
 
     @property
-    def emojis():
+    def emojis(self):
         return [YES_EMOJI, NO_EMOJI]
 
-    async def handle_emoji(self, reaction):
-        if reaction.emoji in self.emojis:
-            if reaction.emoji == NO_EMOJI:
+    async def handle_emoji(self, raw_reaction):
+        if raw_reaction.emoji.name in self.emojis:
+            if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value
             return StepKeys.ADD_USER_TWITTER.value
         raise Exception("Reacted with the wrong emoji")
@@ -89,9 +92,17 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     Discord
     """
 
-    async def save(self, message, guild_id):
-        record_id = await find_user(message.author.id, guild_id)
-        await update_user(record_id, "display_name", message.author.name)
+    async def save(self, message, guild_id, user_id):
+        from commands import bot
+
+        print("Updating display name")
+        user = await bot.fetch_user(user_id)
+        record_id = await find_user(user_id, guild_id)
+        print("record")
+        print(message.author.name)
+        print(user)
+        print(record_id)
+        await update_user(record_id, "display_name", user.name)
 
 
 class UserDisplaySubmitStep(BaseStep):
@@ -106,11 +117,74 @@ class UserDisplaySubmitStep(BaseStep):
 class AddUserTwitterStep(BaseStep):
     name = StepKeys.ADD_USER_TWITTER.value
 
-    async def send(self):
-        pass
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            f"What twitter handle would you like to associate with this guild!"
+        )
+        return sent_message
 
-    async def save(self, message):
-        pass
+    async def save(self, message, guild_id, user_id):
+        record_id = await find_user(message.author.id, guild_id)
+        print("saving twitter")
+        print(message)
+        print(record_id)
+        await update_user(
+            record_id, "twitter", message.content.strip().replace("@", "")
+        )
+
+
+class AddUserWalletAddressStep(BaseStep):
+    name = StepKeys.ADD_USER_WALLET_ADDRESS.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            f"What Ethereum wallet address would you like to associate with this guild!"
+        )
+        return sent_message
+
+    async def save(self, message, guild_id, user_id):
+        record_id = await find_user(message.author.id, guild_id)
+        print("saving wallet")
+        print(message)
+        print(record_id)
+        await update_user(record_id, "wallet", message.content.strip())
+
+
+class AddDiscourseStep(BaseStep):
+    name = StepKeys.ADD_USER_DISCOURSE.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            f"What discourse handle would you like to associate with this guild!"
+        )
+        return sent_message
+
+    async def save(self, message, guild_id, user_id):
+        record_id = await find_user(message.author.id, guild_id)
+        print("saving discourse")
+        print(message)
+        print(record_id)
+        await update_user(record_id, "discourse", message.content.strip())
+
+
+class CongratsStep(BaseStep):
+    name = StepKeys.ONBOARDING_CONGRATS.value
+
+    def __init__(self, guild_id):
+        self.guild_id = guild_id
+
+    async def send(self, message, user_id):
+        from commands import bot
+
+        channel = message.channel
+        guild = await bot.fetch_guild(self.guild_id)
+        sent_message = await channel.send(
+            f"Congrartulations on completeing onboading to {guild.name}"
+        )
+        return sent_message
 
 
 @dataclass
@@ -147,14 +221,21 @@ class Onboarding(BaseThread):
         # Check here that get is not null
         if not current_step:
             raise Exception(f"No step for {current_step}")
-        self.step = self.find_step(self.steps, current_step)
         self.user_id = user_id
         self.message_id = message_id
         self.guild_id = guild_id
+        self.step = self.find_step(self.steps, current_step)
 
     @property
     def steps(self):
-        data_retrival_chain = Step(current=AddUserTwitterStep())
+        congrats = Step(current=CongratsStep(guild_id=self.guild_id))
+        discourse = Step(current=AddDiscourseStep()).add_next_step(congrats)
+        fetch_address = Step(current=AddUserWalletAddressStep()).add_next_step(
+            discourse
+        )
+        data_retrival_chain = Step(current=AddUserTwitterStep()).add_next_step(
+            fetch_address
+        )
         user_display_accept = Step(current=UserDisplaySubmitStep()).add_next_step(
             data_retrival_chain
         )
@@ -174,7 +255,7 @@ class Onboarding(BaseThread):
         print(name)
         if steps.current.name == name:
             return steps
-        for step in steps.next_steps:
+        for _, step in steps.next_steps.items():
             steps = self.find_step(step, name)
             if steps:
                 return steps
@@ -187,8 +268,11 @@ class Onboarding(BaseThread):
                 "Please react with one of the above emojis to continue!"
             )
             return
+        print("Previous Step")
+        print(self.step.previous_step)
         if self.step.previous_step:
-            self.previous_step.save(message)
+            print("Executing Save")
+            await self.step.previous_step.save(message, self.guild_id, self.user_id)
         msg = await self.step.current.send(message, self.user_id)
 
         if not self.step.next_steps:
@@ -204,21 +288,37 @@ class Onboarding(BaseThread):
         )
 
     # Emoji cannot follow emoji
-    async def handle_reaction(self, reaction):
+    async def handle_reaction(self, reaction, user):
+        from commands import bot
+
         logger.info(f"Emoji {reaction}")
+        # TODO: Add some error handling
+        channel = await bot.fetch_channel(reaction.channel_id)
+        message = await channel.fetch_message(reaction.message_id)
+
+        if reaction.message_id != self.message_id:
+            await channel.send(
+                "Emoji reaction on the wrong message., Please react to your most recent message"
+            )
+            return
         try:
             step_name = await self.step.current.handle_emoji(reaction)
-        except Exception:
-            await reaction.message.channel.send(
-                f"In order to move to the following step please react with one of {self.step.current.emojis}"
+        except Exception as e:
+            logger.exception("Fiailed to handle the emoji")
+            await channel.send(
+                f"In order to move to the following step please react with one of {','.join(self.step.current.emojis)}"
             )
             return
 
-        next_step = self.step.current.get_next_step(step_name)
+        next_step = self.step.get_next_step(step_name)
+        print("Next Step")
+        print(next_step)
+        print(not next_step)
         if not next_step:
             return await Redis.delete(self.user_id)
         self.step = next_step
-        await self.send(reaction.message)
+        print("Sending message")
+        await self.send(message)
 
 
 def get_thread(user_id, key):
