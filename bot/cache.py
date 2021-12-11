@@ -203,6 +203,13 @@ class UserDisplaySubmitStep(BaseStep):
         sent_message = await channel.send(f"Updated display name to {message.content}")
         return sent_message, None
 
+    async def save(self, message, guild_id, user_id):
+        from commands import bot
+
+        user = await bot.fetch_user(user_id)
+        record_id = await find_user(user_id, guild_id)
+        await update_user(record_id, "display_name", message.content.strip())
+
 
 class AddUserTwitterStep(BaseStep):
     name = StepKeys.ADD_USER_TWITTER.value
@@ -381,7 +388,8 @@ class UpdateProfileFieldEmojiStep(BaseStep):
             "field": values.get("metadata").get(raw_reaction.emoji.name)
         }
         await Redis.set(
-            raw_reaction.user_id, build_cache_value(**values),
+            raw_reaction.user_id,
+            build_cache_value(**values),
         )
 
 
