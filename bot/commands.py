@@ -1,9 +1,9 @@
 import logging
 import discord
 
-from airtable import find_user, create_user
+from airtable import find_user, create_user, get_discord_record, get_guild
 from cache import get_thread, build_cache_value, StepKeys, ThreadKeys, Onboarding
-from config import read_file, GUILD_IDS, INFO_EMBED_COLOR, Redis
+from config import read_file, GUILD_IDS, INFO_EMBED_COLOR, Redis, get_list_of_emojis
 from exceptions import NotGuildException
 from exceptions import ErrorHandler
 
@@ -119,18 +119,69 @@ async def join(ctx):
     ctx.response.is_done()
 
 
-# @bot.slash_command(
-#     guild_id=GUILD_IDS, description="Update your profile for a given Dao"
-# )
-# async def update(ctx):
-#     is_guild = bool(ctx.guild)
-#     # If sent from guild see if user has onboarded
-#     # If user has onboarded show them their profile and tell them how to update with reactions
-#     #
-#     # If DM show user a bunch of guilds they are in and they can choose which to update
-#     # by selecting an emoji
-#     #
-#     # After updating a field send a thank you
+@bot.slash_command(
+    guild_id=GUILD_IDS, description="Update your profile for a given Dao"
+)
+async def update(ctx):
+    # If sent from guild see if user has onboarded
+    # If user has onboarded show them their profile and tell them how to update with reactions
+    #
+    # If DM show user a bunch of guilds they are in and they can choose which to update
+    # by selecting an emoji
+    #
+    # After updating a field send a thank you
+    is_guild = bool(ctx.guild)
+    if is_guild:
+        return
+    else:
+        discord_rec = await get_discord_record(ctx.author.id)
+        airtable_guild_ids = discord_rec.get("fields").get("guild_id")
+        if not airtable_guild_ids:
+            embed = discord.Embed(
+                colour=INFO_EMBED_COLOR,
+                description=f"Cannot update profile because you have not been onboarded to any daos. Run /join in the discord you want to onboard to",
+            )
+            await ctx.response.send_message(embed=embed)
+            ctx.response.is_done()
+            return
+
+        await ctx.response.defer()
+        guild_ids = []
+        for record_id in airtable_guild_ids:
+            g = await get_guild(record_id)
+            print(g)
+            guild_id = g.get("guild_id")
+            if guild_id:
+                guild_ids.append(guild_id)
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title="Welcome",
+            description=f"Which profile guild would you like to update?",
+        )
+        emojis = get_list_of_emojis(len(guild_ids))
+        daos = {}
+        for idx, guild_id in enumerate(guild_ids):
+            guild = await bot.fetch_guild(guild_id)
+            if not guild:
+                continue
+            emoji = emojis[idx]
+            daos[emoji] = guild.id
+            embed.add_field(name=guild.name, value=emoji)
+        message = await ctx.followup.send(embed=embed)
+        for emoji in emojis:
+            await message.add_reaction(emoji)
+        print("Author")
+        print(ctx.author)
+        await Redis.set(
+            ctx.author.id,
+            build_cache_value(
+                ThreadKeys.UPDATE_PROFILE.value,
+                StepKeys.SELECT_GUILD_EMOJI.value,
+                "",
+                message.id,
+                metadata={"daos": daos},
+            ),
+        )
 
 
 # Event listners
@@ -192,6 +243,8 @@ async def on_raw_reaction_add(payload):
 
     # Check if user has open thread
     thread_key = await Redis.get(user.id)
+    print("ThreadKey")
+    print(thread_key)
     if not thread_key:
         # TODO: It may make sense to send some sort of message here
         return

@@ -26,6 +26,26 @@ async def find_user(user_id, guild_id):
     return await loop.run_in_executor(None, _find_user)
 
 
+async def get_user_record(user_id, guild_id):
+
+    """Return airtable record number in users table given user_id and guild_id."""
+
+    loop = asyncio.get_running_loop()
+
+    def _find_user():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
+        records = table.all(
+            formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
+        )
+        if len(records) == 1:
+            record_id = records[0]
+        else:
+            record_id = None
+        return record_id
+
+    return await loop.run_in_executor(None, _find_user)
+
+
 # cannot use in async
 def find_discord(user_id):
 
@@ -39,7 +59,23 @@ def find_discord(user_id):
     return record_id
 
 
-async def find_guild(guild_id):
+async def get_discord_record(user_id):
+
+    """Return airtable record number in global table given user_id."""
+    loop = asyncio.get_running_loop()
+
+    def _get_discord_record():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Global")
+        records = table.all(formula=match({"discord_id": user_id}))
+        record = None
+        if len(records) == 1:
+            record = records[0]
+        return record
+
+    return await loop.run_in_executor(None, _get_discord_record)
+
+
+async def find_guild(record_id):
 
     """Return airtable record number in guild table given guild_id."""
 
@@ -50,6 +86,25 @@ async def find_guild(guild_id):
         records = table.all(formula=match({"guild_id": guild_id}))
         if len(records) == 1:
             record_id = records[0].get("id")
+        else:
+            record_id = ""
+        return record_id
+
+    return await loop.run_in_executor(None, _find_guild)
+
+
+async def get_guild(guild_id):
+
+    """Return airtable record number in guild table given guild_id."""
+
+    loop = asyncio.get_running_loop()
+
+    def _find_guild():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Guilds")
+        records = table.get(guild_id)
+        print(records)
+        if records:
+            record_id = records.get("fields")
         else:
             record_id = ""
         return record_id

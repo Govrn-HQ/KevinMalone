@@ -1,9 +1,10 @@
+import discord
 import json
 import logging
 
-from airtable import find_user, update_user
+from airtable import find_user, update_user, get_user_record
 from enum import Enum
-from config import Redis, YES_EMOJI, NO_EMOJI
+from config import Redis, YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR, get_list_of_emojis
 from typing import Dict, Optional
 
 from dataclasses import dataclass, field
@@ -11,13 +12,14 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 
-def build_cache_value(thread_name, step, guild_id, message_id=""):
+def build_cache_value(thread, step, guild_id, message_id="", **kwargs):
     return json.dumps(
         {
-            "thread": thread_name,
+            "thread": thread,
             "step": step,
             "guild_id": guild_id,
             "message_id": message_id,
+            **kwargs,
         }
     )
 
@@ -26,6 +28,7 @@ def build_cache_value(thread_name, step, guild_id, message_id=""):
 # enum for step keys
 class ThreadKeys(Enum):
     ONBOARDING = "onboarding"
+    UPDATE_PROFILE = "update_profile"
 
 
 class StepKeys(Enum):
@@ -36,16 +39,102 @@ class StepKeys(Enum):
     ONBOARDING_CONGRATS = "onboarding_congrats"
     ADD_USER_WALLET_ADDRESS = "add_user_wallet_address"
     ADD_USER_DISCOURSE = "add_user_discourse"
+    SELECT_GUILD_EMOJI = "select_guild_emoji"
+    USER_UPDATE_FIELD_SELECT = "user_update_select"
+    UPDATE_PROFILE_FIELD_EMOJI = "update_profile_field_emoji"
+    UPDATE_FIELD = "update_field"
+    CONGRATS_UPDATE_FIELD = "congrats_update_field"
 
 
 class BaseThread:
-    pass
+    def __init__(self, user_id, current_step, message_id, guild_id):
+        # Check here that get is not null
+        if not current_step:
+            raise Exception(f"No step for {current_step}")
+        self.user_id = user_id
+        self.message_id = message_id
+        self.guild_id = guild_id
+        self.step = self.find_step(self.steps, current_step)
+
+    def find_step(self, steps, name):
+        if steps.current.name == name:
+            return steps
+        for _, step in steps.next_steps.items():
+            steps = self.find_step(step, name)
+            if steps:
+                return steps
+        return None
+
+    async def send(self, message):
+        logger.info(f"Send {self.step}")
+        if self.step.current.emoji is True:
+            await message.channel.send(
+                "Please react with one of the above emojis to continue!"
+            )
+            return
+        print("Previous Step")
+        print(self.step.previous_step)
+        if self.step.previous_step:
+            print("Executing Save")
+            await self.step.previous_step.save(message, self.guild_id, self.user_id)
+        msg, metadata = await self.step.current.send(message, self.user_id)
+        if not metadata:
+            u = await Redis.get(self.user_id)
+            metadata = json.loads(u).get("metadata")
+
+        if not self.step.next_steps:
+            return await Redis.delete(self.user_id)
+        return await Redis.set(
+            self.user_id,
+            build_cache_value(
+                self.name,
+                list(self.step.next_steps.values())[0].current.name,
+                self.guild_id,
+                msg.id,
+                metadata=metadata,
+            ),
+        )
+
+    # Emoji cannot follow emoji
+    async def handle_reaction(self, reaction, user):
+        from commands import bot
+
+        logger.info(f"Emoji {reaction}")
+        # TODO: Add some error handling
+        channel = await bot.fetch_channel(reaction.channel_id)
+        message = await channel.fetch_message(reaction.message_id)
+
+        if reaction.message_id != self.message_id:
+            await channel.send(
+                "Emoji reaction on the wrong message., Please react to your most recent message"
+            )
+            return
+        try:
+            step_name = await self.step.current.handle_emoji(reaction)
+        except Exception as e:
+            logger.exception("Fiailed to handle the emoji")
+            await channel.send(
+                f"In order to move to the following step please react with one of the already existing emojis"
+            )
+            return
+
+        if not step_name:
+            step_name = list(self.step.next_steps.values())[0].current.name
+        next_step = self.step.get_next_step(step_name)
+        print("Next Step")
+        print(next_step)
+        print(not next_step)
+        if not next_step:
+            return await Redis.delete(self.user_id)
+        self.step = next_step
+        print("Sending message")
+        await self.send(message)
 
 
 class BaseStep:
     emoji = False
 
-    async def save(self, message):
+    async def save(self, message, guild_id, user_id):
         pass
 
 
@@ -65,7 +154,7 @@ class UserDisplayConfirmationStep(BaseStep):
         sent_message = await channel.send(f"{self.msg} `{user.display_name}`")
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
-        return sent_message
+        return sent_message, None
 
 
 # save is a single branch so it can be one to one
@@ -111,7 +200,7 @@ class UserDisplaySubmitStep(BaseStep):
     async def send(self, message, user_id):
         channel = message.channel
         sent_message = await channel.send(f"Updated display name to {message.content}")
-        return sent_message
+        return sent_message, None
 
 
 class AddUserTwitterStep(BaseStep):
@@ -122,7 +211,7 @@ class AddUserTwitterStep(BaseStep):
         sent_message = await channel.send(
             f"What twitter handle would you like to associate with this guild!"
         )
-        return sent_message
+        return sent_message, None
 
     async def save(self, message, guild_id, user_id):
         record_id = await find_user(message.author.id, guild_id)
@@ -142,7 +231,7 @@ class AddUserWalletAddressStep(BaseStep):
         sent_message = await channel.send(
             f"What Ethereum wallet address would you like to associate with this guild!"
         )
-        return sent_message
+        return sent_message, None
 
     async def save(self, message, guild_id, user_id):
         record_id = await find_user(message.author.id, guild_id)
@@ -160,7 +249,7 @@ class AddDiscourseStep(BaseStep):
         sent_message = await channel.send(
             f"What discourse handle would you like to associate with this guild!"
         )
-        return sent_message
+        return sent_message, None
 
     async def save(self, message, guild_id, user_id):
         record_id = await find_user(message.author.id, guild_id)
@@ -174,6 +263,7 @@ class CongratsStep(BaseStep):
     name = StepKeys.ONBOARDING_CONGRATS.value
 
     def __init__(self, guild_id):
+        super().__init__()
         self.guild_id = guild_id
 
     async def send(self, message, user_id):
@@ -184,7 +274,145 @@ class CongratsStep(BaseStep):
         sent_message = await channel.send(
             f"Congrartulations on completeing onboading to {guild.name}"
         )
-        return sent_message
+        return sent_message, None
+
+
+class SelectGuildEmojiStep(BaseStep):
+    name = StepKeys.SELECT_GUILD_EMOJI.value
+    emoji = True
+
+    def __init__(self, cls):
+        super().__init__()
+        self.cls = cls
+
+    async def handle_emoji(self, raw_reaction):
+        # Get reaction that has two
+        # Then save the key with the guild id
+        from commands import bot
+
+        channel = await bot.fetch_channel(raw_reaction.channel_id)
+        message = await channel.fetch_message(raw_reaction.message_id)
+        key_vals = await Redis.get(raw_reaction.user_id)
+        if not key_vals:
+            return
+        daos = json.loads(key_vals).get("metadata").get("daos")
+        selected_guild_reaction = None
+        for reaction in message.reactions:
+            if reaction.count >= 2:
+                selected_guild_reaction = reaction
+                self.cls.guild_id = daos.get(reaction.emoji)
+                break
+        if not selected_guild_reaction:
+            raise Exception("Reacted with the wrong emoji")
+
+
+# Next step send another message with the current profile
+# and the following reactions to update a field
+class UserUpdateFieldSelectStep(BaseStep):
+    name = StepKeys.USER_UPDATE_FIELD_SELECT.value
+
+    def __init__(self, cls):
+        super().__init__()
+        self.cls = cls
+
+    async def send(self, message, user_id):
+        # fetch profile
+        # build embed
+        # send
+        print("fields")
+        print(self.cls.guild_id)
+        print(user_id)
+        fields = await get_user_record(user_id, self.cls.guild_id)
+        user = fields.get("fields")
+        if not user:
+            raise Exception("No user for updating field")
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description="Please select one of the following fields to update via emoji",
+        )
+        # Display name
+        # twitter
+        # wallet
+        # discourse
+        emojis = get_list_of_emojis(4)
+        embed.add_field(
+            name=f"Display Name {emojis[0]}", value=user.get("display_name")
+        )
+        embed.add_field(name=f"Twitter Handle {emojis[1]}", value=user.get("twitter"))
+        embed.add_field(
+            name=f"Ethereum Wallet Address {emojis[2]}", value=user.get("wallet")
+        )
+        embed.add_field(
+            name=f"Discourse Handle {emojis[3]}", value=user.get("discourse")
+        )
+
+        channel = message.channel
+        sent_message = await channel.send(embed=embed)
+        for emoji in emojis:
+            await sent_message.add_reaction(emoji)
+        return (
+            sent_message,
+            {
+                emojis[0]: "display_name",
+                emojis[1]: "twitter",
+                emojis[2]: "wallet",
+                emojis[3]: "discourse",
+            },
+        )
+
+
+class UpdateProfileFieldEmojiStep(BaseStep):
+    name = StepKeys.UPDATE_PROFILE_FIELD_EMOJI.value
+    emoji = True
+
+    def __init__(self, cls):
+        super().__init__()
+        self.cls = cls
+
+    async def handle_emoji(self, raw_reaction):
+        # Get reaction that has two
+        # Then save the key with the guild id
+        key_vals = await Redis.get(raw_reaction.user_id)
+        if not key_vals:
+            return
+        values = json.loads(key_vals)
+        values["metadata"] = {
+            "field": values.get("metadata").get(raw_reaction.emoji.name)
+        }
+        await Redis.set(
+            raw_reaction.user_id, build_cache_value(**values),
+        )
+
+
+class UpdateFieldStep(BaseStep):
+    name = StepKeys.UPDATE_FIELD.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(f"What value would you like to use instead")
+        return sent_message, None
+
+    async def save(self, message, guild_id, user_id):
+        key_vals = await Redis.get(user_id)
+        if not key_vals:
+            return
+        metadata = json.loads(key_vals).get("metadata")
+        print("Metadata")
+        print(metadata)
+        field = metadata.get("field")
+        if not field:
+            raise Exception("No field present to update")
+        record_id = await find_user(user_id, guild_id)
+        await update_user(record_id, field, message.content.strip())
+
+
+class CongratsFieldUpdateStep(BaseStep):
+    name = StepKeys.CONGRATS_UPDATE_FIELD.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(f"Thank you! Your profile has been updated")
+        return sent_message, None
 
 
 @dataclass
@@ -249,76 +477,24 @@ class Onboarding(BaseThread):
         )
         return steps
 
-    def find_step(self, steps, name):
-        print("Steps")
-        print(steps)
-        print(name)
-        if steps.current.name == name:
-            return steps
-        for _, step in steps.next_steps.items():
-            steps = self.find_step(step, name)
-            if steps:
-                return steps
-        return None
 
-    async def send(self, message):
-        logger.info(f"Send {self.step}")
-        if self.step.current.emoji is True:
-            await message.channel.send(
-                "Please react with one of the above emojis to continue!"
-            )
-            return
-        print("Previous Step")
-        print(self.step.previous_step)
-        if self.step.previous_step:
-            print("Executing Save")
-            await self.step.previous_step.save(message, self.guild_id, self.user_id)
-        msg = await self.step.current.send(message, self.user_id)
+class UpdateProfile(BaseThread):
+    name = ThreadKeys.UPDATE_PROFILE.value
 
-        if not self.step.next_steps:
-            return await Redis.delete(self.user_id)
-        return await Redis.set(
-            self.user_id,
-            build_cache_value(
-                self.name,
-                list(self.step.next_steps.values())[0].current.name,
-                self.guild_id,
-                msg.id,
-            ),
+    @property
+    def steps(self):
+        congrats = Step(current=CongratsFieldUpdateStep())
+        update_field_step = Step(current=UpdateFieldStep()).add_next_step(congrats)
+        update_profile_field_emoji = Step(
+            current=UpdateProfileFieldEmojiStep(cls=self)
+        ).add_next_step(update_field_step)
+        user_update_field_select = Step(
+            current=UserUpdateFieldSelectStep(cls=self)
+        ).add_next_step(update_profile_field_emoji)
+        steps = Step(current=SelectGuildEmojiStep(cls=self)).add_next_step(
+            user_update_field_select
         )
-
-    # Emoji cannot follow emoji
-    async def handle_reaction(self, reaction, user):
-        from commands import bot
-
-        logger.info(f"Emoji {reaction}")
-        # TODO: Add some error handling
-        channel = await bot.fetch_channel(reaction.channel_id)
-        message = await channel.fetch_message(reaction.message_id)
-
-        if reaction.message_id != self.message_id:
-            await channel.send(
-                "Emoji reaction on the wrong message., Please react to your most recent message"
-            )
-            return
-        try:
-            step_name = await self.step.current.handle_emoji(reaction)
-        except Exception as e:
-            logger.exception("Fiailed to handle the emoji")
-            await channel.send(
-                f"In order to move to the following step please react with one of {','.join(self.step.current.emojis)}"
-            )
-            return
-
-        next_step = self.step.get_next_step(step_name)
-        print("Next Step")
-        print(next_step)
-        print(not next_step)
-        if not next_step:
-            return await Redis.delete(self.user_id)
-        self.step = next_step
-        print("Sending message")
-        await self.send(message)
+        return steps
 
 
 def get_thread(user_id, key):
@@ -329,4 +505,6 @@ def get_thread(user_id, key):
     guild_id = val.get("guild_id")
     if thread == ThreadKeys.ONBOARDING.value:
         return Onboarding(user_id, step, message_id, guild_id)
+    elif thread == ThreadKeys.UPDATE_PROFILE.value:
+        return UpdateProfile(user_id, step, message_id, guild_id)
     raise Exception("Unknown Thread!")
