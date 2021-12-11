@@ -75,7 +75,7 @@ async def get_discord_record(user_id):
     return await loop.run_in_executor(None, _get_discord_record)
 
 
-async def find_guild(record_id):
+async def find_guild(guild_id):
 
     """Return airtable record number in guild table given guild_id."""
 

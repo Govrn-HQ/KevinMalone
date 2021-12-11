@@ -80,7 +80,8 @@ class BaseThread:
         msg, metadata = await self.step.current.send(message, self.user_id)
         if not metadata:
             u = await Redis.get(self.user_id)
-            metadata = json.loads(u).get("metadata")
+            if u:
+                metadata = json.loads(u).get("metadata")
 
         if not self.step.next_steps:
             return await Redis.delete(self.user_id)
@@ -272,7 +273,7 @@ class CongratsStep(BaseStep):
         channel = message.channel
         guild = await bot.fetch_guild(self.guild_id)
         sent_message = await channel.send(
-            f"Congrartulations on completeing onboading to {guild.name}"
+            f"Congratulations on completeing onboading to {guild.name}"
         )
         return sent_message, None
 

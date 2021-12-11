@@ -81,6 +81,7 @@ async def join(ctx):
         ctx.response.is_done()
         return
 
+    await ctx.response.defer()
     # store guild_id and disord_id
     print(ctx.guild.id)
     print(ctx.author.id)
@@ -88,10 +89,9 @@ async def join(ctx):
     # check if user can be DMed
     can_send_message = ctx.can_send(discord.Message)
     if not can_send_message:
-        await ctx.response.send_message(
+        await ctx.followup.send(
             "I cannot onboard you. Please turn on DM's from this server!"
         )
-        ctx.response.is_done()
         return
 
     # Get guild
@@ -113,10 +113,7 @@ async def join(ctx):
     await Onboarding(
         ctx.author.id, StepKeys.USER_DISPLAY_CONFIRM.value, message.id, ctx.guild.id
     ).send(message)
-    await ctx.response.send_message(
-        "Check your Dms to continue onboarding", ephemeral=True
-    )
-    ctx.response.is_done()
+    await ctx.followup.send("Check your Dms to continue onboarding", ephemeral=True)
 
 
 @bot.slash_command(
