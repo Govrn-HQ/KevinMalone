@@ -64,6 +64,7 @@ class BaseThread:
         self.message_id = message_id
         self.guild_id = guild_id
         self.step = self.find_step(self.steps, current_step)
+        self.skip = False
         print("Current Step")
         print(current_step)
 
@@ -85,7 +86,7 @@ class BaseThread:
             return
         print("Previous Step")
         print(self.step.previous_step)
-        if self.step.previous_step:
+        if self.step.previous_step and not self.skip:
             print("Executing Save")
             await self.step.previous_step.save(message, self.guild_id, self.user_id)
         msg, metadata = await self.step.current.send(message, self.user_id)
@@ -122,7 +123,7 @@ class BaseThread:
             )
             return
         try:
-            step_name = await self.step.current.handle_emoji(reaction)
+            step_name, skip = await self.step.current.handle_emoji(reaction)
         except Exception as e:
             logger.exception("Fiailed to handle the emoji")
             await channel.send(
@@ -131,6 +132,8 @@ class BaseThread:
             return
 
         if not step_name:
+            if not list(self.step.next_steps.values()):
+                return await Redis.delete(self.user_id)
             step_name = list(self.step.next_steps.values())[0].current.name
         next_step = self.step.get_next_step(step_name)
         print("Next Step")
@@ -140,6 +143,7 @@ class BaseThread:
             return await Redis.delete(self.user_id)
         self.step = next_step
         print("Sending message")
+        self.skip = skip
         await self.send(message)
 
 
@@ -182,8 +186,8 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     async def handle_emoji(self, raw_reaction):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
-                return StepKeys.USER_DISPLAY_SUBMIT.value
-            return StepKeys.ADD_USER_TWITTER.value
+                return StepKeys.USER_DISPLAY_SUBMIT.value, None
+            return StepKeys.ADD_USER_TWITTER.value, None
         raise Exception("Reacted with the wrong emoji")
 
     """
@@ -244,7 +248,7 @@ class UserDisplaySubmitStep(BaseStep):
 
     async def handle_emoji(self, raw_reaction):
         if raw_reaction.emoji.name == SKIP_EMOJI:
-            return
+            return None, True
         raise Exception("Reacted with the wrong emoji")
 
 
@@ -268,8 +272,8 @@ class AddUserTwitterStep(BaseStep):
         )
 
     async def handle_emoji(self, raw_reaction):
-        if raw_reaction.emoji.name == SKIP_EMOJI:
-            return
+        if SKIP_EMOJI in raw_reaction.emoji.name:
+            return None, True
         raise Exception("Reacted with the wrong emoji")
 
 
@@ -291,8 +295,9 @@ class AddUserWalletAddressStep(BaseStep):
         await update_user(record_id, "wallet", message.content.strip())
 
     async def handle_emoji(self, raw_reaction):
-        if raw_reaction.emoji.name == SKIP_EMOJI:
-            return
+        # breakpoint()
+        if SKIP_EMOJI in raw_reaction.emoji.name:
+            return None, True
         raise Exception("Reacted with the wrong emoji")
 
 
@@ -314,8 +319,8 @@ class AddDiscourseStep(BaseStep):
         await update_user(record_id, "discourse", message.content.strip())
 
     async def handle_emoji(self, raw_reaction):
-        if raw_reaction.emoji.name == SKIP_EMOJI:
-            return
+        if SKIP_EMOJI in raw_reaction.emoji.name:
+            return None, True
         raise Exception("Reacted with the wrong emoji")
 
 
@@ -336,6 +341,18 @@ class CongratsStep(BaseStep):
         )
         return sent_message, None
 
+    async def handle_emoji(self, raw_reaction):
+        if SKIP_EMOJI in raw_reaction.emoji.name:
+            from commands import bot
+
+            channel = await bot.fetch_channel(raw_reaction.channel_id)
+            guild = await bot.fetch_guild(self.guild_id)
+            sent_message = await channel.send(
+                f"Congratulations on completeing onboading to {guild.name}"
+            )
+            return None, False
+        raise Exception("Reacted with the wrong emoji")
+
 
 class SelectGuildEmojiStep(BaseStep):
     name = StepKeys.SELECT_GUILD_EMOJI.value
@@ -354,7 +371,7 @@ class SelectGuildEmojiStep(BaseStep):
         message = await channel.fetch_message(raw_reaction.message_id)
         key_vals = await Redis.get(raw_reaction.user_id)
         if not key_vals:
-            return
+            return None, None
         daos = json.loads(key_vals).get("metadata").get("daos")
         selected_guild_reaction = None
         for reaction in message.reactions:
@@ -364,6 +381,7 @@ class SelectGuildEmojiStep(BaseStep):
                 break
         if not selected_guild_reaction:
             raise Exception("Reacted with the wrong emoji")
+        return None, None
 
 
 # Next step send another message with the current profile
@@ -434,7 +452,7 @@ class UpdateProfileFieldEmojiStep(BaseStep):
         # Then save the key with the guild id
         key_vals = await Redis.get(raw_reaction.user_id)
         if not key_vals:
-            return
+            return None, None
         values = json.loads(key_vals)
         values["metadata"] = {
             "field": values.get("metadata").get(raw_reaction.emoji.name)
@@ -443,6 +461,7 @@ class UpdateProfileFieldEmojiStep(BaseStep):
             raw_reaction.user_id,
             build_cache_value(**values),
         )
+        return None, None
 
 
 class UpdateFieldStep(BaseStep):
