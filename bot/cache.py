@@ -4,7 +4,14 @@ import logging
 
 from airtable import find_user, update_user, get_user_record
 from enum import Enum
-from config import Redis, YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR, get_list_of_emojis
+from config import (
+    Redis,
+    YES_EMOJI,
+    NO_EMOJI,
+    INFO_EMBED_COLOR,
+    get_list_of_emojis,
+    SKIP_EMOJI,
+)
 from typing import Dict, Optional
 
 from dataclasses import dataclass, field
@@ -208,7 +215,14 @@ class UserDisplaySubmitStep(BaseStep):
 
         user = await bot.fetch_user(user_id)
         record_id = await find_user(user_id, guild_id)
+        print("Saving again")
+        print(message)
         await update_user(record_id, "display_name", message.content.strip())
+
+    async def handle_emoji(self, raw_reaction):
+        if raw_reaction.emoji.name == SKIP_EMOJI:
+            return
+        raise Exception("Reacted with the wrong emoji")
 
 
 class AddUserTwitterStep(BaseStep):
@@ -230,6 +244,11 @@ class AddUserTwitterStep(BaseStep):
             record_id, "twitter", message.content.strip().replace("@", "")
         )
 
+    async def handle_emoji(self, raw_reaction):
+        if raw_reaction.emoji.name == SKIP_EMOJI:
+            return
+        raise Exception("Reacted with the wrong emoji")
+
 
 class AddUserWalletAddressStep(BaseStep):
     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
@@ -248,6 +267,11 @@ class AddUserWalletAddressStep(BaseStep):
         print(record_id)
         await update_user(record_id, "wallet", message.content.strip())
 
+    async def handle_emoji(self, raw_reaction):
+        if raw_reaction.emoji.name == SKIP_EMOJI:
+            return
+        raise Exception("Reacted with the wrong emoji")
+
 
 class AddDiscourseStep(BaseStep):
     name = StepKeys.ADD_USER_DISCOURSE.value
@@ -265,6 +289,11 @@ class AddDiscourseStep(BaseStep):
         print(message)
         print(record_id)
         await update_user(record_id, "discourse", message.content.strip())
+
+    async def handle_emoji(self, raw_reaction):
+        if raw_reaction.emoji.name == SKIP_EMOJI:
+            return
+        raise Exception("Reacted with the wrong emoji")
 
 
 class CongratsStep(BaseStep):
