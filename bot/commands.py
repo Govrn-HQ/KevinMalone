@@ -1,5 +1,6 @@
 import logging
 import discord
+import hashlib
 
 from airtable import find_user, create_user, get_discord_record, get_guild
 from cache import get_thread, build_cache_value, StepKeys, ThreadKeys, Onboarding
@@ -70,7 +71,9 @@ async def join(ctx):
         # on by sending all the commands
         application_commands = bot.application_commands
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR, title="Welcome Back", description=f"",
+            colour=INFO_EMBED_COLOR,
+            title="Welcome Back",
+            description=f"",
         )
         for cmd in application_commands:
             if isinstance(cmd, discord.SlashCommand):
@@ -111,7 +114,7 @@ async def join(ctx):
     )
     message = await ctx.author.send(embed=embed)
     await Onboarding(
-        ctx.author.id, StepKeys.USER_DISPLAY_CONFIRM.value, message.id, ctx.guild.id
+        ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, ctx.guild.id
     ).send(message)
     await ctx.followup.send("Check your Dms to continue onboarding", ephemeral=True)
 
@@ -173,7 +176,7 @@ async def update(ctx):
             ctx.author.id,
             build_cache_value(
                 ThreadKeys.UPDATE_PROFILE.value,
-                StepKeys.SELECT_GUILD_EMOJI.value,
+                UpdateProfile().steps.hash_,
                 "",
                 message.id,
                 metadata={"daos": daos},

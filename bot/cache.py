@@ -1,5 +1,6 @@
 import discord
 import json
+import hashlib
 import logging
 
 from airtable import find_user, update_user, get_user_record
@@ -51,6 +52,7 @@ class StepKeys(Enum):
     UPDATE_PROFILE_FIELD_EMOJI = "update_profile_field_emoji"
     UPDATE_FIELD = "update_field"
     CONGRATS_UPDATE_FIELD = "congrats_update_field"
+    DISPLAY_NAME_REQUEST = "display_name_request"
 
 
 class BaseThread:
@@ -62,18 +64,20 @@ class BaseThread:
         self.message_id = message_id
         self.guild_id = guild_id
         self.step = self.find_step(self.steps, current_step)
+        print("Current Step")
+        print(current_step)
 
-    def find_step(self, steps, name):
-        if steps.current.name == name:
+    def find_step(self, steps, hash_):
+        if steps.hash_ == hash_:
             return steps
         for _, step in steps.next_steps.items():
-            steps = self.find_step(step, name)
+            steps = self.find_step(step, hash_)
             if steps:
                 return steps
         return None
 
     async def send(self, message):
-        logger.info(f"Send {self.step}")
+        logger.info(f"Send {self.step.hash_} {self.step}")
         if self.step.current.emoji is True:
             await message.channel.send(
                 "Please react with one of the above emojis to continue!"
@@ -96,7 +100,7 @@ class BaseThread:
             self.user_id,
             build_cache_value(
                 self.name,
-                list(self.step.next_steps.values())[0].current.name,
+                list(self.step.next_steps.values())[0].hash_,
                 self.guild_id,
                 msg.id,
                 metadata=metadata,
@@ -202,18 +206,37 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         await update_user(record_id, "display_name", user.name)
 
 
+# class DisplayNameRequestStep(BaseStep):
+#     name = StepKeys.DISPLAY_NAME_REQUEST.value
+#
+#     async def send(self, message, user_id):
+#         channel = message.channel
+#         sent_message = await channel.send(
+#             f"What would you like your display name to be!"
+#         )
+#         return sent_message, None
+#
+#     async def save(self, message, guild_id, user_id):
+#         record_id = await find_user(message.author.id, guild_id)
+#         await update_user(record_id, "display_name", message.content.strip())
+#
+#     async def handle_emoji(self, raw_reaction):
+#         if raw_reaction.emoji.name == SKIP_EMOJI:
+#             return
+#         raise Exception("Reacted with the wrong emoji")
+
+
 class UserDisplaySubmitStep(BaseStep):
     name = StepKeys.USER_DISPLAY_SUBMIT.value
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(f"Updated display name to {message.content}")
+        sent_message = await channel.send(
+            f"What would you like your display name to be?"
+        )
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        from commands import bot
-
-        user = await bot.fetch_user(user_id)
         record_id = await find_user(user_id, guild_id)
         print("Saving again")
         print(message)
@@ -453,14 +476,20 @@ class CongratsFieldUpdateStep(BaseStep):
         return sent_message, None
 
 
+# TODO: There is an issue here if the same class is used on a branch
+# Make sure that at a the a fork can use a previous branch
 @dataclass
 class Step:
     current: BaseStep
     next_steps: Optional[Dict[str, BaseStep]] = field(default_factory=dict)
     previous_step: Optional[BaseStep] = field(default=None)
+    hash_: str = hashlib.sha256("".encode()).hexdigest()
 
     def add_next_step(self, step):
         step.previous_step = self.current
+        step.hash_ = hashlib.sha256(
+            f"{self.hash_}{step.current.name}".encode()
+        ).hexdigest()
         self.next_steps[step.current.name] = step
         return self
 
@@ -502,8 +531,12 @@ class Onboarding(BaseThread):
         data_retrival_chain = Step(current=AddUserTwitterStep()).add_next_step(
             fetch_address
         )
+        data_retrival_chain_2 = Step(current=AddUserTwitterStep()).add_next_step(
+            fetch_address
+        )
+
         user_display_accept = Step(current=UserDisplaySubmitStep()).add_next_step(
-            data_retrival_chain
+            data_retrival_chain_2
         )
         user_display_confirm_emoji = (
             Step(current=UserDisplayConfirmationEmojiStep())
