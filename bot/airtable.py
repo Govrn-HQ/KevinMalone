@@ -45,7 +45,7 @@ def find_guild(guild_id):
 def update_user(record_id, id_field, id_val):
 
     """Add or update user ID info given ID field, value,
-     and user table airtable record number."""
+    and user table airtable record number."""
 
     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
     table.update(record_id, {id_field: id_val})
@@ -58,6 +58,7 @@ def create_user(user_id, guild_id):
 
     global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Global")
     user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
+    guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Guilds")
 
     record_id = find_user(user_id, guild_id)
 
@@ -72,6 +73,13 @@ def create_user(user_id, guild_id):
             global_table.create({"discord_id": user_id})
             discord_record = find_discord(user_id)
         # create new user, guild combo record in users table
-        user_table.create({"discord_id": [discord_record], "guild_id": [guild_record]})
+        user_dao_id = guild_table.get(guild_record).get("fields").get("total") + 1
+        user_table.create(
+            {
+                "discord_id": [discord_record],
+                "guild_id": [guild_record],
+                "user_dao_id": str(user_dao_id),
+            }
+        )
         record_id = find_user(user_id, guild_id)
         return record_id
