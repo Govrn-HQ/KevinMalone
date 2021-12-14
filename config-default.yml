@@ -6,6 +6,7 @@ bot:
   redis_host: !ENV "REDIS_HOST"
   airtable_key: !ENV "AIRTABLE_KEY"
   airtable_base: !ENV "AIRTABLE_BASE"
+  is_dev: !ENV "IS_DEV"
 
 style:
   colors:
