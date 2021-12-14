@@ -28,7 +28,7 @@ async def report(ctx):
     if airtableLink:
         await bot.fetch_user(int(ctx.author.id))
         await ctx.response.send_message(
-            f"Add contributions to the following airtable {airtableLink}",
+            f"Woohoo!  Nice job!  Community contributions are what ensures your community is GMI 🌞.  Report you contributions via the form 👉 {airtableLink}",
             ephemeral=True,
         )
         ctx.response.is_done()
@@ -104,7 +104,7 @@ async def join(ctx):
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
         title="Welcome",
-        description=f"Thank you for joining the Govrn ecosystem! To help automate  gathering your contributions to {ctx.guild.name} we need you to provide some information. Any of the following data requests can be skipped with the ⏭️  emoji!",
+        description=f"Welcome to the Govrn Movement!  \n\nWe can't wait to help you contribute to all your DAOs and Communities. To help automate the gathering of your contributions to {ctx.guild.name} we need some information.  \n\nWe enable you to input your user IDs so we can automatically pull your contributions into a report for you to easily submit to {ctx.guild.name}.  We don't use this information for anything besides helping you submit contributions. Fill free to skip any ID inputs with the ⏭️  emoji!",
     )
     # Add user to the internal cache with with appropriate stage type
     # Thread Type, thread type will have a numer of steps,
