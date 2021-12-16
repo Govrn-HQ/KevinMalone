@@ -63,7 +63,7 @@ async def report(ctx):
     if airtableLink:
         await bot.fetch_user(int(ctx.author.id))
         await ctx.response.send_message(
-            f"Woohoo! Nice job! Community contributions are what keeps your community thriving 🌞. Report you contributions via the form 👉 {airtableLink}"",
+            f"Woohoo! Nice job! Community contributions are what keeps your community thriving 🌞. Report you contributions via the form 👉 {airtableLink}",
             ephemeral=True,
         )
         ctx.response.is_done()
