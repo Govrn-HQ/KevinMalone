@@ -14,6 +14,12 @@ from common.threads.thread_builder import (
 from common.core import bot
 
 
+def _handle_skip_emoji(raw_reaction, guild_id):
+    if raw_reaction.emoji.name == SKIP_EMOJI:
+        return None, True
+    raise Exception("Reacted with the wrong emoji")
+
+
 class UserDisplayConfirmationStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM.value
     msg = "Would you like your govern display name to be"
@@ -69,9 +75,7 @@ class UserDisplaySubmitStep(BaseStep):
         await update_user(record_id, "display_name", message.content.strip())
 
     async def handle_emoji(self, raw_reaction):
-        if raw_reaction.emoji.name == SKIP_EMOJI:
-            return None, True
-        raise Exception("Reacted with the wrong emoji")
+        return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
 class AddUserTwitterStep(BaseStep):
@@ -91,9 +95,7 @@ class AddUserTwitterStep(BaseStep):
         )
 
     async def handle_emoji(self, raw_reaction):
-        if SKIP_EMOJI in raw_reaction.emoji.name:
-            return None, True
-        raise Exception("Reacted with the wrong emoji")
+        return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
 class AddUserWalletAddressStep(BaseStep):
@@ -111,10 +113,7 @@ class AddUserWalletAddressStep(BaseStep):
         await update_user(record_id, "wallet", message.content.strip())
 
     async def handle_emoji(self, raw_reaction):
-        # breakpoint()
-        if SKIP_EMOJI in raw_reaction.emoji.name:
-            return None, True
-        raise Exception("Reacted with the wrong emoji")
+        return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
 class AddDiscourseStep(BaseStep):
@@ -132,8 +131,34 @@ class AddDiscourseStep(BaseStep):
         await update_user(record_id, "discourse", message.content.strip())
 
     async def handle_emoji(self, raw_reaction):
+        return _handle_skip_emoji(raw_reaction, self.guild_id)
+
+
+class CongratsStep(BaseStep):
+    name = StepKeys.ONBOARDING_CONGRATS.value
+
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        guild = await bot.fetch_guild(self.guild_id)
+        sent_message = await channel.send(
+            f"Congratulations on completeing onboading to {guild.name}"
+        )
+        # TODO Check if govrn id
+        # If govrn id then send into govrn onboard flow
+        return sent_message, None
+
+    async def handle_emoji(self, raw_reaction):
         if SKIP_EMOJI in raw_reaction.emoji.name:
-            return None, True
+            channel = await bot.fetch_channel(raw_reaction.channel_id)
+            guild = await bot.fetch_guild(self.guild_id)
+            await channel.send(
+                f"Congratulations on completeing onboading to {guild.name}"
+            )
+            return None, False
         raise Exception("Reacted with the wrong emoji")
 
 
@@ -150,6 +175,8 @@ class CongratsStep(BaseStep):
         sent_message = await channel.send(
             f"Congratulations on completeing onboading to {guild.name}"
         )
+        # TODO Check if govrn id
+        # If govrn id then send into govrn onboard flow
         return sent_message, None
 
     async def handle_emoji(self, raw_reaction):
@@ -163,40 +190,31 @@ class CongratsStep(BaseStep):
         raise Exception("Reacted with the wrong emoji")
 
 
+# Fork to end step
+
+
+# TODO: steps will not be initialized
+# when adding a next_node run a deep copy
+# add fork function which takes multiple steps
+# next_step returns previous node not self
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
-    def __init__(self, user_id, current_step, message_id, guild_id):
-        if not current_step:
-            raise Exception(f"No step for {current_step}")
-        self.user_id = user_id
-        self.message_id = message_id
-        self.guild_id = guild_id
-        self.step = self.find_step(self.steps, current_step)
-
     @property
     def steps(self):
-        congrats = Step(current=CongratsStep(guild_id=self.guild_id))
-        discourse = Step(current=AddDiscourseStep()).add_next_step(congrats)
-        fetch_address = Step(current=AddUserWalletAddressStep()).add_next_step(
-            discourse
-        )
-        data_retrival_chain = Step(current=AddUserTwitterStep()).add_next_step(
-            fetch_address
-        )
-        data_retrival_chain_2 = Step(current=AddUserTwitterStep()).add_next_step(
-            fetch_address
+        data_retrival_chain = (
+            Step(current=AddUserTwitterStep())
+            .add_next_step(AddUserWalletAddressStep())
+            .add_next_step(AddDiscourseStep())
+            .add_next_step(CongratsStep(guild_id=self.guild_id))
         )
 
         user_display_accept = Step(current=UserDisplaySubmitStep()).add_next_step(
-            data_retrival_chain_2
+            data_retrival_chain
         )
-        user_display_confirm_emoji = (
-            Step(current=UserDisplayConfirmationEmojiStep())
-            .add_next_step(user_display_accept)
-            .add_next_step(data_retrival_chain)
+        steps = (
+            Step(current=UserDisplayConfirmationStep())
+            .add_next_step(UserDisplayConfirmationEmojiStep())
+            .fork((user_display_accept, data_retrival_chain))
         )
-        steps = Step(current=UserDisplayConfirmationStep()).add_next_step(
-            user_display_confirm_emoji
-        )
-        return steps
+        return steps.build()

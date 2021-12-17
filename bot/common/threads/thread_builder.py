@@ -1,3 +1,4 @@
+import copy
 import json
 import hashlib
 import logging
@@ -71,8 +72,10 @@ class BaseThread:
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if self.step.previous_step and not self.skip:
-            await self.step.previous_step.save(message, self.guild_id, self.user_id)
+        if self.step.previous_step.current and not self.skip:
+            await self.step.previous_step.current.save(
+                message, self.guild_id, self.user_id
+            )
         msg, metadata = await self.step.current.send(message, self.user_id)
         if not metadata:
             u = await Redis.get(self.user_id)
@@ -145,12 +148,38 @@ class Step:
     hash_: str = hashlib.sha256("".encode()).hexdigest()
 
     def add_next_step(self, step):
-        step.previous_step = self.current
+        if isinstance(step, BaseStep):
+            step = Step(current=step)
+        step.previous_step = self
         step.hash_ = hashlib.sha256(
             f"{self.hash_}{step.current.name}".encode()
         ).hexdigest()
-        self.next_steps[step.current.name] = step
+        self.next_steps[step.current.name] = copy.deepcopy(step)
+        return step
+
+    def fork(self, logic_steps):
+        if not logic_steps:
+            Exception("No steps specified")
+        for step in logic_steps:
+            if isinstance(step, BaseStep):
+                step = Step(current=step)
+            step.previous_step = self.current
+            step.hash_ = hashlib.sha256(
+                f"{self.hash_}{step.current.name}".encode()
+            ).hexdigest()
+            self.next_steps[step.current.name] = copy.deepcopy(step)
         return self
+
+    def build(self):
+        previous = self.previous_step
+        while previous:
+            print("Here")
+            print(previous)
+            print(previous.previous_step)
+            if not previous.previous_step:
+                break
+            previous = previous.previous_step
+        return previous
 
     def get_next_step(self, key):
         step = self.next_steps.get(key, "")

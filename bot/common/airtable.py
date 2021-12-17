@@ -37,6 +37,7 @@ async def get_user_record(user_id, guild_id):
         records = table.all(
             formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
         )
+        breakpoint()
         if len(records) == 1:
             record_id = records[0]
         else:
