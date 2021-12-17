@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - "master"
+      - "staging"
 
 env:
   APP_NAME: ${{ 'kevin-malone-test' }}
