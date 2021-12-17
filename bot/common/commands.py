@@ -64,7 +64,9 @@ async def report(ctx):
     if airtableLink:
         await bot.fetch_user(int(ctx.author.id))
         await ctx.response.send_message(
-            f"Woohoo! Nice job! Community contributions are what keeps your community thriving 🌞. Report you contributions via the form 👉 {airtableLink}",
+            f"Woohoo! Nice job! Community contributions are what keeps"
+            " your community thriving 🌞. "
+            f"Report you contributions via the form 👉 {airtableLink}",
             ephemeral=True,
         )
         ctx.response.is_done()
@@ -117,9 +119,12 @@ if bool(strtobool(constants.Bot.is_dev)):
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Welcome",
-            description="Welcome to the Govrn Ecosystem!  We're excited to have you part of our movement."
-            "To help automate the gathering of your contributions to {ctx.guild.name} we need some information."
-            "We use your IDs to automatically pull your contributions for you to easily submit to {ctx.guild.name}. "
+            description="Welcome to the Govrn Ecosystem!  "
+            "We're excited to have you part of our movement."
+            "To help automate the gathering of your contributions"
+            " to {ctx.guild.name} we need some information."
+            "We use your IDs to automatically pull your contributions for you to "
+            "easily submit to {ctx.guild.name}. "
             "You can skip any requests by using the ⏭️  emoji!",
         )
         logger.info(
