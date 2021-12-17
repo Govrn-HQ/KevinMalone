@@ -50,7 +50,8 @@ def get_thread(user_id, key):
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS, description="Send users link to report engagement",
+    guild_id=GUILD_IDS,
+    description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -89,7 +90,9 @@ if bool(strtobool(constants.Bot.is_dev)):
             # on by sending all the commands
             application_commands = bot.application_commands
             embed = discord.Embed(
-                colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
+                colour=INFO_EMBED_COLOR,
+                title="Welcome Back",
+                description="",
             )
             for cmd in application_commands:
                 if isinstance(cmd, discord.SlashCommand):
