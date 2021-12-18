@@ -50,8 +50,7 @@ def get_thread(user_id, key):
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send users link to report engagement",
+    guild_id=GUILD_IDS, description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -92,9 +91,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             # on by sending all the commands
             application_commands = bot.application_commands
             embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                title="Welcome Back",
-                description="",
+                colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
             )
             for cmd in application_commands:
                 if isinstance(cmd, discord.SlashCommand):
@@ -188,7 +185,12 @@ if bool(strtobool(constants.Bot.is_dev)):
                 ctx.author.id,
                 build_cache_value(
                     ThreadKeys.UPDATE_PROFILE.value,
-                    UpdateProfile().steps.hash_,
+                    UpdateProfile(
+                        ctx.author.id,
+                        hashlib.sha256("".encode()).hexdigest(),
+                        message.id,
+                        "",
+                    ).steps.hash_,
                     "",
                     message.id,
                     metadata={"daos": daos},
@@ -226,8 +228,6 @@ async def on_message(message):
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    from commands import bot
-
     reaction = payload
     user = await bot.fetch_user(int(payload.user_id))
     channel = await bot.fetch_channel(int(reaction.channel_id))
