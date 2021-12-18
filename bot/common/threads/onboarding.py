@@ -15,7 +15,7 @@ from common.core import bot
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
-    if raw_reaction.emoji.name == SKIP_EMOJI:
+    if SKIP_EMOJI in raw_reaction.emoji.name:
         return None, True
     raise Exception("Reacted with the wrong emoji")
 
@@ -119,6 +119,10 @@ class AddUserWalletAddressStep(BaseStep):
 class AddDiscourseStep(BaseStep):
     name = StepKeys.ADD_USER_DISCOURSE.value
 
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
+
     async def send(self, message, user_id):
         channel = message.channel
         sent_message = await channel.send(
@@ -205,12 +209,14 @@ class Onboarding(BaseThread):
         data_retrival_chain = (
             Step(current=AddUserTwitterStep())
             .add_next_step(AddUserWalletAddressStep())
-            .add_next_step(AddDiscourseStep())
+            .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
             .add_next_step(CongratsStep(guild_id=self.guild_id))
-        )
+        ).build()
 
-        user_display_accept = Step(current=UserDisplaySubmitStep()).add_next_step(
-            data_retrival_chain
+        user_display_accept = (
+            Step(current=UserDisplaySubmitStep())
+            .add_next_step(data_retrival_chain)
+            .build()
         )
         steps = (
             Step(current=UserDisplayConfirmationStep())

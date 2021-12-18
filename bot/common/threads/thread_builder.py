@@ -163,7 +163,7 @@ class Step:
         print("HERE")
         print(step.current.name)
         print(self._copy_children(step))
-        self.next_steps[step.current.name] = self._copy_children(step)
+        self.next_steps[step.current.name] = step
         return step
 
     def fork(self, logic_steps):
@@ -172,20 +172,22 @@ class Step:
         for step in logic_steps:
             if isinstance(step, BaseStep):
                 step = Step(current=step)
-            step.previous_step = self.current
+            step.previous_step = self
             step.hash_ = hashlib.sha256(
                 f"{self.hash_}{step.current.name}".encode()
             ).hexdigest()
             # Another failure where order is lost
-            self.next_steps[step.current.name] = self._copy_children(step)
+            z = self._copy_children(step)
+            self.next_steps[step.current.name] = z
         return self
 
     def _copy_children(self, step):
         next_steps = {}
         for k, s in step.next_steps.items():
+            print("Key")
+            print(k)
             c = copy.copy(s)
-            next_steps[k] = c
-            self._copy_children(c)
+            next_steps[k] = self._copy_children(c)
         step.next_steps = next_steps
         return copy.copy(step)
 
@@ -202,6 +204,8 @@ class Step:
 
     def get_next_step(self, key):
         step = self.next_steps.get(key, "")
+        print("Next Steps")
+        print(self.next_steps)
         if step == "":
             raise Exception(
                 f"Not a valid next step! current {self.current.name} and next: {key}"
