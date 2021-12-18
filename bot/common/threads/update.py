@@ -23,18 +23,14 @@ class UpdateProfile(BaseThread):
 
     @property
     def steps(self):
-        congrats = Step(current=CongratsFieldUpdateStep())
-        update_field_step = Step(current=UpdateFieldStep()).add_next_step(congrats)
-        update_profile_field_emoji = Step(
-            current=UpdateProfileFieldEmojiStep(cls=self)
-        ).add_next_step(update_field_step)
-        user_update_field_select = Step(
-            current=UserUpdateFieldSelectStep(cls=self)
-        ).add_next_step(update_profile_field_emoji)
-        steps = Step(current=SelectGuildEmojiStep(cls=self)).add_next_step(
-            user_update_field_select
+        steps = (
+            Step(current=SelectGuildEmojiStep(cls=self))
+            .add_next_step(UserUpdateFieldSelectStep(cls=self))
+            .add_next_step(UpdateProfileFieldEmojiStep(cls=self))
+            .add_next_step(UpdateFieldStep())
+            .add_next_step(CongratsFieldUpdateStep())
         )
-        return steps
+        return steps.build()
 
 
 class SelectGuildEmojiStep(BaseStep):
@@ -127,8 +123,7 @@ class UpdateProfileFieldEmojiStep(BaseStep):
             "field": values.get("metadata").get(raw_reaction.emoji.name)
         }
         await Redis.set(
-            raw_reaction.user_id,
-            build_cache_value(**values),
+            raw_reaction.user_id, build_cache_value(**values),
         )
         return None, None
 

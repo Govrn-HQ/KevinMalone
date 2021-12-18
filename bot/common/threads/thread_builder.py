@@ -1,3 +1,4 @@
+import copy
 import json
 import hashlib
 import logging
@@ -71,8 +72,14 @@ class BaseThread:
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if self.step.previous_step and not self.skip:
-            await self.step.previous_step.save(message, self.guild_id, self.user_id)
+        if (
+            self.step.previous_step
+            and self.step.previous_step.current
+            and not self.skip
+        ):
+            await self.step.previous_step.current.save(
+                message, self.guild_id, self.user_id
+            )
         msg, metadata = await self.step.current.send(message, self.user_id)
         if not metadata:
             u = await Redis.get(self.user_id)
@@ -115,7 +122,6 @@ class BaseThread:
                 "react with one of the already existing emojis"
             )
             return
-
         if skip is True:
             next_step = self.step
         else:
@@ -148,12 +154,45 @@ class Step:
     hash_: str = hashlib.sha256("".encode()).hexdigest()
 
     def add_next_step(self, step):
-        step.previous_step = self.current
+        if isinstance(step, BaseStep):
+            step = Step(current=step)
+        step.previous_step = self
         step.hash_ = hashlib.sha256(
             f"{self.hash_}{step.current.name}".encode()
         ).hexdigest()
         self.next_steps[step.current.name] = step
+        return step
+
+    def fork(self, logic_steps):
+        if not logic_steps:
+            Exception("No steps specified")
+        for step in logic_steps:
+            if isinstance(step, BaseStep):
+                step = Step(current=step)
+            step.previous_step = self
+            step.hash_ = hashlib.sha256(
+                f"{self.hash_}{step.current.name}".encode()
+            ).hexdigest()
+
+            self.next_steps[step.current.name] = self._copy_children(step)
+
         return self
+
+    def _copy_children(self, step):
+        next_steps = {}
+        for k, s in step.next_steps.items():
+            c = copy.copy(s)
+            next_steps[k] = self._copy_children(c)
+        step.next_steps = next_steps
+        return copy.copy(step)
+
+    def build(self):
+        previous = self.previous_step
+        while previous:
+            if not previous.previous_step:
+                break
+            previous = previous.previous_step
+        return previous
 
     def get_next_step(self, key):
         step = self.next_steps.get(key, "")
