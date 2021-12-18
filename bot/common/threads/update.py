@@ -123,7 +123,8 @@ class UpdateProfileFieldEmojiStep(BaseStep):
             "field": values.get("metadata").get(raw_reaction.emoji.name)
         }
         await Redis.set(
-            raw_reaction.user_id, build_cache_value(**values),
+            raw_reaction.user_id,
+            build_cache_value(**values),
         )
         return None, None
 
