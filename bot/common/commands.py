@@ -188,7 +188,12 @@ if bool(strtobool(constants.Bot.is_dev)):
                 ctx.author.id,
                 build_cache_value(
                     ThreadKeys.UPDATE_PROFILE.value,
-                    UpdateProfile().steps.hash_,
+                    UpdateProfile(
+                        ctx.author.id,
+                        hashlib.sha256("".encode()).hexdigest(),
+                        message.id,
+                        "",
+                    ).steps.hash_,
                     "",
                     message.id,
                     metadata={"daos": daos},
@@ -226,8 +231,6 @@ async def on_message(message):
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    from commands import bot
-
     reaction = payload
     user = await bot.fetch_user(int(payload.user_id))
     channel = await bot.fetch_channel(int(reaction.channel_id))
