@@ -173,9 +173,9 @@ class Step:
             step.hash_ = hashlib.sha256(
                 f"{self.hash_}{step.current.name}".encode()
             ).hexdigest()
-            # Another failure where order is lost
-            z = self._copy_children(step)
-            self.next_steps[step.current.name] = z
+
+            self.next_steps[step.current.name] = self._copy_children(step)
+
         return self
 
     def _copy_children(self, step):
