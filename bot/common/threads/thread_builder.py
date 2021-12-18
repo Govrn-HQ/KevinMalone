@@ -122,13 +122,14 @@ class BaseThread:
                 "react with one of the already existing emojis"
             )
             return
-
-        breakpoint()
-        if not step_name:
-            if not list(self.step.next_steps.values()):
-                return await Redis.delete(self.user_id)
-            step_name = list(self.step.next_steps.values())[0].current.name
-        next_step = self.step.get_next_step(step_name)
+        if skip is True:
+            next_step = self.step
+        else:
+            if not step_name:
+                if not list(self.step.next_steps.values()):
+                    return await Redis.delete(self.user_id)
+                step_name = list(self.step.next_steps.values())[0].current.name
+            next_step = self.step.get_next_step(step_name)
         if not next_step:
             return await Redis.delete(self.user_id)
         self.step = next_step
