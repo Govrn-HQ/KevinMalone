@@ -23,18 +23,14 @@ class UpdateProfile(BaseThread):
 
     @property
     def steps(self):
-        congrats = Step(current=CongratsFieldUpdateStep())
-        update_field_step = Step(current=UpdateFieldStep()).add_next_step(congrats)
-        update_profile_field_emoji = Step(
-            current=UpdateProfileFieldEmojiStep(cls=self)
-        ).add_next_step(update_field_step)
-        user_update_field_select = Step(
-            current=UserUpdateFieldSelectStep(cls=self)
-        ).add_next_step(update_profile_field_emoji)
-        steps = Step(current=SelectGuildEmojiStep(cls=self)).add_next_step(
-            user_update_field_select
+        steps = (
+            Step(current=SelectGuildEmojiStep(cls=self))
+            .add_next_step(UserUpdateFieldSelectStep(cls=self))
+            .add_next_step(UpdateProfileFieldEmojiStep(cls=self))
+            .add_next_step(UpdateFieldStep())
+            .add_next_step(CongratsFieldUpdateStep())
         )
-        return steps
+        return steps.build()
 
 
 class SelectGuildEmojiStep(BaseStep):
