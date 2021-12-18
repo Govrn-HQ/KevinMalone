@@ -151,8 +151,6 @@ class CongratsStep(BaseStep):
         sent_message = await channel.send(
             f"Congratulations on completeing onboading to {guild.name}"
         )
-        # TODO Check if govrn id
-        # If govrn id then send into govrn onboard flow
         return sent_message, None
 
     async def handle_emoji(self, raw_reaction):
@@ -166,41 +164,6 @@ class CongratsStep(BaseStep):
         raise Exception("Reacted with the wrong emoji")
 
 
-class CongratsStep(BaseStep):
-    name = StepKeys.ONBOARDING_CONGRATS.value
-
-    def __init__(self, guild_id):
-        super().__init__()
-        self.guild_id = guild_id
-
-    async def send(self, message, user_id):
-        channel = message.channel
-        guild = await bot.fetch_guild(self.guild_id)
-        sent_message = await channel.send(
-            f"Congratulations on completeing onboading to {guild.name}"
-        )
-        # TODO Check if govrn id
-        # If govrn id then send into govrn onboard flow
-        return sent_message, None
-
-    async def handle_emoji(self, raw_reaction):
-        if SKIP_EMOJI in raw_reaction.emoji.name:
-            channel = await bot.fetch_channel(raw_reaction.channel_id)
-            guild = await bot.fetch_guild(self.guild_id)
-            await channel.send(
-                f"Congratulations on completeing onboading to {guild.name}"
-            )
-            return None, False
-        raise Exception("Reacted with the wrong emoji")
-
-
-# Fork to end step
-
-
-# TODO: steps will not be initialized
-# when adding a next_node run a deep copy
-# add fork function which takes multiple steps
-# next_step returns previous node not self
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 

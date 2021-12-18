@@ -160,9 +160,6 @@ class Step:
         step.hash_ = hashlib.sha256(
             f"{self.hash_}{step.current.name}".encode()
         ).hexdigest()
-        print("HERE")
-        print(step.current.name)
-        print(self._copy_children(step))
         self.next_steps[step.current.name] = step
         return step
 
@@ -184,8 +181,6 @@ class Step:
     def _copy_children(self, step):
         next_steps = {}
         for k, s in step.next_steps.items():
-            print("Key")
-            print(k)
             c = copy.copy(s)
             next_steps[k] = self._copy_children(c)
         step.next_steps = next_steps
@@ -194,9 +189,6 @@ class Step:
     def build(self):
         previous = self.previous_step
         while previous:
-            print("Here")
-            print(previous)
-            print(previous.previous_step)
             if not previous.previous_step:
                 break
             previous = previous.previous_step
@@ -204,8 +196,6 @@ class Step:
 
     def get_next_step(self, key):
         step = self.next_steps.get(key, "")
-        print("Next Steps")
-        print(self.next_steps)
         if step == "":
             raise Exception(
                 f"Not a valid next step! current {self.current.name} and next: {key}"

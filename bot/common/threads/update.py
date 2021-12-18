@@ -30,7 +30,6 @@ class UpdateProfile(BaseThread):
             .add_next_step(UpdateFieldStep())
             .add_next_step(CongratsFieldUpdateStep())
         )
-        print(steps)
         return steps.build()
 
 
