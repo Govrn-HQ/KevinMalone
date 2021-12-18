@@ -72,7 +72,11 @@ class BaseThread:
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if self.step.previous_step.current and not self.skip:
+        if (
+            self.step.previous_step
+            and self.step.previous_step.current
+            and not self.skip
+        ):
             await self.step.previous_step.current.save(
                 message, self.guild_id, self.user_id
             )
@@ -119,6 +123,7 @@ class BaseThread:
             )
             return
 
+        breakpoint()
         if not step_name:
             if not list(self.step.next_steps.values()):
                 return await Redis.delete(self.user_id)
@@ -154,7 +159,10 @@ class Step:
         step.hash_ = hashlib.sha256(
             f"{self.hash_}{step.current.name}".encode()
         ).hexdigest()
-        self.next_steps[step.current.name] = copy.deepcopy(step)
+        print("HERE")
+        print(step.current.name)
+        print(self._copy_children(step))
+        self.next_steps[step.current.name] = self._copy_children(step)
         return step
 
     def fork(self, logic_steps):
@@ -167,8 +175,18 @@ class Step:
             step.hash_ = hashlib.sha256(
                 f"{self.hash_}{step.current.name}".encode()
             ).hexdigest()
-            self.next_steps[step.current.name] = copy.deepcopy(step)
+            # Another failure where order is lost
+            self.next_steps[step.current.name] = self._copy_children(step)
         return self
+
+    def _copy_children(self, step):
+        next_steps = {}
+        for k, s in step.next_steps.items():
+            c = copy.copy(s)
+            next_steps[k] = c
+            self._copy_children(c)
+        step.next_steps = next_steps
+        return copy.copy(step)
 
     def build(self):
         previous = self.previous_step
