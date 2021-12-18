@@ -167,6 +167,7 @@ class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
     def __init__(self, user_id, current_step, message_id, guild_id):
+        super().__init__(user_id, current_step, message_id, guild_id)
         if not current_step:
             raise Exception(f"No step for {current_step}")
         self.user_id = user_id
