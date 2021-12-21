@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1
 
 # install git to pull code for installation
 RUN apt update
-RUN apt install -y git
+RUN apt install -y git make
 
 # Install pip requirements
 COPY requirements.txt .
