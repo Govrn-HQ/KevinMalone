@@ -10,7 +10,7 @@ test:
 	pytest .
 
 lint:
-	flake8 .
+	flake8 . --count
 
 format:
 	black .
@@ -25,7 +25,13 @@ build:
 	docker build -t $(PROJECT_NAME):$(TAG)  . 
 
 run:
-	docker run $(PROJECT_NAME):$(TAG) $(cmd)
+	docker run -v $(shell pwd):/app $(PROJECT_NAME):$(TAG) $(cmd)
+
+docker_format:
+	$(MAKE) run cmd="make format"
+
+docker_lint:
+	$(MAKE) run cmd="make lint"
 
 # Go into the container
 inspect:
