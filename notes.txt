@@ -1,0 +1,7 @@
+# Test skip, don't show skip
+# setup in heroku
+
+# Add twitter verification -> Next week
+# reorganize files for performance
+# Govern join, 
+# Doesn't has govrn send airtable

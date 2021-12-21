@@ -1,3 +1,4 @@
+import constants
 from common.airtable import find_user, update_user
 from config import (
     YES_EMOJI,
@@ -163,7 +164,103 @@ class CongratsStep(BaseStep):
             return None, False
         raise Exception("Reacted with the wrong emoji")
 
+    async def control_hook(self, message, user_id):
+        govrn_profile = await find_user(user_id, constants.Bot.govrn_guild_id)
+        if not govrn_profile:
+            # Trigger govrn onboarding thread
+            # If they want the same fields handle in emoji
+            # not throw them back in the onboarding flow
+            # this will have the filled in fields as metadata and have one step
+            # then through them back into the onboarding thread if they opt to
+            #
+            # TODO we should also send prompt
+            # This will no longer happen in the congrats step
+            # But will move in the step above
+            return
+        return None
 
+
+## Make sure to pass the metadata to all steps
+class GovrnProfilePrompt:
+    name = StepKeys.GOVRN_PROFILE_PROMPT.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            f"Would you like to be onboarded to the govrn guild as well?"
+        )
+        return sent_message, None
+
+
+class GovrnProfilePromptEmoji:
+    name = StepKeys.GOVRN_PROFILE_PROMPT_EMOJI.value
+
+    @property
+    def emojis(self):
+        return [YES_EMOJI, NO_EMOJI]
+
+    async def handle_emoji(self, raw_reaction):
+        if raw_reaction.emoji.name in self.emojis:
+            if raw_reaction.emoji.name == NO_EMOJI:
+                return StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value, None
+            return StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT.value, None
+        raise Exception("Reacted with the wrong emoji")
+
+
+class GovrnProfilePromptReject:
+    name = StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            f"No problem! You are free to join at any time."
+        )
+        return sent_message, None
+
+
+class GovrnProfilePromptSuccess:
+    name = StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        # Get past guild and add the name
+        sent_message = await channel.send(
+            f"Would you like to reuse your profile data from x guild?"
+        )
+        return sent_message, None
+
+
+class GovrnProfilePromptSuccessEmoji:
+    name = StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT_EMOJI.value
+
+    @property
+    def emojis(self):
+        return [YES_EMOJI, NO_EMOJI]
+
+    async def handle_emoji(self, raw_reaction):
+        if raw_reaction.emoji.name in self.emojis:
+            if raw_reaction.emoji.name == NO_EMOJI:
+                return StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value, None
+            return StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT.value, None
+        raise Exception("Reacted with the wrong emoji")
+
+
+class GovrnProfilePromptReuse:
+    name = StepKeys.GOVRN_PROFILE_REUSE.value
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        # Get past guild and add the name
+        # TODO: Add embed
+        sent_message = await channel.send(
+            f"We added your data to your govrn profile! It lookes like embed!"
+        )
+        return sent_message, None
+
+
+### Threads ###
+
+## TODO will circular references cause an infinite recursion
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
