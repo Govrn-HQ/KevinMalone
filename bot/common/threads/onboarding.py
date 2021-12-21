@@ -213,7 +213,7 @@ class GovrnProfilePromptReject:
     async def send(self, message, user_id):
         channel = message.channel
         sent_message = await channel.send(
-            f"No problem! You are free to join at any time."
+            "No problem! You are free to join at any time."
         )
         return sent_message, None
 
@@ -225,7 +225,7 @@ class GovrnProfilePromptSuccess:
         channel = message.channel
         # Get past guild and add the name
         sent_message = await channel.send(
-            f"Would you like to reuse your profile data from x guild?"
+            "Would you like to reuse your profile data from x guild?"
         )
         return sent_message, None
 
@@ -253,7 +253,7 @@ class GovrnProfilePromptReuse:
         # Get past guild and add the name
         # TODO: Add embed
         sent_message = await channel.send(
-            f"We added your data to your govrn profile! It lookes like embed!"
+            "We added your data to your govrn profile! It lookes like embed!"
         )
         return sent_message, None
 
