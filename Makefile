@@ -10,7 +10,7 @@ test:
 	pytest .
 
 lint:
-	flake8 .
+	flake8 . --count
 
 format:
 	black .
@@ -25,11 +25,13 @@ build:
 	docker build -t $(PROJECT_NAME):$(TAG)  . 
 
 run:
-	docker run -e API_TOKEN=$(API_TOKEN) \
-			   -e SUGGESTION_CHANNEL=$(SUGGESTION_CHANNEL) \
-			   -e CLIENT_ID=$(CLIENT_ID) \
-			   -e GUILD_ID=$(GUILD_ID) \
-			   $(PROJECT_NAME):$(TAG) $(cmd)
+	docker run -v $(shell pwd):/app $(PROJECT_NAME):$(TAG) $(cmd)
+
+docker_format:
+	$(MAKE) run cmd="make format"
+
+docker_lint:
+	$(MAKE) run cmd="make lint"
 
 # Go into the container
 inspect:

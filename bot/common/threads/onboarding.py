@@ -176,8 +176,8 @@ class CongratsStep(BaseStep):
             # TODO we should also send prompt
             # This will no longer happen in the congrats step
             # But will move in the step above
-            return
-        return None
+            return StepKeys.GOVRN_PROFILE_PROMPT.value
+        return StepKeys.END.value
 
 
 ## Make sure to pass the metadata to all steps
@@ -264,13 +264,29 @@ class GovrnProfilePromptReuse:
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
-    @property
-    def steps(self):
-        data_retrival_chain = (
+    def _govrn_oboard_steps(self):
+        success = (
+            Step(current=GovrnProfilePromptSuccess())
+            .fork(Step(current=GovrnProfilePromptReuse()), self._data_retrival_steps())
+            .build()
+        )
+        reject = Step(current=GovrnProfilePromptReject()).build()
+        steps = Step(current=GovrnProfilePrompt()).fork(success, reject)
+        return steps.build()
+
+    def _data_retrival_steps(self):
+        return (
             Step(current=AddUserTwitterStep())
             .add_next_step(AddUserWalletAddressStep())
             .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
             .add_next_step(CongratsStep(guild_id=self.guild_id))
+            .build()
+        )
+
+    @property
+    def steps(self):
+        data_retrival_chain = self._data_retrival_steps.add_next_step(
+            self._govrn_oboard_steps()
         ).build()
 
         user_display_accept = (

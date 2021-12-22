@@ -50,7 +50,8 @@ def get_thread(user_id, key):
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS, description="Send users link to report engagement",
+    guild_id=GUILD_IDS,
+    description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -91,7 +92,9 @@ if bool(strtobool(constants.Bot.is_dev)):
             # on by sending all the commands
             application_commands = bot.application_commands
             embed = discord.Embed(
-                colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
+                colour=INFO_EMBED_COLOR,
+                title="Welcome Back",
+                description="",
             )
             for cmd in application_commands:
                 if isinstance(cmd, discord.SlashCommand):
@@ -119,9 +122,9 @@ if bool(strtobool(constants.Bot.is_dev)):
             description="Welcome to the Govrn Ecosystem!  "
             "We're excited to have you part of our movement."
             "To help automate the gathering of your contributions"
-            " to {ctx.guild.name} we need some information."
+            f" to {ctx.guild.name} we need some information."
             "We use your IDs to automatically pull your contributions for you to "
-            "easily submit to {ctx.guild.name}. "
+            f"easily submit to {ctx.guild.name}. "
             "You can skip any requests by using the ⏭️  emoji!",
         )
         logger.info(
