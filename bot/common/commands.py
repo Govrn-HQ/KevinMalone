@@ -145,6 +145,7 @@ if bool(strtobool(constants.Bot.is_dev)):
     async def update(ctx):
         is_guild = bool(ctx.guild)
         if is_guild:
+            await ctx.respond("Please run this command in a DM channel")
             return
         else:
             discord_rec = await get_discord_record(ctx.author.id)
