@@ -272,10 +272,16 @@ class GovrnProfilePromptSuccessEmoji(BaseStep):
 class GovrnProfilePromptReuse(BaseStep):
     name = StepKeys.GOVRN_PROFILE_REUSE.value
 
+    def __init__(self, guild_id):
+        self.guild_id = guild_id
+
     async def send(self, message, user_id):
         channel = message.channel
-        current_profile = await get_user_record(user_id, constants.Bot.govrn_guild_id)
+        current_profile = await get_user_record(user_id, self.guild_id)
         fields = current_profile.get("fields")
+
+        govrn_profile = await get_user_record(user_id, constants.Bot.govrn_guild_id)
+        record_id = govrn_profile.get("id")
         await update_user(record_id, "display_name", fields.get("display_name"))
         await update_user(record_id, "twitter", fields.get("twitter"))
         await update_user(record_id, "wallet", fields.get("wallet"))
@@ -308,7 +314,7 @@ class Onboarding(BaseThread):
             .add_next_step(GovrnProfilePromptSuccessEmoji(parent=self))
             .fork(
                 [
-                    Step(current=GovrnProfilePromptReuse()),
+                    Step(current=GovrnProfilePromptReuse(guild_id=self.guild_id)),
                     Step(current=UserDisplaySubmitStep())
                     .add_next_step(self._data_retrival_steps().build())
                     .build(),

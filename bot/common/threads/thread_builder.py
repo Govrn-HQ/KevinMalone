@@ -73,7 +73,7 @@ class BaseThread:
         return None
 
     async def send(self, message):
-        logger.info(f"Send {self.step.hash_} {self.step}")
+        logger.info(f"Send {self.step.hash_}")
         if self.step.current.emoji is True:
             await message.channel.send(
                 "Please react with one of the above emojis to continue!"
@@ -99,15 +99,14 @@ class BaseThread:
             return await Redis.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
         override_step = await self.step.current.control_hook(message, self.user_id)
+        if override_step == StepKeys.END.value:
+            return await Redis.delete(self.user_id)
         if override_step:
             step = self.step.get_next_step(override_step)
             # TODO: I am guessing this metadata will need to be refactored
             self.step = step
             return await self.send(message)
             # as it does not take into account the previous metadata
-
-        if override_step == StepKeys.END.value:
-            return await Redis.delete(self.user_id)
 
         return await Redis.set(
             self.user_id,
