@@ -118,11 +118,10 @@ async def get_guild(record_id):
     def _find_guild():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Guilds")
         records = table.get(str(record_id))
+        record = {}
         if records:
-            record_id = records.get("fields")
-        else:
-            record_id = ""
-        return record_id
+            record = records.get("fields")
+        return record
 
     return await loop.run_in_executor(None, _find_guild)
 

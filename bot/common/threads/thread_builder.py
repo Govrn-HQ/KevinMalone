@@ -92,9 +92,6 @@ class BaseThread:
             u = await Redis.get(self.user_id)
             if u:
                 metadata = json.loads(u).get("metadata")
-        # automation hook
-        # if returns a step
-        # override linear step
         if not self.step.next_steps:
             return await Redis.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
@@ -106,7 +103,6 @@ class BaseThread:
             # TODO: I am guessing this metadata will need to be refactored
             self.step = step
             return await self.send(message)
-            # as it does not take into account the previous metadata
 
         return await Redis.set(
             self.user_id,

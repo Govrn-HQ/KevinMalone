@@ -250,9 +250,7 @@ class GovrnProfilePromptSuccessEmoji(BaseStep):
 
     async def handle_emoji(self, raw_reaction):
         if raw_reaction.emoji.name in self.emojis:
-            record_id = await create_user(
-                self.parent.user_id, constants.Bot.govrn_guild_id
-            )
+            await create_user(self.parent.user_id, constants.Bot.govrn_guild_id)
             if NO_EMOJI in raw_reaction.emoji.name:
                 self.parent.guild_id = constants.Bot.govrn_guild_id
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
@@ -291,7 +289,7 @@ class GovrnProfilePromptReuse(BaseStep):
         return sent_message, None
 
 
-### Threads ###
+# Threads #
 
 
 class Onboarding(BaseThread):
