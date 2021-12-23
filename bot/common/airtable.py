@@ -91,7 +91,7 @@ async def find_guild(guild_id):
     return await loop.run_in_executor(None, _find_guild)
 
 
-async def get_guild(guild_id):
+async def get_guild_by_guild_id(guild_id):
 
     """Return airtable record number in guild table given guild_id."""
 
@@ -99,12 +99,29 @@ async def get_guild(guild_id):
 
     def _find_guild():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Guilds")
-        records = table.get(guild_id)
-        if records:
-            record_id = records.get("fields")
+        records = table.all(formula=match({"guild_id": guild_id}))
+        if len(records) == 1:
+            record_id = records[0]
         else:
             record_id = ""
         return record_id
+
+    return await loop.run_in_executor(None, _find_guild)
+
+
+async def get_guild(record_id):
+
+    """Return airtable record number in guild table given guild_id."""
+
+    loop = asyncio.get_running_loop()
+
+    def _find_guild():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Guilds")
+        records = table.get(str(record_id))
+        record = {}
+        if records:
+            record = records.get("fields")
+        return record
 
     return await loop.run_in_executor(None, _find_guild)
 

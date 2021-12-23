@@ -44,6 +44,13 @@ class StepKeys(Enum):
     UPDATE_FIELD = "update_field"
     CONGRATS_UPDATE_FIELD = "congrats_update_field"
     DISPLAY_NAME_REQUEST = "display_name_request"
+    GOVRN_PROFILE_PROMPT = "govrn_profile_prompt"
+    GOVRN_PROFILE_PROMPT_EMOJI = "govrn_profile_prompt_emoji"
+    GOVRN_PROFILE_PROMPT_REJECT = "govrn_profile_prompt_reject"
+    GOVRN_PROFILE_PROMPT_ACCEPT = "govrn_profile_prompt_accept"
+    GOVRN_PROFILE_PROMPT_ACCEPT_EMOJI = "govrn_profile_prompt_accept_emoji"
+    GOVRN_PROFILE_REUSE = "govrn_profile_reuse"
+    END = "end"
 
 
 class BaseThread:
@@ -66,7 +73,7 @@ class BaseThread:
         return None
 
     async def send(self, message):
-        logger.info(f"Send {self.step.hash_} {self.step}")
+        logger.info(f"Send {self.step.hash_}")
         if self.step.current.emoji is True:
             await message.channel.send(
                 "Please react with one of the above emojis to continue!"
@@ -85,14 +92,23 @@ class BaseThread:
             u = await Redis.get(self.user_id)
             if u:
                 metadata = json.loads(u).get("metadata")
-
         if not self.step.next_steps:
             return await Redis.delete(self.user_id)
+        step = list(self.step.next_steps.values())[0]
+        override_step = await self.step.current.control_hook(message, self.user_id)
+        if override_step == StepKeys.END.value:
+            return await Redis.delete(self.user_id)
+        if override_step:
+            step = self.step.get_next_step(override_step)
+            # TODO: I am guessing this metadata will need to be refactored
+            self.step = step
+            return await self.send(message)
+
         return await Redis.set(
             self.user_id,
             build_cache_value(
                 self.name,
-                list(self.step.next_steps.values())[0].hash_,
+                step.hash_,
                 self.guild_id,
                 msg.id,
                 metadata=metadata,
@@ -141,6 +157,9 @@ class BaseStep:
     emoji = False
 
     async def save(self, message, guild_id, user_id):
+        pass
+
+    async def control_hook(self, message, user_id):
         pass
 
 
@@ -192,6 +211,8 @@ class Step:
             if not previous.previous_step:
                 break
             previous = previous.previous_step
+        if previous is None:
+            return self
         return previous
 
     def get_next_step(self, key):
@@ -199,5 +220,6 @@ class Step:
         if step == "":
             raise Exception(
                 f"Not a valid next step! current {self.current.name} and next: {key}"
+                f" Valid nex steps: {list(self.next_steps.keys())}"
             )
         return step
