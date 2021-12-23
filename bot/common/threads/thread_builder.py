@@ -101,6 +101,10 @@ class BaseThread:
         override_step = await self.step.current.control_hook(message, self.user_id)
         if override_step:
             step = self.step.get_next_step(override_step)
+            # TODO: I am guessing this metadata will need to be refactored
+            self.step = step
+            return await self.send(message)
+            # as it does not take into account the previous metadata
 
         if override_step == StepKeys.END.value:
             return await Redis.delete(self.user_id)
@@ -108,7 +112,11 @@ class BaseThread:
         return await Redis.set(
             self.user_id,
             build_cache_value(
-                self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
+                self.name,
+                step.hash_,
+                self.guild_id,
+                msg.id,
+                metadata=metadata,
             ),
         )
 
@@ -208,6 +216,8 @@ class Step:
             if not previous.previous_step:
                 break
             previous = previous.previous_step
+        if previous is None:
+            return self
         return previous
 
     def get_next_step(self, key):
@@ -215,5 +225,6 @@ class Step:
         if step == "":
             raise Exception(
                 f"Not a valid next step! current {self.current.name} and next: {key}"
+                f" Valid nex steps: {list(self.next_steps.keys())}"
             )
         return step
