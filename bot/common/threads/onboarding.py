@@ -175,15 +175,6 @@ class CongratsStep(BaseStep):
     async def control_hook(self, message, user_id):
         govrn_profile = await find_user(user_id, constants.Bot.govrn_guild_id)
         if not govrn_profile:
-            # Trigger govrn onboarding thread
-            # If they want the same fields handle in emoji
-            # not throw them back in the onboarding flow
-            # this will have the filled in fields as metadata and have one step
-            # then through them back into the onboarding thread if they opt to
-            #
-            # TODO we should also send prompt
-            # This will no longer happen in the congrats step
-            # But will move in the step above
             return StepKeys.GOVRN_PROFILE_PROMPT.value
         return StepKeys.END.value
 
@@ -296,15 +287,13 @@ class GovrnProfilePromptReuse(BaseStep):
         embed.add_field(name="Ethereum Wallet Address", value=fields.get("wallet"))
         embed.add_field(name="Discourse Handle", value=fields.get("discourse"))
 
-        # Get past guild and add the name
-        # TODO: Add embed
         sent_message = await channel.send(embed=embed)
         return sent_message, None
 
 
 ### Threads ###
 
-## TODO will circular references cause an infinite recursion
+
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
