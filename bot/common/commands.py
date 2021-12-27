@@ -79,7 +79,7 @@ async def report(ctx):
 
 if bool(strtobool(constants.Bot.is_dev)):
 
-    @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govern")
+    @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
     async def join(ctx):
         is_guild = bool(ctx.guild)
         if not is_guild:
@@ -137,14 +137,17 @@ if bool(strtobool(constants.Bot.is_dev)):
             message.id,
             ctx.guild.id,
         ).send(message)
-        await ctx.followup.send("Check your Dms to continue onboarding", ephemeral=True)
+        await ctx.followup.send(
+            "Check your DM's to continue onboarding", ephemeral=True
+        )
 
     @bot.slash_command(
-        guild_id=GUILD_IDS, description="Update your profile for a given Dao"
+        guild_id=GUILD_IDS, description="Update your profile for a given community"
     )
     async def update(ctx):
         is_guild = bool(ctx.guild)
         if is_guild:
+            await ctx.respond("Please run this command in a DM channel")
             return
         else:
             discord_rec = await get_discord_record(ctx.author.id)
@@ -152,9 +155,9 @@ if bool(strtobool(constants.Bot.is_dev)):
             if not airtable_guild_ids:
                 embed = discord.Embed(
                     colour=INFO_EMBED_COLOR,
-                    description="Cannot update profile because you "
-                    "have not been onboarded to any daos. Run /join in the "
-                    "discord you want to onboard to",
+                    description="I cannot update profile because you "
+                    "have not been onboarded for any communities. Run /join in the "
+                    "discord you want to join!",
                 )
                 await ctx.response.send_message(embed=embed)
                 ctx.response.is_done()
@@ -170,7 +173,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             embed = discord.Embed(
                 colour=INFO_EMBED_COLOR,
                 title="Welcome",
-                description="Which profile guild would you like to update?",
+                description="Which community profile would you like to update?",
             )
             emojis = get_list_of_emojis(len(guild_ids))
             daos = {}
