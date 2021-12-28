@@ -22,7 +22,7 @@ from common.threads.shared_steps import SelectGuildEmojiStep
 class UpdateProfile(BaseThread):
     name = ThreadKeys.UPDATE_PROFILE.value
 
-    async def steps(self):
+    async def get_steps(self):
         steps = (
             Step(current=SelectGuildEmojiStep(cls=self))
             .add_next_step(UserUpdateFieldSelectStep(cls=self))

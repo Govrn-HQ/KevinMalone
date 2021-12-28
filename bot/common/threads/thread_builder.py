@@ -78,9 +78,13 @@ class BaseThread:
                 return steps
         return None
 
-    async def __aenter__(self):
-        steps = await self.steps()
-        self.step = self.find_step(steps, self.current_step)
+    def __await__(self):
+        async def init_steps():
+            self.steps = await self.get_steps()
+            self.step = self.find_step(self.steps, self.current_step)
+            return self
+
+        return init_steps().__await__()
 
     async def send(self, message):
         logger.info(f"Send {self.step.hash_}")

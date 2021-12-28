@@ -8,7 +8,13 @@
 # 3a. No thank them
 # 3b. yes send them a contgrats and link to report
 # 4 Repeat if there is another contribution else send an indication of end
-from common.threads.thread_builder import BaseThread, BaseStep, StepKeys, Step
+from common.threads.thread_builder import (
+    BaseThread,
+    BaseStep,
+    StepKeys,
+    Step,
+    ThreadKeys,
+)
 from common.threads.shared_steps import SelectGuildEmojiStep
 from config import YES_EMOJI, NO_EMOJI
 
@@ -42,7 +48,7 @@ class SendContributionInstructions(BaseStep):
         channel = message.channel
         # if not contribution_number:
         #     contribution_number = 1
-        # contribution = await get_contribution_record(
+        # contribution = await get_contribution_records(
         #     user_id, self.guild_id, contribution_number
         # )
         # if not contribution:
@@ -90,9 +96,10 @@ class InitialContributionAccept(BaseStep):
 
     async def send(self, message, userid):
         channel = message.channel
-        await channel.send(
+        message = await channel.send(
             "Congratulations on competeting that contribution and improving our community!"
         )
+        return message, None
 
     # This should point to the next step
 
@@ -102,9 +109,10 @@ class InitialContributionReject(BaseStep):
 
     async def send(self, message, userid):
         channel = message.channel
-        await channel.send(
+        message = await channel.send(
             "No worries! When you do complete that contribution run the `/add_initial_contribution command!`"
         )
+        return message, None
 
 
 class InitialContributionReportCommand(BaseStep):
@@ -112,12 +120,14 @@ class InitialContributionReportCommand(BaseStep):
 
     async def send(self, message, userid):
         channel = message.channel
-        await channel.send(
+        message = await channel.send(
             "In order to send add more new contributions call the `/report` command"
         )
+        return message, None
 
 
 class InitialContributions(BaseThread):
+    name = ThreadKeys.INITIAL_CONTRIBUTIONS.value
 
     # Get contributions
     # build chain
@@ -128,9 +138,17 @@ class InitialContributions(BaseThread):
         # if the user has completed all the steps then
         # send an error
         # there should be a check at the command level preventing that path
-        contribution_records = await get_contribution_record(
-            self.user_id, self.guild_id
-        )
+
+        if not self.guild_id:
+            print("No guild id")
+            # Dummy step
+            return (
+                Step(current=SendContributionInstructions(None, None))
+                .add_next_step(InitialContributionAccept())
+                .build()
+            )
+        print("Guild id")
+        contribution_records = await get_contribution_records(self.guild_id)
         previous_step = None
         for record in sorted(
             contribution_records,
@@ -140,12 +158,12 @@ class InitialContributions(BaseThread):
             order = fields.get("order")
 
             # On initial pass make sure to add report step
-            yes_fork = InitialContributionAccept()
+            yes_fork = Step(current=InitialContributionAccept())
             if not previous_step:
                 yes_fork.add_next_step(InitialContributionReportCommand())
             else:
                 yes_fork.add_next_step(previous_step)
-            fork_steps = [yes_fork, InitialContributionReject]
+            fork_steps = [yes_fork, Step(current=InitialContributionReject())]
             previous_step = (
                 Step(
                     current=SendContributionInstructions(
@@ -162,7 +180,7 @@ class InitialContributions(BaseThread):
             )
         return previous_step
 
-    async def steps(self):
+    async def get_steps(self):
         contribution_step = await self.build_steps()
         steps = Step(current=SelectGuildEmojiStep(cls=self)).add_next_step(
             contribution_step

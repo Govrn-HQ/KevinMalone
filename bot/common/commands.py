@@ -37,16 +37,18 @@ from exceptions import ErrorHandler  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-def get_thread(user_id, key):
+async def get_thread(user_id, key):
     val = json.loads(key)
     thread = val.get("thread")
     step = val.get("step")
     message_id = val.get("message_id")
     guild_id = val.get("guild_id")
     if thread == ThreadKeys.ONBOARDING.value:
-        return Onboarding(user_id, step, message_id, guild_id)
+        return await Onboarding(user_id, step, message_id, guild_id)
     elif thread == ThreadKeys.UPDATE_PROFILE.value:
-        return UpdateProfile(user_id, step, message_id, guild_id)
+        return await UpdateProfile(user_id, step, message_id, guild_id)
+    elif thread == ThreadKeys.INITIAL_CONTRIBUTIONS.value:
+        return await InitialContributions(user_id, step, message_id, guild_id)
     raise Exception("Unknown Thread!")
 
 
@@ -166,16 +168,17 @@ if bool(strtobool(constants.Bot.is_dev)):
             message, metadata = await select_guild(ctx, embed, error_embed)
             if not metadata:
                 return
+            thread = await UpdateProfile(
+                ctx.author.id,
+                hashlib.sha256("".encode()).hexdigest(),
+                message.id,
+                "",
+            )
             await Redis.set(
                 ctx.author.id,
                 build_cache_value(
                     ThreadKeys.UPDATE_PROFILE.value,
-                    UpdateProfile(
-                        ctx.author.id,
-                        hashlib.sha256("".encode()).hexdigest(),
-                        message.id,
-                        "",
-                    ).steps.hash_,
+                    thread.steps.hash_,
                     "",
                     message.id,
                     metadata=metadata,
@@ -206,16 +209,17 @@ if bool(strtobool(constants.Bot.is_dev)):
             message, metadata = await select_guild(ctx, embed, error_embed)
             if not metadata:
                 return
+            thread = await InitialContributions(
+                ctx.author.id,
+                hashlib.sha256("".encode()).hexdigest(),
+                message.id,
+                "",
+            )
             await Redis.set(
                 ctx.author.id,
                 build_cache_value(
                     ThreadKeys.INITIAL_CONTRIBUTIONS.value,
-                    InitialContributions(
-                        ctx.author.id,
-                        hashlib.sha256("".encode()).hexdigest(),
-                        message.id,
-                        "",
-                    ).steps.hash_,
+                    thread.steps.hash_,
                     "",
                     message.id,
                     metadata=metadata,
@@ -278,7 +282,7 @@ async def on_message(message):
         # TODO: It may make sense to send some sort of message here
         return
 
-    thread = get_thread(message.author.id, thread_key)
+    thread = await get_thread(message.author.id, thread_key)
     await thread.send(message)
 
 
@@ -300,7 +304,7 @@ async def on_raw_reaction_add(payload):
         # TODO: It may make sense to send some sort of message here
         return
 
-    thread = get_thread(user.id, thread_key)
+    thread = await get_thread(user.id, thread_key)
     await thread.handle_reaction(reaction, user)
 
 
