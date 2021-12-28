@@ -218,7 +218,7 @@ if bool(strtobool(constants.Bot.is_dev)):
                     ).steps.hash_,
                     "",
                     message.id,
-                    metadata={"daos": daos},
+                    metadata=metadata,
                 ),
             )
 
@@ -227,7 +227,7 @@ async def select_guild(ctx, response_embed, error_embed):
     discord_rec = await get_discord_record(ctx.author.id)
     airtable_guild_ids = discord_rec.get("fields").get("guild_id")
     if not airtable_guild_ids:
-        await ctx.response.send_message(embed=embed)
+        await ctx.response.send_message(embed=error_embed)
         ctx.response.is_done()
         return None, None
 

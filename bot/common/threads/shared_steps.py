@@ -1,10 +1,10 @@
+import json
 from config import (
     Redis,
-    INFO_EMBED_COLOR,
-    get_list_of_emojis,
 )
 
-from common.threads.thread_builder import BaseStep
+from common.threads.thread_builder import BaseStep, StepKeys
+from common.commands import bot
 
 
 class SelectGuildEmojiStep(BaseStep):

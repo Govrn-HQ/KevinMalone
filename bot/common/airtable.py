@@ -44,7 +44,7 @@ async def get_user_record(user_id, guild_id):
     return await loop.run_in_executor(None, _find_user)
 
 
-async def get_contribution_records(user_id, guild_id), order=1:
+async def get_contribution_records(user_id, guild_id, order=1):
 
     """"""
 

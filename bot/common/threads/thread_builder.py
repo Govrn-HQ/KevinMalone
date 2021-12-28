@@ -66,7 +66,7 @@ class BaseThread:
         self.user_id = user_id
         self.message_id = message_id
         self.guild_id = guild_id
-        self.step = self.find_step(self.steps, current_step)
+        self.current_step = current_step
         self.skip = False
 
     def find_step(self, steps, hash_):
@@ -77,6 +77,10 @@ class BaseThread:
             if steps:
                 return steps
         return None
+
+    async def __aenter__(self):
+        steps = await self.steps()
+        self.step = self.find_step(steps, self.current_step)
 
     async def send(self, message):
         logger.info(f"Send {self.step.hash_}")

@@ -325,8 +325,7 @@ class Onboarding(BaseThread):
             .add_next_step(CongratsStep(guild_id=self.guild_id))
         )
 
-    @property
-    def steps(self):
+    async def steps(self):
         data_retrival_chain = (
             self._data_retrival_steps()
             .add_next_step(self._govrn_oboard_steps().build())

@@ -8,10 +8,11 @@
 # 3a. No thank them
 # 3b. yes send them a contgrats and link to report
 # 4 Repeat if there is another contribution else send an indication of end
-from common.threads.thread_builder import BaseThread, BaseStep
+from common.threads.thread_builder import BaseThread, BaseStep, StepKeys, Step
 from common.threads.shared_steps import SelectGuildEmojiStep
+from config import YES_EMOJI, NO_EMOJI
 
-from common.airtable import get_user_record, get_contribution_record, update_user
+from common.airtable import get_contribution_records
 
 
 class SendContributionInstructions(BaseStep):
@@ -105,20 +106,22 @@ class InitialContributionReject(BaseStep):
             "No worries! When you do complete that contribution run the `/add_initial_contribution command!`"
         )
 
+
 class InitialContributionReportCommand(BaseStep):
     name = StepKeys.INITIAL_CONTRIBUTION_REPORT_COMMAND
 
     async def send(self, message, userid):
         channel = message.channel
-        await channel.send(""Test)
-
+        await channel.send(
+            "In order to send add more new contributions call the `/report` command"
+        )
 
 
 class InitialContributions(BaseThread):
 
     # Get contributions
     # build chain
-    def build_steps():
+    async def build_steps(self):
         # Get initial contributions
         # find which contribution the user is at
         # start at the next step
@@ -128,19 +131,22 @@ class InitialContributions(BaseThread):
         contribution_records = await get_contribution_record(
             self.user_id, self.guild_id
         )
-        last_step = None
+        previous_step = None
         for record in sorted(
             contribution_records,
             key=lambda record: record.get("fields", {"order": 1}).get("order"),
         ):
             fields = record.get("fields")
             order = fields.get("order")
+
             # On initial pass make sure to add report step
             yes_fork = InitialContributionAccept()
-            if last_step:
-                yes_fork.add_next_step(last_step)
+            if not previous_step:
+                yes_fork.add_next_step(InitialContributionReportCommand())
+            else:
+                yes_fork.add_next_step(previous_step)
             fork_steps = [yes_fork, InitialContributionReject]
-            last_step = (
+            previous_step = (
                 Step(
                     current=SendContributionInstructions(
                         guild_id=self.guild_id, contribution_number=order
@@ -150,15 +156,15 @@ class InitialContributions(BaseThread):
                 .fork(fork_steps)
                 .build()
             )
-        if not last_step:
+        if not previous_step:
             raise Exception(
                 "Steps are None, most likely no contribution records were found"
             )
-        return last_step.
+        return previous_step
 
-    @property
-    def steps(self):
+    async def steps(self):
+        contribution_step = await self.build_steps()
         steps = Step(current=SelectGuildEmojiStep(cls=self)).add_next_step(
-            self.build_steps()
+            contribution_step
         )
         return steps.build()
