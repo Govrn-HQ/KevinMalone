@@ -28,6 +28,7 @@ def build_cache_value(thread, step, guild_id, message_id="", **kwargs):
 class ThreadKeys(Enum):
     ONBOARDING = "onboarding"
     UPDATE_PROFILE = "update_profile"
+    INITIAL_CONTRIBUTIONS = "initial_contributions"
 
 
 class StepKeys(Enum):
@@ -51,6 +52,11 @@ class StepKeys(Enum):
     GOVRN_PROFILE_PROMPT_ACCEPT_EMOJI = "govrn_profile_prompt_accept_emoji"
     GOVRN_PROFILE_REUSE = "govrn_profile_reuse"
     END = "end"
+    SEND_CONTRIBUTION_INSTRUCTION = "send_contribution_instruction"
+    INITIAL_CONTRIBUTION_CONFIRM_EMOJI = "initial_contribution_confirm_emoji"
+    INITIAL_CONTRIBUTION_ACCEPT = "inital_contribution_accept"
+    INITIAL_CONTRIBUTION_REJECT = "inital_contribution_reject"
+    INITIAL_CONTRIBUTION_REPORT_COMMAND = "initial_contribution_report_command"
 
 
 class BaseThread:

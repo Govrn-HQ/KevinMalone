@@ -44,6 +44,24 @@ async def get_user_record(user_id, guild_id):
     return await loop.run_in_executor(None, _find_user)
 
 
+async def get_contribution_records(user_id, guild_id), order=1:
+
+    """"""
+
+    loop = asyncio.get_running_loop()
+
+    def _get_contribution():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
+        records = table.all(formula=match({"guild_id": str(guild_id), "order": order}))
+        if len(records) == 1:
+            record_id = records
+        else:
+            record_id = None
+        return record_id
+
+    return await loop.run_in_executor(None, _get_contribution)
+
+
 # cannot use in async
 def find_discord(user_id):
 
