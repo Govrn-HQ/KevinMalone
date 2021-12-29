@@ -31,7 +31,7 @@ def _handle_skip_emoji(raw_reaction, guild_id):
 
 class UserDisplayConfirmationStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM.value
-    msg = "Would you like your govern display name to be"
+    msg = "Would you like your Govrn display name to be"
 
     @property
     def emojis():

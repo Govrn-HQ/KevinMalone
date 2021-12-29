@@ -1,9 +1,7 @@
-from distutils.util import strtobool
 import json
 import logging
 import discord
 import hashlib
-import constants
 
 intents = discord.Intents.all()
 bot = discord.Bot(intents=intents)
