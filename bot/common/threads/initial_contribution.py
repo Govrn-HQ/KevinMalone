@@ -8,6 +8,7 @@
 # 3a. No thank them
 # 3b. yes send them a contgrats and link to report
 # 4 Repeat if there is another contribution else send an indication of end
+import discord
 from common.threads.thread_builder import (
     BaseThread,
     BaseStep,
@@ -16,9 +17,9 @@ from common.threads.thread_builder import (
     ThreadKeys,
 )
 from common.threads.shared_steps import SelectGuildEmojiStep
-from config import YES_EMOJI, NO_EMOJI
+from config import YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR
 
-from common.airtable import get_contribution_records
+from common.airtable import get_contribution_records, add_user_to_contribution
 
 
 class SendContributionInstructions(BaseStep):
@@ -27,11 +28,12 @@ class SendContributionInstructions(BaseStep):
     at least one contribution.
     """
 
-    name = StepKeys.SEND_CONTRIBUTION_INSTRUCTION
+    name = StepKeys.SEND_CONTRIBUTION_INSTRUCTION.value
 
-    def __init__(self, guild_id, contribution_number):
+    def __init__(self, guild_id, contribution_number, instruction):
         self.guild_id = guild_id
         self.contribution_number = contribution_number
+        self.instruction = instruction
 
     # Get contributions
     # the build contribution instruction steps
@@ -47,22 +49,21 @@ class SendContributionInstructions(BaseStep):
         # contribution_number = user.get("next_contribution")
         channel = message.channel
         # if not contribution_number:
-        #     contribution_number = 1
-        # contribution = await get_contribution_records(
-        #     user_id, self.guild_id, contribution_number
-        # )
-        # if not contribution:
-        #     # there are no contributions terminate
-        #     return None, None
-
         # # send intstruction return metadata
-        # instructions = contribution.get("instructions")
-        # embed = discord.Embed(colour=INFO_EMBED_COLOR, description=instructions title="Have you completed the below?")
-        # sent_message = await channel.send(embed=embed)
-        sent_message = await channel.send("hi")
+
+        # TODO if user completed respond completed
+        # and terinate with end
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description=self.instruction,
+            title="Have you completed the below?",
+        )
+        sent_message = await channel.send(embed=embed)
+        await sent_message.add_reaction(YES_EMOJI)
+        await sent_message.add_reaction(NO_EMOJI)
         # # TODO: upate user contribution
 
-        # await update_user(user.get("id"), "next_contribution", f"")
+        await add_user_to_contribution(self.guild_id, user_id, self.contribution_number)
 
         return sent_message, None
 
@@ -92,7 +93,7 @@ class InitialContributionConfirmEmojiStep(BaseStep):
 
 # Then two paths and repeat
 class InitialContributionAccept(BaseStep):
-    name = StepKeys.INITIAL_CONTRIBUTION_ACCEPT
+    name = StepKeys.INITIAL_CONTRIBUTION_ACCEPT.value
 
     async def send(self, message, userid):
         channel = message.channel
@@ -105,7 +106,7 @@ class InitialContributionAccept(BaseStep):
 
 
 class InitialContributionReject(BaseStep):
-    name = StepKeys.INITIAL_CONTRIBUTION_REJECT
+    name = StepKeys.INITIAL_CONTRIBUTION_REJECT.value
 
     async def send(self, message, userid):
         channel = message.channel
@@ -116,7 +117,7 @@ class InitialContributionReject(BaseStep):
 
 
 class InitialContributionReportCommand(BaseStep):
-    name = StepKeys.INITIAL_CONTRIBUTION_REPORT_COMMAND
+    name = StepKeys.INITIAL_CONTRIBUTION_REPORT_COMMAND.value
 
     async def send(self, message, userid):
         channel = message.channel
@@ -140,22 +141,18 @@ class InitialContributions(BaseThread):
         # there should be a check at the command level preventing that path
 
         if not self.guild_id:
-            print("No guild id")
-            # Dummy step
-            return (
-                Step(current=SendContributionInstructions(None, None))
-                .add_next_step(InitialContributionAccept())
-                .build()
-            )
+            raise Exception("No provided guild_id for Initial COntribution thread")
         print("Guild id")
         contribution_records = await get_contribution_records(self.guild_id)
         previous_step = None
         for record in sorted(
             contribution_records,
             key=lambda record: record.get("fields", {"order": 1}).get("order"),
+            reverse=True,
         ):
             fields = record.get("fields")
             order = fields.get("order")
+            instructions = fields.get("instructions")
 
             # On initial pass make sure to add report step
             yes_fork = Step(current=InitialContributionAccept())
@@ -167,7 +164,9 @@ class InitialContributions(BaseThread):
             previous_step = (
                 Step(
                     current=SendContributionInstructions(
-                        guild_id=self.guild_id, contribution_number=order
+                        guild_id=self.guild_id,
+                        contribution_number=order,
+                        instruction=instructions,
                     )
                 )
                 .add_next_step(InitialContributionConfirmEmojiStep())
@@ -182,7 +181,4 @@ class InitialContributions(BaseThread):
 
     async def get_steps(self):
         contribution_step = await self.build_steps()
-        steps = Step(current=SelectGuildEmojiStep(cls=self)).add_next_step(
-            contribution_step
-        )
-        return steps.build()
+        return contribution_step.build()

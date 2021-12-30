@@ -160,6 +160,42 @@ async def update_user(record_id, id_field, id_val):
     return await loop.run_in_executor(None, _update_user)
 
 
+async def add_user_to_contribution(guild_id, user_id, order):
+
+    """Add or update user ID info given ID field, value,
+    and user table airtable record number."""
+
+    loop = asyncio.get_running_loop()
+
+    def _update_user():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
+        records = table.all(
+            formula=match({"Christine Guilds": str(guild_id), "order": order})
+        )
+        record = records[0]
+
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
+        user = table.all(
+            formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
+        )
+        user_fields = user[0]
+        user_record_id = user_fields.get("id")
+
+        record_id = record.get("id")
+
+        table.update(
+            record_id,
+            {
+                "Christine Users": [
+                    user_record_id,
+                    # *record.get("fields").get("Christine Users"),
+                ]
+            },
+        )
+
+    return await loop.run_in_executor(None, _update_user)
+
+
 async def create_user(user_id, guild_id):
 
     """Return new airtable record # in users table given user_id & guild_id.

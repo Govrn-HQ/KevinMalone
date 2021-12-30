@@ -29,6 +29,7 @@ class ThreadKeys(Enum):
     ONBOARDING = "onboarding"
     UPDATE_PROFILE = "update_profile"
     INITIAL_CONTRIBUTIONS = "initial_contributions"
+    GUILD_SELECT = "guild_select"
 
 
 class StepKeys(Enum):
@@ -57,6 +58,7 @@ class StepKeys(Enum):
     INITIAL_CONTRIBUTION_ACCEPT = "inital_contribution_accept"
     INITIAL_CONTRIBUTION_REJECT = "inital_contribution_reject"
     INITIAL_CONTRIBUTION_REPORT_COMMAND = "initial_contribution_report_command"
+    OVERRIDE_THREAD = "override_thread"
 
 
 class BaseThread:
@@ -79,12 +81,13 @@ class BaseThread:
         return None
 
     def __await__(self):
-        async def init_steps():
-            self.steps = await self.get_steps()
-            self.step = self.find_step(self.steps, self.current_step)
-            return self
+        return self._init_steps().__await__()
 
-        return init_steps().__await__()
+    async def _init_steps(self):
+        self.steps = await self.get_steps()
+        self.step = self.find_step(self.steps, self.current_step)
+        # If no thread then send corruption error
+        return self
 
     async def send(self, message):
         logger.info(f"Send {self.step.hash_}")
@@ -106,6 +109,7 @@ class BaseThread:
             u = await Redis.get(self.user_id)
             if u:
                 metadata = json.loads(u).get("metadata")
+        print(self.step)
         if not self.step.next_steps:
             return await Redis.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
@@ -121,11 +125,7 @@ class BaseThread:
         return await Redis.set(
             self.user_id,
             build_cache_value(
-                self.name,
-                step.hash_,
-                self.guild_id,
-                msg.id,
-                metadata=metadata,
+                self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
             ),
         )
 
@@ -234,6 +234,6 @@ class Step:
         if step == "":
             raise Exception(
                 f"Not a valid next step! current {self.current.name} and next: {key}"
-                f" Valid nex steps: {list(self.next_steps.keys())}"
+                f" Valid next steps: {list(self.next_steps.keys())}"
             )
         return step

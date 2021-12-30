@@ -23,6 +23,7 @@ from common.threads.thread_builder import (  # noqa: E402
 from common.threads.onboarding import Onboarding  # noqa: E402
 from common.threads.update import UpdateProfile  # noqa: E402
 from common.threads.initial_contribution import InitialContributions  # noqa: E402
+from common.guild_select import GuildSelect
 from config import (  # noqa: E402
     read_file,
     GUILD_IDS,
@@ -32,29 +33,14 @@ from config import (  # noqa: E402
 )
 from exceptions import NotGuildException  # noqa: E402
 from exceptions import ErrorHandler  # noqa: E402
+from common.guild_select import get_thread, GuildSelect
 
 
 logger = logging.getLogger(__name__)
 
 
-async def get_thread(user_id, key):
-    val = json.loads(key)
-    thread = val.get("thread")
-    step = val.get("step")
-    message_id = val.get("message_id")
-    guild_id = val.get("guild_id")
-    if thread == ThreadKeys.ONBOARDING.value:
-        return await Onboarding(user_id, step, message_id, guild_id)
-    elif thread == ThreadKeys.UPDATE_PROFILE.value:
-        return await UpdateProfile(user_id, step, message_id, guild_id)
-    elif thread == ThreadKeys.INITIAL_CONTRIBUTIONS.value:
-        return await InitialContributions(user_id, step, message_id, guild_id)
-    raise Exception("Unknown Thread!")
-
-
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send users link to report engagement",
+    guild_id=GUILD_IDS, description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -95,9 +81,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             # on by sending all the commands
             application_commands = bot.application_commands
             embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                title="Welcome Back",
-                description="",
+                colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
             )
             for cmd in application_commands:
                 if isinstance(cmd, discord.SlashCommand):
@@ -169,10 +153,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             if not metadata:
                 return
             thread = await UpdateProfile(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
+                ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
             )
             await Redis.set(
                 ctx.author.id,
@@ -209,20 +190,20 @@ if bool(strtobool(constants.Bot.is_dev)):
             message, metadata = await select_guild(ctx, embed, error_embed)
             if not metadata:
                 return
-            thread = await InitialContributions(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
+            thread = await GuildSelect(
+                ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
             )
             await Redis.set(
                 ctx.author.id,
                 build_cache_value(
-                    ThreadKeys.INITIAL_CONTRIBUTIONS.value,
+                    ThreadKeys.GUILD_SELECT.value,
                     thread.steps.hash_,
                     "",
                     message.id,
-                    metadata=metadata,
+                    metadata={
+                        **metadata,
+                        "thread_name": ThreadKeys.INITIAL_CONTRIBUTIONS.value,
+                    },
                 ),
             )
 
