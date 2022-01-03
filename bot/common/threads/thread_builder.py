@@ -72,6 +72,7 @@ class BaseThread:
         self.skip = False
 
     def find_step(self, steps, hash_):
+        print(hash_, steps.hash_)
         if steps.hash_ == hash_:
             return steps
         for _, step in steps.next_steps.items():
@@ -109,7 +110,6 @@ class BaseThread:
             u = await Redis.get(self.user_id)
             if u:
                 metadata = json.loads(u).get("metadata")
-        print(self.step)
         if not self.step.next_steps:
             return await Redis.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
@@ -121,6 +121,14 @@ class BaseThread:
             # TODO: I am guessing this metadata will need to be refactored
             self.step = step
             return await self.send(message)
+
+        # Trigger next send
+        print(self.step.hash_)
+        print(step.hash_)
+        print(type(step))
+        if self.step.current.trigger:
+            self.step = step
+            return await self.send(msg)
 
         return await Redis.set(
             self.user_id,
@@ -169,6 +177,7 @@ class BaseThread:
 
 class BaseStep:
     emoji = False
+    trigger = False
 
     async def save(self, message, guild_id, user_id):
         pass
@@ -215,7 +224,9 @@ class Step:
         next_steps = {}
         for k, s in step.next_steps.items():
             c = copy.copy(s)
-            next_steps[k] = self._copy_children(c)
+            x = self._copy_children(c)
+            next_steps[k] = x
+            print(x.hash_)
         step.next_steps = next_steps
         return copy.copy(step)
 

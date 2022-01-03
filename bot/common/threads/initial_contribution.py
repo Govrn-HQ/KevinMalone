@@ -9,6 +9,7 @@
 # 3b. yes send them a contgrats and link to report
 # 4 Repeat if there is another contribution else send an indication of end
 import discord
+import hashlib
 from common.threads.thread_builder import (
     BaseThread,
     BaseStep,
@@ -94,6 +95,7 @@ class InitialContributionConfirmEmojiStep(BaseStep):
 # Then two paths and repeat
 class InitialContributionAccept(BaseStep):
     name = StepKeys.INITIAL_CONTRIBUTION_ACCEPT.value
+    trigger = True
 
     async def send(self, message, userid):
         channel = message.channel
@@ -150,6 +152,7 @@ class InitialContributions(BaseThread):
             key=lambda record: record.get("fields", {"order": 1}).get("order"),
             reverse=True,
         ):
+            print(len(contribution_records))
             fields = record.get("fields")
             order = fields.get("order")
             instructions = fields.get("instructions")
@@ -160,19 +163,31 @@ class InitialContributions(BaseThread):
                 yes_fork.add_next_step(InitialContributionReportCommand())
             else:
                 yes_fork.add_next_step(previous_step)
-            fork_steps = [yes_fork, Step(current=InitialContributionReject())]
+            fork_steps = [
+                yes_fork.build(),
+                Step(current=InitialContributionReject()).build(),
+            ]
+            print("Root")
+            print(hashlib.sha256("".encode()).hexdigest())
+            print(previous_step)
             previous_step = (
                 Step(
                     current=SendContributionInstructions(
                         guild_id=self.guild_id,
                         contribution_number=order,
                         instruction=instructions,
-                    )
+                    ),
+                    hash_=hashlib.sha256(
+                        f"{previous_step.hash_}{SendContributionInstructions.name}".encode()
+                    ).hexdigest()
+                    if previous_step
+                    else hashlib.sha256("".encode()).hexdigest(),
                 )
                 .add_next_step(InitialContributionConfirmEmojiStep())
                 .fork(fork_steps)
                 .build()
             )
+            print(previous_step.hash_)
         if not previous_step:
             raise Exception(
                 "Steps are None, most likely no contribution records were found"
