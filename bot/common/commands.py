@@ -48,8 +48,7 @@ def get_thread(user_id, key):
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send users link to report engagement",
+    guild_id=GUILD_IDS, description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -88,9 +87,7 @@ async def join(ctx):
         # on by sending all the commands
         application_commands = bot.application_commands
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            title="Welcome Back",
-            description="",
+            colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
         )
         for cmd in application_commands:
             if isinstance(cmd, discord.SlashCommand):
@@ -103,7 +100,6 @@ async def join(ctx):
 
     await ctx.response.defer()
     # store guild_id and disord_id
-    await create_user(ctx.author.id, ctx.guild.id)
     # check if user can be DMed
     can_send_message = ctx.can_send(discord.Message)
     if not can_send_message:
@@ -112,6 +108,7 @@ async def join(ctx):
         )
         return
 
+    await create_user(ctx.author.id, ctx.guild.id)
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
         title="Welcome",
