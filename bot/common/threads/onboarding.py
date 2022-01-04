@@ -90,6 +90,10 @@ class UserDisplaySubmitStep(BaseStep):
 class AddUserTwitterStep(BaseStep):
     name = StepKeys.ADD_USER_TWITTER.value
 
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
+
     async def send(self, message, user_id):
         channel = message.channel
         sent_message = await channel.send(
@@ -109,6 +113,10 @@ class AddUserTwitterStep(BaseStep):
 
 class AddUserWalletAddressStep(BaseStep):
     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
+
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
 
     async def send(self, message, user_id):
         channel = message.channel
@@ -277,8 +285,7 @@ class GovrnProfilePromptReuse(BaseStep):
         await update_user(record_id, "discourse", fields.get("discourse"))
 
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            description="We updated your Govrn Profile!",
+            colour=INFO_EMBED_COLOR, description="We updated your Govrn Profile!",
         )
         embed.add_field(name="Display Name", value=fields.get("display_name"))
         embed.add_field(name="Twitter", value=fields.get("twitter"))
@@ -319,8 +326,8 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=AddUserTwitterStep())
-            .add_next_step(AddUserWalletAddressStep())
+            Step(current=AddUserTwitterStep(guild_id=self.guild_id))
+            .add_next_step(AddUserWalletAddressStep(guild_id=self.guild_id))
             .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
             .add_next_step(CongratsStep(guild_id=self.guild_id))
         )
