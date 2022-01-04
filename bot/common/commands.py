@@ -103,7 +103,6 @@ async def join(ctx):
 
     await ctx.response.defer()
     # store guild_id and disord_id
-    await create_user(ctx.author.id, ctx.guild.id)
     # check if user can be DMed
     can_send_message = ctx.can_send(discord.Message)
     if not can_send_message:
@@ -112,6 +111,7 @@ async def join(ctx):
         )
         return
 
+    await create_user(ctx.author.id, ctx.guild.id)
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
         title="Welcome",
