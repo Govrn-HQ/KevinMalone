@@ -40,7 +40,6 @@ class OverrideThreadStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        print("Send")
         thread = await get_thread(
             user_id,
             build_cache_value(

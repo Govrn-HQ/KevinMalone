@@ -147,52 +147,74 @@ class InitialContributions(BaseThread):
         print("Guild id")
         contribution_records = await get_contribution_records(self.guild_id)
         previous_step = None
-        for record in sorted(
-            contribution_records,
-            key=lambda record: record.get("fields", {"order": 1}).get("order"),
-            reverse=True,
+        for i, record in enumerate(
+            sorted(
+                contribution_records,
+                key=lambda record: record.get("fields", {"order": 1}).get("order"),
+            )
         ):
             print(len(contribution_records))
             fields = record.get("fields")
             order = fields.get("order")
             instructions = fields.get("instructions")
 
+            current_step = Step(
+                current=SendContributionInstructions(
+                    guild_id=self.guild_id,
+                    contribution_number=order,
+                    instruction=instructions,
+                ),
+                hash_=hashlib.sha256(
+                    f"{previous_step.hash_}{SendContributionInstructions.name}".encode()
+                ).hexdigest()
+                if previous_step
+                else hashlib.sha256("".encode()).hexdigest(),
+            )
+
             # On initial pass make sure to add report step
             yes_fork = Step(current=InitialContributionAccept())
-            if not previous_step:
+            print(len(contribution_records), i)
+            if len(contribution_records) == i + 1:
+                print("ADDED REPORT")
                 yes_fork.add_next_step(InitialContributionReportCommand())
-            else:
-                yes_fork.add_next_step(previous_step)
             fork_steps = [
-                yes_fork.build(),
+                yes_fork,
                 Step(current=InitialContributionReject()).build(),
             ]
             print("Root")
             print(hashlib.sha256("".encode()).hexdigest())
-            print(previous_step)
-            previous_step = (
-                Step(
-                    current=SendContributionInstructions(
-                        guild_id=self.guild_id,
-                        contribution_number=order,
-                        instruction=instructions,
-                    ),
-                    hash_=hashlib.sha256(
-                        f"{previous_step.hash_}{SendContributionInstructions.name}".encode()
-                    ).hexdigest()
-                    if previous_step
-                    else hashlib.sha256("".encode()).hexdigest(),
-                )
-                .add_next_step(InitialContributionConfirmEmojiStep())
+            print(
+                hashlib.sha256(
+                    f"{previous_step.hash_}{SendContributionInstructions.name}".encode()
+                ).hexdigest()
+                if previous_step
+                else hashlib.sha256("".encode()).hexdigest()
+            )
+            current_tree = (
+                current_step.add_next_step(InitialContributionConfirmEmojiStep())
                 .fork(fork_steps)
                 .build()
             )
+
+            if not previous_step:
+                previous_step = current_tree
+                previous_step = yes_fork
+            else:
+                # Return the yes path
+                previous_step.add_next_step(current_tree)
+                print(current_tree.next_steps.keys())
+                print(
+                    current_tree.next_steps.get(
+                        StepKeys.INITIAL_CONTRIBUTION_ACCEPT.value
+                    )
+                )
+                previous_step = yes_fork
             print(previous_step.hash_)
         if not previous_step:
             raise Exception(
                 "Steps are None, most likely no contribution records were found"
             )
-        return previous_step
+        return previous_step.build()
 
     async def get_steps(self):
         contribution_step = await self.build_steps()
