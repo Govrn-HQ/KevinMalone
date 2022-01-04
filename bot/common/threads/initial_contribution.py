@@ -10,6 +10,13 @@
 # 4 Repeat if there is another contribution else send an indication of end
 import discord
 import hashlib
+from common.airtable import (
+    add_user_to_contribution,
+    get_highest_contribution_records,
+    get_contribution_records,
+    find_user,
+    get_user_record,
+)
 from common.threads.thread_builder import (
     BaseThread,
     BaseStep,
@@ -20,8 +27,6 @@ from common.threads.thread_builder import (
 from common.threads.shared_steps import SelectGuildEmojiStep
 from config import YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR
 
-from common.airtable import get_contribution_records, add_user_to_contribution
-
 
 class SendContributionInstructions(BaseStep):
     """
@@ -31,10 +36,12 @@ class SendContributionInstructions(BaseStep):
 
     name = StepKeys.SEND_CONTRIBUTION_INSTRUCTION.value
 
-    def __init__(self, guild_id, contribution_number, instruction):
+    def __init__(self, guild_id, contribution_number, instruction, total_contributions):
         self.guild_id = guild_id
         self.contribution_number = contribution_number
         self.instruction = instruction
+        self.total_contributions = total_contributions
+        self.no_record = False
 
     # Get contributions
     # the build contribution instruction steps
@@ -54,6 +61,23 @@ class SendContributionInstructions(BaseStep):
 
         # TODO if user completed respond completed
         # and terinate with end
+        # I am going to do this temporarily
+        user_record = await get_user_record(user_id, self.guild_id)
+        user_record_id = user_record.get("fields").get("guild_id")
+
+        record = await get_highest_contribution_records(
+            self.guild_id, user_record_id, self.total_contributions
+        )
+        if record:
+            embed = discord.Embed(
+                colour=INFO_EMBED_COLOR,
+                description="You have already completed all of the initial contributions for this guild!"
+                " To report new contributions use the `/report` command",
+            )
+            sent_message = await channel.send(embed=embed)
+            self.no_record = True
+            return message, None
+
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             description=self.instruction,
@@ -67,6 +91,10 @@ class SendContributionInstructions(BaseStep):
         await add_user_to_contribution(self.guild_id, user_id, self.contribution_number)
 
         return sent_message, None
+
+    async def control_hook(self, message, user_id):
+        if self.no_record:
+            return StepKeys.END.value
 
 
 # Handle yes and no scenario
@@ -121,6 +149,9 @@ class InitialContributionReject(BaseStep):
 class InitialContributionReportCommand(BaseStep):
     name = StepKeys.INITIAL_CONTRIBUTION_REPORT_COMMAND.value
 
+    def __init__(self, cls):
+        self.cls = cls
+
     async def send(self, message, userid):
         channel = message.channel
         message = await channel.send(
@@ -163,6 +194,7 @@ class InitialContributions(BaseThread):
                     guild_id=self.guild_id,
                     contribution_number=order,
                     instruction=instructions,
+                    total_contributions=len(contribution_records),
                 ),
                 hash_=hashlib.sha256(
                     f"{previous_step.hash_}{SendContributionInstructions.name}".encode()
@@ -176,7 +208,7 @@ class InitialContributions(BaseThread):
             print(len(contribution_records), i)
             if len(contribution_records) == i + 1:
                 print("ADDED REPORT")
-                yes_fork.add_next_step(InitialContributionReportCommand())
+                yes_fork.add_next_step(InitialContributionReportCommand(cls=self))
             fork_steps = [
                 yes_fork,
                 Step(current=InitialContributionReject()).build(),

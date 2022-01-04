@@ -64,6 +64,37 @@ async def get_contribution_records(guild_id):
     return await loop.run_in_executor(None, _get_contribution)
 
 
+async def get_highest_contribution_records(guild_id, user_id, total):
+
+    """"""
+
+    loop = asyncio.get_running_loop()
+
+    def _get_contribution():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
+        print("Guild ID")
+        print(guild_id)
+        print(user_id)
+        print(total)
+        records = table.all(
+            formula=match(
+                {
+                    "Christine Guilds": str(guild_id),
+                    "Christine Users": str("895453604520009738_2"),
+                    "order": total,
+                }
+            )
+        )
+        print(records)
+        if records:
+            record_id = records[0]
+        else:
+            record_id = None
+        return record_id
+
+    return await loop.run_in_executor(None, _get_contribution)
+
+
 # cannot use in async
 def find_discord(user_id):
 
