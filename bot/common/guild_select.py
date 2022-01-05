@@ -60,15 +60,11 @@ class OverrideThreadStep(BaseStep):
 
 class GuildSelect(BaseThread):
     name = ThreadKeys.GUILD_SELECT.value
-    # in constructor store command
-    # In override step start, override the existing thread
-    # context with the appropriate command
 
     def __await__(self):
         async def init(self):
             await self._init_steps()
             key_vals = await Redis.get(self.user_id)
-            print("initilze command")
             if key_vals:
                 self.command_name = (
                     json.loads(key_vals).get("metadata").get("thread_name")

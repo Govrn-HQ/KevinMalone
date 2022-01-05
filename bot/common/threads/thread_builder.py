@@ -72,7 +72,6 @@ class BaseThread:
         self.skip = False
 
     def find_step(self, steps, hash_):
-        print(hash_, steps.hash_)
         if steps.hash_ == hash_:
             return steps
         for _, step in steps.next_steps.items():
@@ -87,7 +86,6 @@ class BaseThread:
     async def _init_steps(self):
         self.steps = await self.get_steps()
         self.step = self.find_step(self.steps, self.current_step)
-        # If no thread then send corruption error
         return self
 
     async def send(self, message):
@@ -123,9 +121,6 @@ class BaseThread:
             return await self.send(message)
 
         # Trigger next send
-        print(self.step.hash_)
-        print(step.hash_)
-        print(type(step))
         if self.step.current.trigger:
             self.step = step
             return await self.send(msg)
@@ -133,7 +128,11 @@ class BaseThread:
         return await Redis.set(
             self.user_id,
             build_cache_value(
-                self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
+                self.name,
+                step.hash_,
+                self.guild_id,
+                msg.id,
+                metadata=metadata,
             ),
         )
 
@@ -226,7 +225,6 @@ class Step:
             c = copy.copy(s)
             x = self._copy_children(c)
             next_steps[k] = x
-            print(x.hash_)
         step.next_steps = next_steps
         return copy.copy(step)
 

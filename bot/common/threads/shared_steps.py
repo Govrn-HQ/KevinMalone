@@ -14,8 +14,6 @@ class SelectGuildEmojiStep(BaseStep):
         self.cls = cls
 
     async def handle_emoji(self, raw_reaction):
-        # Get reaction that has two
-        # Then save the key with the guild id
         channel = await bot.fetch_channel(raw_reaction.channel_id)
         message = await channel.fetch_message(raw_reaction.message_id)
         key_vals = await Redis.get(raw_reaction.user_id)

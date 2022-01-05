@@ -72,20 +72,15 @@ async def get_highest_contribution_records(guild_id, user_id, total):
 
     def _get_contribution():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
-        print("Guild ID")
-        print(guild_id)
-        print(user_id)
-        print(total)
         records = table.all(
             formula=match(
                 {
                     "Christine Guilds": str(guild_id),
-                    "Christine Users": str("895453604520009738_2"),
+                    "Christine Users": str(f"{guild_id}_{user_id}"),
                     "order": total,
                 }
             )
         )
-        print(records)
         if records:
             record_id = records[0]
         else:
@@ -217,10 +212,14 @@ async def add_user_to_contribution(guild_id, user_id, order):
         table.update(
             record_id,
             {
-                "Christine Users": [
-                    user_record_id,
-                    # *record.get("fields").get("Christine Users"),
-                ]
+                "Christine Users": list(
+                    {
+                        user_record_id,
+                        *record.get("fields", {"Christine Users": []}).get(
+                            "Christine Users", []
+                        ),
+                    }
+                )
             },
         )
 
