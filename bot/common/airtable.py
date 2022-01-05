@@ -44,6 +44,52 @@ async def get_user_record(user_id, guild_id):
     return await loop.run_in_executor(None, _find_user)
 
 
+async def get_contribution_records(guild_id):
+
+    """"""
+
+    loop = asyncio.get_running_loop()
+
+    def _get_contribution():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
+        print("Guild ID")
+        print(guild_id)
+        records = table.all(formula=match({"Christine Guilds": str(guild_id)}))
+        if records:
+            record_id = records
+        else:
+            record_id = None
+        return record_id
+
+    return await loop.run_in_executor(None, _get_contribution)
+
+
+async def get_highest_contribution_records(guild_id, user_id, total):
+
+    """"""
+
+    loop = asyncio.get_running_loop()
+
+    def _get_contribution():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
+        records = table.all(
+            formula=match(
+                {
+                    "Christine Guilds": str(guild_id),
+                    "Christine Users": str(f"{guild_id}_{user_id}"),
+                    "order": total,
+                }
+            )
+        )
+        if records:
+            record_id = records[0]
+        else:
+            record_id = None
+        return record_id
+
+    return await loop.run_in_executor(None, _get_contribution)
+
+
 # cannot use in async
 def find_discord(user_id):
 
@@ -136,6 +182,46 @@ async def update_user(record_id, id_field, id_val):
     def _update_user():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
         table.update(record_id, {id_field: id_val})
+
+    return await loop.run_in_executor(None, _update_user)
+
+
+async def add_user_to_contribution(guild_id, user_id, order):
+
+    """Add or update user ID info given ID field, value,
+    and user table airtable record number."""
+
+    loop = asyncio.get_running_loop()
+
+    def _update_user():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
+        records = table.all(
+            formula=match({"Christine Guilds": str(guild_id), "order": order})
+        )
+        record = records[0]
+
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Users")
+        user = table.all(
+            formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
+        )
+        user_fields = user[0]
+        user_record_id = user_fields.get("id")
+
+        record_id = record.get("id")
+
+        table.update(
+            record_id,
+            {
+                "Christine Users": list(
+                    {
+                        user_record_id,
+                        *record.get("fields", {"Christine Users": []}).get(
+                            "Christine Users", []
+                        ),
+                    }
+                )
+            },
+        )
 
     return await loop.run_in_executor(None, _update_user)
 

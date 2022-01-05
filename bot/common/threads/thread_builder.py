@@ -28,6 +28,8 @@ def build_cache_value(thread, step, guild_id, message_id="", **kwargs):
 class ThreadKeys(Enum):
     ONBOARDING = "onboarding"
     UPDATE_PROFILE = "update_profile"
+    INITIAL_CONTRIBUTIONS = "initial_contributions"
+    GUILD_SELECT = "guild_select"
 
 
 class StepKeys(Enum):
@@ -51,6 +53,12 @@ class StepKeys(Enum):
     GOVRN_PROFILE_PROMPT_ACCEPT_EMOJI = "govrn_profile_prompt_accept_emoji"
     GOVRN_PROFILE_REUSE = "govrn_profile_reuse"
     END = "end"
+    SEND_CONTRIBUTION_INSTRUCTION = "send_contribution_instruction"
+    INITIAL_CONTRIBUTION_CONFIRM_EMOJI = "initial_contribution_confirm_emoji"
+    INITIAL_CONTRIBUTION_ACCEPT = "inital_contribution_accept"
+    INITIAL_CONTRIBUTION_REJECT = "inital_contribution_reject"
+    INITIAL_CONTRIBUTION_REPORT_COMMAND = "initial_contribution_report_command"
+    OVERRIDE_THREAD = "override_thread"
 
 
 class BaseThread:
@@ -60,7 +68,7 @@ class BaseThread:
         self.user_id = user_id
         self.message_id = message_id
         self.guild_id = guild_id
-        self.step = self.find_step(self.steps, current_step)
+        self.current_step = current_step
         self.skip = False
 
     def find_step(self, steps, hash_):
@@ -71,6 +79,14 @@ class BaseThread:
             if steps:
                 return steps
         return None
+
+    def __await__(self):
+        return self._init_steps().__await__()
+
+    async def _init_steps(self):
+        self.steps = await self.get_steps()
+        self.step = self.find_step(self.steps, self.current_step)
+        return self
 
     async def send(self, message):
         logger.info(f"Send {self.step.hash_}")
@@ -103,6 +119,11 @@ class BaseThread:
             # TODO: I am guessing this metadata will need to be refactored
             self.step = step
             return await self.send(message)
+
+        # Trigger next send
+        if self.step.current.trigger:
+            self.step = step
+            return await self.send(msg)
 
         return await Redis.set(
             self.user_id,
@@ -155,6 +176,7 @@ class BaseThread:
 
 class BaseStep:
     emoji = False
+    trigger = False
 
     async def save(self, message, guild_id, user_id):
         pass
@@ -201,7 +223,8 @@ class Step:
         next_steps = {}
         for k, s in step.next_steps.items():
             c = copy.copy(s)
-            next_steps[k] = self._copy_children(c)
+            x = self._copy_children(c)
+            next_steps[k] = x
         step.next_steps = next_steps
         return copy.copy(step)
 
@@ -220,6 +243,6 @@ class Step:
         if step == "":
             raise Exception(
                 f"Not a valid next step! current {self.current.name} and next: {key}"
-                f" Valid nex steps: {list(self.next_steps.keys())}"
+                f" Valid next steps: {list(self.next_steps.keys())}"
             )
         return step
