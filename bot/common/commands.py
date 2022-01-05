@@ -102,15 +102,6 @@ async def join(ctx):
         return
 
     await ctx.response.defer()
-    # store guild_id and disord_id
-    await create_user(ctx.author.id, ctx.guild.id)
-    # check if user can be DMed
-    can_send_message = ctx.can_send(discord.Message)
-    if not can_send_message:
-        await ctx.followup.send(
-            "I cannot onboard you. Please turn on DM's from this server!"
-        )
-        return
 
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
@@ -126,7 +117,16 @@ async def join(ctx):
     logger.info(
         f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"
     )
-    message = await ctx.author.send(embed=embed)
+    try:
+
+        message = await ctx.author.send(embed=embed)
+    except discord.Forbidden:
+        message = await ctx.followup.send(
+            "Please enable DM's in order to use the Govrn Bot!", ephemeral=True
+        )
+        return
+
+    await create_user(ctx.author.id, ctx.guild.id)
     await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
