@@ -1,8 +1,8 @@
+import constants
 from distutils.util import strtobool
 import logging
 import discord
 import hashlib
-import constants
 
 intents = discord.Intents.all()
 bot = discord.Bot(intents=intents)
@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send users link to report engagement",
+    guild_id=GUILD_IDS, description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -64,110 +63,105 @@ async def report(ctx):
         ctx.response.is_done()
 
 
-if bool(strtobool(constants.Bot.is_dev)):
+@bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
+async def join(ctx):
+    is_guild = bool(ctx.guild)
+    if not is_guild:
+        raise NotGuildException("Command was executed outside of a guild")
 
-    @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-    async def join(ctx):
-        is_guild = bool(ctx.guild)
-        if not is_guild:
-            raise NotGuildException("Command was executed outside of a guild")
+    is_user = await find_user(ctx.author.id, ctx.guild.id)
+    if is_user:
+        # Send welcome message and
+        # And ask what journey they are
+        # on by sending all the commands
+        application_commands = bot.application_commands
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
+        )
+        for cmd in application_commands:
+            if isinstance(cmd, discord.SlashCommand):
+                embed.add_field(
+                    name=f"/ {cmd.name}", value=cmd.description, inline=False
+                )
+        await ctx.response.send_message(embed=embed, ephemeral=True)
+        ctx.response.is_done()
+        return
 
-        is_user = await find_user(ctx.author.id, ctx.guild.id)
-        if is_user:
-            # Send welcome message and
-            # And ask what journey they are
-            # on by sending all the commands
-            application_commands = bot.application_commands
-            embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                title="Welcome Back",
-                description="",
-            )
-            for cmd in application_commands:
-                if isinstance(cmd, discord.SlashCommand):
-                    embed.add_field(
-                        name=f"/ {cmd.name}", value=cmd.description, inline=False
-                    )
-            await ctx.response.send_message(embed=embed, ephemeral=True)
-            ctx.response.is_done()
-            return
+    await ctx.response.defer()
 
-        await ctx.response.defer()
-        # store guild_id and disord_id
-        await create_user(ctx.author.id, ctx.guild.id)
-        # check if user can be DMed
-        can_send_message = ctx.can_send(discord.Message)
-        if not can_send_message:
-            await ctx.followup.send(
-                "I cannot onboard you. Please turn on DM's from this server!"
-            )
-            return
+    embed = discord.Embed(
+        colour=INFO_EMBED_COLOR,
+        title="Welcome",
+        description="Welcome to the Govrn Ecosystem!  "
+        "We're excited to have you part of our movement."
+        "To help automate the gathering of your contributions"
+        f" to {ctx.guild.name} we need some information."
+        "We use your IDs to automatically pull your contributions for you to "
+        f"easily submit to {ctx.guild.name}. "
+        "You can skip any requests by using the ⏭️  emoji!",
+    )
+    logger.info(
+        f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"
+    )
+    try:
 
+        message = await ctx.author.send(embed=embed)
+    except discord.Forbidden:
+        message = await ctx.followup.send(
+            "Please enable DM's in order to use the Govrn Bot!", ephemeral=True
+        )
+        return
+
+    await create_user(ctx.author.id, ctx.guild.id)
+    await Onboarding(
+        ctx.author.id,
+        hashlib.sha256("".encode()).hexdigest(),
+        message.id,
+        ctx.guild.id,
+    ).send(message)
+    await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
+
+
+@bot.slash_command(
+    guild_id=GUILD_IDS, description="Update your profile for a given community"
+)
+async def update(ctx):
+    is_guild = bool(ctx.guild)
+    if is_guild:
+        await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+        return
+    else:
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Welcome",
-            description="Welcome to the Govrn Ecosystem!  "
-            "We're excited to have you part of our movement."
-            "To help automate the gathering of your contributions"
-            f" to {ctx.guild.name} we need some information."
-            "We use your IDs to automatically pull your contributions for you to "
-            f"easily submit to {ctx.guild.name}. "
-            "You can skip any requests by using the ⏭️  emoji!",
+            description="Which community profile would you like to update?",
         )
-        logger.info(
-            f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"
-        )
-        message = await ctx.author.send(embed=embed)
-        await Onboarding(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            message.id,
-            ctx.guild.id,
-        ).send(message)
-        await ctx.followup.send(
-            "Check your DM's to continue onboarding", ephemeral=True
+        error_embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description="I cannot update profile because you "
+            "have not been onboarded for any communities. Run /join in the "
+            "discord you want to join!",
         )
 
-    @bot.slash_command(
-        guild_id=GUILD_IDS, description="Update your profile for a given community"
-    )
-    async def update(ctx):
-        is_guild = bool(ctx.guild)
-        if is_guild:
-            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+        message, metadata = await select_guild(ctx, embed, error_embed)
+        if not metadata:
             return
-        else:
-            embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                title="Welcome",
-                description="Which community profile would you like to update?",
-            )
-            error_embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                description="I cannot update profile because you "
-                "have not been onboarded for any communities. Run /join in the "
-                "discord you want to join!",
-            )
-
-            message, metadata = await select_guild(ctx, embed, error_embed)
-            if not metadata:
-                return
-            thread = await UpdateProfile(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
+        thread = await UpdateProfile(
+            ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
+        )
+        await Redis.set(
+            ctx.author.id,
+            build_cache_value(
+                ThreadKeys.UPDATE_PROFILE.value,
+                thread.steps.hash_,
                 "",
-            )
-            await Redis.set(
-                ctx.author.id,
-                build_cache_value(
-                    ThreadKeys.UPDATE_PROFILE.value,
-                    thread.steps.hash_,
-                    "",
-                    message.id,
-                    metadata=metadata,
-                ),
-            )
+                message.id,
+                metadata=metadata,
+            ),
+        )
+
+
+if bool(strtobool(constants.Bot.is_dev)):
 
     @bot.slash_command(
         guild_id=GUILD_IDS, description="Add first contributions to the guild"
@@ -194,10 +188,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             if not metadata:
                 return
             thread = await GuildSelect(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
+                ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
             )
             await Redis.set(
                 ctx.author.id,

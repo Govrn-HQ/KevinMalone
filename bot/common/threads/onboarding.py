@@ -31,7 +31,7 @@ def _handle_skip_emoji(raw_reaction, guild_id):
 
 class UserDisplayConfirmationStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM.value
-    msg = "Would you like your govern display name to be"
+    msg = "Would you like your Govrn display name to be"
 
     @property
     def emojis():
@@ -90,6 +90,10 @@ class UserDisplaySubmitStep(BaseStep):
 class AddUserTwitterStep(BaseStep):
     name = StepKeys.ADD_USER_TWITTER.value
 
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
+
     async def send(self, message, user_id):
         channel = message.channel
         sent_message = await channel.send(
@@ -109,6 +113,10 @@ class AddUserTwitterStep(BaseStep):
 
 class AddUserWalletAddressStep(BaseStep):
     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
+
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
 
     async def send(self, message, user_id):
         channel = message.channel
@@ -319,8 +327,8 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=AddUserTwitterStep())
-            .add_next_step(AddUserWalletAddressStep())
+            Step(current=AddUserTwitterStep(guild_id=self.guild_id))
+            .add_next_step(AddUserWalletAddressStep(guild_id=self.guild_id))
             .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
             .add_next_step(CongratsStep(guild_id=self.guild_id))
         )
