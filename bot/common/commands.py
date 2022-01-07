@@ -182,7 +182,7 @@ if bool(strtobool(constants.Bot.is_dev)):
                 colour=INFO_EMBED_COLOR,
                 title="Contributions",
                 description="Which community would you like to add your "
-                "initial contributions too?",
+                "initial contributions to?",
             )
             error_embed = discord.Embed(
                 colour=INFO_EMBED_COLOR,

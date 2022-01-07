@@ -97,8 +97,8 @@ class InitialContributionAccept(BaseStep):
     async def send(self, message, userid):
         channel = message.channel
         message = await channel.send(
-            "Congratulations on completeting that contribution"
-            f" and improving our community! (Step {self.contribution_number}"
+            "Congratulations on completeting your first contribution 🎉!"
+            f"(Step {self.contribution_number}"
             f" of {self.total_steps}) "
         )
         return message, None
@@ -125,7 +125,7 @@ class InitialContributionReportCommand(BaseStep):
     async def send(self, message, userid):
         channel = message.channel
         message = await channel.send(
-            "In order to send add more new contributions call the `/report` command"
+            "Now submit your contributions with the `/report` command 😎"
         )
         return message, None
 
@@ -135,7 +135,7 @@ class InitialContributions(BaseThread):
 
     async def build_steps(self):
         if not self.guild_id:
-            raise Exception("No provided guild_id for Initial COntribution thread")
+            raise Exception("No provided guild_id for Initial Contribution thread")
         contribution_records = await get_contribution_records(self.guild_id)
         previous_step = None
         for i, record in enumerate(
@@ -195,7 +195,7 @@ class InitialContributions(BaseThread):
             print(previous_step.hash_)
         if not previous_step:
             raise Exception(
-                "Steps are None, most likely no contribution records were found"
+                "Steps are none, most likely no contribution records were found"
             )
         return previous_step.build()
 
