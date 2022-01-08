@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send users link to report engagement",
+    guild_id=GUILD_IDS, description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -77,9 +76,7 @@ async def join(ctx):
         # on by sending all the commands
         application_commands = bot.application_commands
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            title="Welcome Back",
-            description="",
+            colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
         )
         for cmd in application_commands:
             if isinstance(cmd, discord.SlashCommand):
@@ -116,12 +113,13 @@ async def join(ctx):
         return
 
     await create_user(ctx.author.id, ctx.guild.id)
-    await Onboarding(
+    onboarding = await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         message.id,
         ctx.guild.id,
-    ).send(message)
+    )
+    await onboarding.send(message)
     await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
 
 
@@ -150,10 +148,7 @@ async def update(ctx):
         if not metadata:
             return
         thread = await UpdateProfile(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            message.id,
-            "",
+            ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
         )
         await Redis.set(
             ctx.author.id,
@@ -194,10 +189,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             if not metadata:
                 return
             thread = await GuildSelect(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
+                ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
             )
             await Redis.set(
                 ctx.author.id,
