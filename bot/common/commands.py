@@ -1,4 +1,5 @@
-import json
+import constants
+from distutils.util import strtobool
 import logging
 import discord
 import hashlib
@@ -29,22 +30,10 @@ from config import (  # noqa: E402
 )
 from exceptions import NotGuildException  # noqa: E402
 from exceptions import ErrorHandler  # noqa: E402
+from common.guild_select import get_thread, GuildSelect  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
-
-
-def get_thread(user_id, key):
-    val = json.loads(key)
-    thread = val.get("thread")
-    step = val.get("step")
-    message_id = val.get("message_id")
-    guild_id = val.get("guild_id")
-    if thread == ThreadKeys.ONBOARDING.value:
-        return Onboarding(user_id, step, message_id, guild_id)
-    elif thread == ThreadKeys.UPDATE_PROFILE.value:
-        return UpdateProfile(user_id, step, message_id, guild_id)
-    raise Exception("Unknown Thread!")
 
 
 @bot.slash_command(
@@ -127,12 +116,13 @@ async def join(ctx):
         return
 
     await create_user(ctx.author.id, ctx.guild.id)
-    await Onboarding(
+    onboarding = await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         message.id,
         ctx.guild.id,
-    ).send(message)
+    )
+    await onboarding.send(message)
     await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
 
 
@@ -142,66 +132,118 @@ async def join(ctx):
 async def update(ctx):
     is_guild = bool(ctx.guild)
     if is_guild:
-        await ctx.respond("Please run this command in a DM channel")
+        await ctx.respond("Please run this command in a DM channel", ephemeral=True)
         return
     else:
-        discord_rec = await get_discord_record(ctx.author.id)
-        airtable_guild_ids = discord_rec.get("fields").get("guild_id")
-        if not airtable_guild_ids:
-            embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                description="I cannot update profile because you "
-                "have not been onboarded for any communities. Run /join in the "
-                "discord you want to join!",
-            )
-            await ctx.response.send_message(embed=embed)
-            ctx.response.is_done()
-            return
-
-        await ctx.response.defer()
-        guild_ids = []
-        for record_id in airtable_guild_ids:
-            g = await get_guild(record_id)
-            guild_id = g.get("guild_id")
-            if guild_id:
-                guild_ids.append(guild_id)
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Welcome",
             description="Which community profile would you like to update?",
         )
-        emojis = get_list_of_emojis(len(guild_ids))
-        daos = {}
-        for idx, guild_id in enumerate(guild_ids):
-            guild = await bot.fetch_guild(guild_id)
-            if not guild:
-                continue
-            emoji = emojis[idx]
-            daos[emoji] = guild.id
-            embed.add_field(name=guild.name, value=emoji)
-        message = await ctx.followup.send(embed=embed)
-        for emoji in emojis:
-            await message.add_reaction(emoji)
+        error_embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description="I cannot update profile because you "
+            "have not been onboarded for any communities. Run /join in the "
+            "discord you want to join!",
+        )
+
+        message, metadata = await select_guild(ctx, embed, error_embed)
+        if not metadata:
+            return
+        thread = await UpdateProfile(
+            ctx.author.id,
+            hashlib.sha256("".encode()).hexdigest(),
+            message.id,
+            "",
+        )
         await Redis.set(
             ctx.author.id,
             build_cache_value(
                 ThreadKeys.UPDATE_PROFILE.value,
-                UpdateProfile(
-                    ctx.author.id,
-                    hashlib.sha256("".encode()).hexdigest(),
-                    message.id,
-                    "",
-                ).steps.hash_,
+                thread.steps.hash_,
                 "",
                 message.id,
-                metadata={"daos": daos},
+                metadata=metadata,
             ),
         )
 
 
-# if bool(strtobool(constants.Bot.is_dev)):
-# @keating No current development functions
-# wasn't sure how to make sure this didn't end up grabbng the below functions
+if bool(strtobool(constants.Bot.is_dev)):
+
+    @bot.slash_command(
+        guild_id=GUILD_IDS, description="Add first contributions to the guild"
+    )
+    async def add_onboarding_contributions(ctx):
+        is_guild = bool(ctx.guild)
+        if is_guild:
+            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+            return
+        else:
+            embed = discord.Embed(
+                colour=INFO_EMBED_COLOR,
+                title="Contributions",
+                description="Which community would you like to add your "
+                "initial contributions to?",
+            )
+            error_embed = discord.Embed(
+                colour=INFO_EMBED_COLOR,
+                description="I cannot add any contributions because you "
+                "have not been onboarded for any communities. Run /join in the "
+                "discord you want to join!",
+            )
+            message, metadata = await select_guild(ctx, embed, error_embed)
+            if not metadata:
+                return
+            thread = await GuildSelect(
+                ctx.author.id,
+                hashlib.sha256("".encode()).hexdigest(),
+                message.id,
+                "",
+            )
+            await Redis.set(
+                ctx.author.id,
+                build_cache_value(
+                    ThreadKeys.GUILD_SELECT.value,
+                    thread.steps.hash_,
+                    "",
+                    message.id,
+                    metadata={
+                        **metadata,
+                        "thread_name": ThreadKeys.INITIAL_CONTRIBUTIONS.value,
+                    },
+                ),
+            )
+
+
+async def select_guild(ctx, response_embed, error_embed):
+    discord_rec = await get_discord_record(ctx.author.id)
+    airtable_guild_ids = discord_rec.get("fields").get("guild_id")
+    if not airtable_guild_ids:
+        await ctx.response.send_message(embed=error_embed)
+        ctx.response.is_done()
+        return None, None
+
+    await ctx.response.defer()
+    guild_ids = []
+    for record_id in airtable_guild_ids:
+        g = await get_guild(record_id)
+        guild_id = g.get("guild_id")
+        if guild_id:
+            guild_ids.append(guild_id)
+    embed = response_embed
+    emojis = get_list_of_emojis(len(guild_ids))
+    daos = {}
+    for idx, guild_id in enumerate(guild_ids):
+        guild = await bot.fetch_guild(guild_id)
+        if not guild:
+            continue
+        emoji = emojis[idx]
+        daos[emoji] = guild.id
+        embed.add_field(name=guild.name, value=emoji)
+    message = await ctx.followup.send(embed=embed)
+    for emoji in emojis:
+        await message.add_reaction(emoji)
+    return message, {"daos": daos}
 
 
 # Event listners
@@ -228,7 +270,7 @@ async def on_message(message):
         # TODO: It may make sense to send some sort of message here
         return
 
-    thread = get_thread(message.author.id, thread_key)
+    thread = await get_thread(message.author.id, thread_key)
     await thread.send(message)
 
 
@@ -250,7 +292,7 @@ async def on_raw_reaction_add(payload):
         # TODO: It may make sense to send some sort of message here
         return
 
-    thread = get_thread(user.id, thread_key)
+    thread = await get_thread(user.id, thread_key)
     await thread.handle_reaction(reaction, user)
 
 

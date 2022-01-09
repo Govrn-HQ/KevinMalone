@@ -166,7 +166,7 @@ class CongratsStep(BaseStep):
         channel = message.channel
         guild = await bot.fetch_guild(self.guild_id)
         sent_message = await channel.send(
-            f"Congratulations on completeing onboading to {guild.name}"
+            f"Congratulations on completeing onboarding to {guild.name}"
         )
         return sent_message, None
 
@@ -175,7 +175,7 @@ class CongratsStep(BaseStep):
             channel = await bot.fetch_channel(raw_reaction.channel_id)
             guild = await bot.fetch_guild(self.guild_id)
             await channel.send(
-                f"Congratulations on completeing onboading to {guild.name}"
+                f"Congratulations on completeing onboarding to {guild.name}"
             )
             return None, False
         raise Exception("Reacted with the wrong emoji")
@@ -333,8 +333,7 @@ class Onboarding(BaseThread):
             .add_next_step(CongratsStep(guild_id=self.guild_id))
         )
 
-    @property
-    def steps(self):
+    async def get_steps(self):
         data_retrival_chain = (
             self._data_retrival_steps()
             .add_next_step(self._govrn_oboard_steps().build())
