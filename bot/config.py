@@ -4,7 +4,7 @@ import aioredis
 import constants
 
 GUILD_IDS = [747131845317230695, 799328534988193793]
-REDIS_URL = constants.Bot.redis_url
+REDIS_HOST = constants.Bot.redis_host
 AIRTABLE_KEY = constants.Bot.airtable_key
 AIRTABLE_BASE = constants.Bot.airtable_base
 
@@ -31,4 +31,4 @@ def get_list_of_emojis(num):
 
 
 INFO_EMBED_COLOR = discord.Colour.blue()
-Redis = aioredis.from_url(f"redis://{REDIS_URL}")
+Redis = aioredis.from_url(f"redis://{REDIS_HOST}")
