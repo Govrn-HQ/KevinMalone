@@ -3,7 +3,7 @@ debug: !ENV "BOT_DEBUG"
 bot:
   prefix: "/"
   token: !ENV "API_TOKEN"
-  redis_host: !ENV "REDIS_HOST"
+  redis_url: !ENV "REDIS_URL"
   airtable_key: !ENV "AIRTABLE_KEY"
   airtable_base: !ENV "AIRTABLE_BASE"
   is_dev: !ENV "IS_DEV"
