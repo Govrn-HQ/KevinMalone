@@ -2,7 +2,7 @@ import json
 from config import Redis
 
 from common.threads.thread_builder import BaseStep, StepKeys
-from common.commands import bot
+from common.bot.bot import bot
 
 
 class SelectGuildEmojiStep(BaseStep):

@@ -3,7 +3,7 @@ import json
 import hashlib
 import logging
 
-from common.core import bot
+from common.bot.bot import bot
 from enum import Enum
 from config import Redis
 from typing import Dict, Optional
@@ -89,7 +89,12 @@ class BaseThread:
         self.step = self.find_step(self.steps, self.current_step)
         return self
 
+    def _check_step(self):
+        if not self.step:
+            raise Exception("Class was never awaited and step is not set!")
+
     async def send(self, message):
+        self.check_step()
         logger.info(f"Send {self.step.hash_}")
         if self.step.current.emoji is True:
             await message.channel.send(
@@ -135,7 +140,7 @@ class BaseThread:
 
     # TODO: assumption Emoji cannot follow emoji, message must follow emoji
     async def handle_reaction(self, reaction, user):
-
+        self.check_step()
         logger.info(f"Emoji {reaction}")
         # TODO: Add some error handling
         channel = await bot.fetch_channel(reaction.channel_id)
