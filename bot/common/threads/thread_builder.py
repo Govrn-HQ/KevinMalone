@@ -71,11 +71,12 @@ class BaseThread:
         self.current_step = current_step
         self.skip = False
 
-    def find_step(self, steps, hash_):
+    @classmethod
+    def find_step(cls, steps, hash_):
         if steps.hash_ == hash_:
             return steps
         for _, step in steps.next_steps.items():
-            steps = self.find_step(step, hash_)
+            steps = cls.find_step(step, hash_)
             if steps:
                 return steps
         return None
@@ -128,11 +129,7 @@ class BaseThread:
         return await Redis.set(
             self.user_id,
             build_cache_value(
-                self.name,
-                step.hash_,
-                self.guild_id,
-                msg.id,
-                metadata=metadata,
+                self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
             ),
         )
 

@@ -7,7 +7,7 @@ local:
 	python ./bot
 
 test:
-	pytest .
+	PYTHONPATH=bot/. pytest .
 
 lint:
 	flake8 . --count
