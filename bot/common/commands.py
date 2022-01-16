@@ -1,33 +1,32 @@
-import constants
+import bot.constants
 from distutils.util import strtobool
 import logging
 import hashlib
 import discord
 
 
-from common.airtable import (
+from bot.common.airtable import (
     find_user,
     create_user,
     get_discord_record,
     get_guild,
 )
-from common.bot.bot import bot
-from common.threads.thread_builder import (
+from bot.common.bot.bot import bot
+from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
 )
-from common.threads.onboarding import Onboarding
-from common.threads.update import UpdateProfile
-from config import (
+from bot.common.threads.onboarding import Onboarding
+from bot.common.threads.update import UpdateProfile
+from bot.config import (
     read_file,
     GUILD_IDS,
     INFO_EMBED_COLOR,
     Redis,
     get_list_of_emojis,
 )
-from exceptions import NotGuildException
-from exceptions import ErrorHandler
-from common.guild_select import get_thread, GuildSelect
+from bot.exceptions import NotGuildException, ErrorHandler
+from bot.common.guild_select import get_thread, GuildSelect
 
 
 logger = logging.getLogger(__name__)

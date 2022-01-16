@@ -1,6 +1,6 @@
 import json
 import hashlib
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
     Step,
@@ -8,11 +8,11 @@ from common.threads.thread_builder import (
     StepKeys,
     build_cache_value,
 )
-from common.threads.shared_steps import SelectGuildEmojiStep
+from bot.common.threads.shared_steps import SelectGuildEmojiStep
 
-from common.threads.onboarding import Onboarding  # noqa: E402
-from common.threads.update import UpdateProfile  # noqa: E402
-from common.threads.initial_contribution import InitialContributions
+from bot.common.threads.onboarding import Onboarding  # noqa: E402
+from bot.common.threads.update import UpdateProfile  # noqa: E402
+from bot.common.threads.initial_contribution import InitialContributions
 from config import Redis
 
 

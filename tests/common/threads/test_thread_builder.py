@@ -1,13 +1,18 @@
 import pytest
 import hashlib
 
-from common.threads.thread_builder import BaseThread, Step, BaseStep
+from bot.common.threads.thread_builder import BaseThread, Step, BaseStep
+from tests.test_utils import MockCache
+from unittest.mock import MagicMock, AsyncMock
 
 
 class EmojiLogic(BaseStep):
     emoji = True
 
     async def handle_emoji(self, raw_reaction):
+        pass
+
+    async def save(self, message, guild_id, user_id):
         pass
 
 
@@ -178,17 +183,7 @@ async def test_thread_steps():
 
 
 @pytest.mark.asyncio
-async def test_thread_steps():
-    root_hash = get_root_hash()
-
-    thread = await MultiForkThread(
-        user_id="", current_step=root_hash, message_id="", guild_id=""
-    )
-    assert thread.steps
-
-
-@pytest.mark.asyncio
-async def test_thread_steps():
+async def test_thread_send_raise():
     root_hash = get_root_hash()
 
     thread = MultiForkThread(
@@ -212,21 +207,154 @@ async def test_thread_send_emoji_step():
         await thread.send()
 
 
-# @pytest.mark.asyncio
-# async def test_thread_send_emoji_step():
-#     """
-#     Throw an error if we try to send on an emoji step
-#     """
-#     root_hash = get_root_hash()
-#     thread = EmojiThread(user_id="", current_step=root_hash, message_id="", guild_id="")
-#     with pytest.raises(Exception):
-#         await thread.send()
+@pytest.mark.asyncio
+async def test_thread_send_previous_step_no_skip():
+    """
+    Throw an error if we try to send on an emoji step
+    """
+    global saved
+    saved = False
+
+    class EmojiLogic(BaseStep):
+        name = "emoji"
+        emoji = True
+
+        async def handle_emoji(self, raw_reaction):
+            return None, None
+
+        async def send(self, message, user_id):
+            return None, None
+
+    class SendLogic(BaseStep):
+        name = "send"
+
+        async def send(self, message, user_id):
+            return None, None
+
+        async def save(self, message, guild_id, user_id):
+            global saved
+            saved = True
+
+    class MockThread(BaseThread):
+        async def get_steps(self):
+            return Step(current=SendLogic()).add_next_step(EmojiLogic()).build()
+
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+    )
+    hash_ = thread.step.get_next_step("emoji").hash_
+    second_step = await MockThread(
+        user_id="",
+        current_step=hash_,
+        message_id="",
+        guild_id="",
+        cache=MockCache,
+        discord_bot=AsyncMock(),
+    )
+
+    await second_step.handle_reaction(MagicMock(message_id=""), "")
+    assert saved is True
 
 
+@pytest.mark.asyncio
+async def test_thread_send_previous_step_skip(mocker):
+    """
+    Throw an error if we try to send on an emoji step
+    """
+    global saved
+    saved = False
+
+    class EmojiLogic(BaseStep):
+        name = "emoji"
+        emoji = True
+
+        async def handle_emoji(self, raw_reaction):
+            return None, True
+
+        async def send(self, message, user_id):
+            return None, None
+
+        async def save(self, message, guild_id, user_id):
+            global saved
+            saved = True
+
+    class MockThread(BaseThread):
+        async def get_steps(self):
+            return Step(current=EmojiLogic())
+
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+    )
+    await thread.handle_reaction(MagicMock(message_id=""), "")
+    assert saved is False
+
+
+@pytest.mark.asyncio
+async def test_thread_send_no_previous_step_skip(mocker):
+    """
+    Throw an error if we try to send on an emoji step
+    """
+    global saved
+    saved = False
+
+    class EmojiLogic(BaseStep):
+        name = "emoji"
+        emoji = True
+
+        async def handle_emoji(self, raw_reaction):
+            return None, True
+
+        async def send(self, message, user_id):
+            return None, None
+
+    class SendLogic(BaseStep):
+        name = "send"
+
+        async def send(self, message, user_id):
+            return None, None
+
+        async def save(self, message, guild_id, user_id):
+            global saved
+            saved = True
+
+    class MockThread(BaseThread):
+        async def get_steps(self):
+            return Step(current=SendLogic()).add_next_step(EmojiLogic()).build()
+
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+    )
+    hash_ = thread.step.get_next_step("emoji").hash_
+    second_step = await MockThread(
+        user_id="",
+        current_step=hash_,
+        message_id="",
+        guild_id="",
+        cache=MockCache,
+        discord_bot=AsyncMock(),
+    )
+
+    await second_step.handle_reaction(MagicMock(message_id=""), "")
+    assert saved is False
+
+
+# TODO: Abstract shared logic
 # send
-# 2. If there was a previous step and not skipped then save
-# 3. if there was a previous step and it was skipped then don't save
-# 4. if there wasn't a previous step then don't save
 # 5. if metadata from send then get thread and add metadata
 # 6. if not metadata skip
 # 7. if not next step then delete key

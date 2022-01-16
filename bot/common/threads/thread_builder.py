@@ -3,9 +3,10 @@ import json
 import hashlib
 import logging
 
-from common.bot.bot import bot
+from bot.common.bot.bot import bot
+from bot.common.cache import RedisCache
 from enum import Enum
-from config import Redis
+from bot.config import Redis
 from typing import Dict, Optional
 
 from dataclasses import dataclass, field
@@ -62,7 +63,15 @@ class StepKeys(Enum):
 
 
 class BaseThread:
-    def __init__(self, user_id, current_step, message_id, guild_id):
+    def __init__(
+        self,
+        user_id,
+        current_step,
+        message_id,
+        guild_id,
+        cache=RedisCache,
+        discord_bot=None,
+    ):
         if not current_step:
             raise Exception(f"No step for {current_step}")
         self.user_id = user_id
@@ -70,6 +79,10 @@ class BaseThread:
         self.guild_id = guild_id
         self.current_step = current_step
         self.skip = False
+        self.cache = cache()
+        self.bot = discord_bot
+        if not self.bot:
+            self.bot = bot
 
     @classmethod
     def find_step(cls, steps, hash_):
@@ -90,36 +103,30 @@ class BaseThread:
         return self
 
     def _check_step(self):
-        if not self.step:
+        if not hasattr(self, "step"):
             raise Exception("Class was never awaited and step is not set!")
 
     async def send(self, message):
-        self.check_step()
+        self._check_step()
         logger.info(f"Send {self.step.hash_}")
         if self.step.current.emoji is True:
             await message.channel.send(
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if (
-            self.step.previous_step
-            and self.step.previous_step.current
-            and not self.skip
-        ):
-            await self.step.previous_step.current.save(
-                message, self.guild_id, self.user_id
-            )
+        if self._should_save_previous_step:
+            await self._save_previous_step(message)
         msg, metadata = await self.step.current.send(message, self.user_id)
         if not metadata:
-            u = await Redis.get(self.user_id)
+            u = await self.cache.get(self.user_id)
             if u:
                 metadata = json.loads(u).get("metadata")
         if not self.step.next_steps:
-            return await Redis.delete(self.user_id)
+            return await self.cache.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
         override_step = await self.step.current.control_hook(message, self.user_id)
         if override_step == StepKeys.END.value:
-            return await Redis.delete(self.user_id)
+            return await self.cache.delete(self.user_id)
         if override_step:
             step = self.step.get_next_step(override_step)
             # TODO: I am guessing this metadata will need to be refactored
@@ -131,19 +138,31 @@ class BaseThread:
             self.step = step
             return await self.send(msg)
 
-        return await Redis.set(
+        return await self.cache.set(
             self.user_id,
             build_cache_value(
                 self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
             ),
         )
 
+    async def _save_previous_step(self, message):
+        return await self.step.previous_step.current.save(
+            message, self.guild_id, self.user_id
+        )
+
+    def _should_save_previous_step(self):
+        return (
+            self.step.previous_step
+            and self.step.previous_step.current
+            and not self.skip
+        )
+
     # TODO: assumption Emoji cannot follow emoji, message must follow emoji
     async def handle_reaction(self, reaction, user):
-        self.check_step()
+        self._check_step()
         logger.info(f"Emoji {reaction}")
         # TODO: Add some error handling
-        channel = await bot.fetch_channel(reaction.channel_id)
+        channel = await self.bot.fetch_channel(reaction.channel_id)
         message = await channel.fetch_message(reaction.message_id)
 
         if reaction.message_id != self.message_id:
@@ -155,24 +174,27 @@ class BaseThread:
         try:
             step_name, skip = await self.step.current.handle_emoji(reaction)
         except Exception:
-            logger.exception("Fiailed to handle the emoji")
+            logger.exception("Failed to handle the emoji")
             await channel.send(
                 "In order to move to the following step please "
                 "react with one of the already existing emojis"
             )
             return
+
+        self.skip = skip
         if skip is True:
             next_step = self.step
         else:
             if not step_name:
                 if not list(self.step.next_steps.values()):
-                    return await Redis.delete(self.user_id)
+                    if self._should_save_previous_step():
+                        await self._save_previous_step(message)
+                    return await self.cache.delete(self.user_id)
                 step_name = list(self.step.next_steps.values())[0].current.name
             next_step = self.step.get_next_step(step_name)
         if not next_step:
-            return await Redis.delete(self.user_id)
+            return await self.cache.delete(self.user_id)
         self.step = next_step
-        self.skip = skip
         await self.send(message)
 
 

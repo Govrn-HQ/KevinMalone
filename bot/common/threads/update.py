@@ -1,13 +1,13 @@
 import discord
 import json
 
-from common.airtable import find_user, update_user, get_user_record
-from config import (
+from bot.common.airtable import find_user, update_user, get_user_record
+from bot.config import (
     Redis,
     INFO_EMBED_COLOR,
     get_list_of_emojis,
 )
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseStep,
     StepKeys,
     Step,
@@ -16,7 +16,7 @@ from common.threads.thread_builder import (
     build_cache_value,
 )
 
-from common.threads.shared_steps import SelectGuildEmojiStep
+from bot.common.threads.shared_steps import SelectGuildEmojiStep
 
 
 class UpdateProfile(BaseThread):
@@ -95,8 +95,7 @@ class UpdateProfileFieldEmojiStep(BaseStep):
             "field": values.get("metadata").get(raw_reaction.emoji.name)
         }
         await Redis.set(
-            raw_reaction.user_id,
-            build_cache_value(**values),
+            raw_reaction.user_id, build_cache_value(**values),
         )
         return None, None
 

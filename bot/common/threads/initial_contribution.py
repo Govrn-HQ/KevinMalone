@@ -1,19 +1,19 @@
 import discord
 import hashlib
-from common.airtable import (
+from bot.common.airtable import (
     add_user_to_contribution,
     get_highest_contribution_records,
     get_contribution_records,
     get_user_record,
 )
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseThread,
     BaseStep,
     StepKeys,
     Step,
     ThreadKeys,
 )
-from config import YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR
+from bot.config import YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR
 
 
 class SendContributionInstructions(BaseStep):
@@ -37,9 +37,7 @@ class SendContributionInstructions(BaseStep):
         user_dao_id = user_record.get("fields").get("user_dao_id")
 
         record = await get_highest_contribution_records(
-            self.guild_id,
-            user_dao_id,
-            self.total_contributions,
+            self.guild_id, user_dao_id, self.total_contributions,
         )
         if record:
             embed = discord.Embed(

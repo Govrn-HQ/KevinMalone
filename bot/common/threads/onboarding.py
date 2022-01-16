@@ -1,19 +1,19 @@
 import constants
 import discord
-from common.airtable import (
+from bot.common.airtable import (
     find_user,
     update_user,
     get_guild_by_guild_id,
     get_user_record,
     create_user,
 )
-from config import (
+from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
     SKIP_EMOJI,
     INFO_EMBED_COLOR,
 )
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseStep,
     StepKeys,
     Step,
@@ -285,8 +285,7 @@ class GovrnProfilePromptReuse(BaseStep):
         await update_user(record_id, "discourse", fields.get("discourse"))
 
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            description="We updated your Govrn Profile!",
+            colour=INFO_EMBED_COLOR, description="We updated your Govrn Profile!",
         )
         embed.add_field(name="Display Name", value=fields.get("display_name"))
         embed.add_field(name="Twitter", value=fields.get("twitter"))
