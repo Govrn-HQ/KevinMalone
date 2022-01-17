@@ -235,11 +235,12 @@ class GovrnProfilePromptSuccess(BaseStep):
     async def send(self, message, user_id):
         channel = message.channel
         # Get past guild and add the name
-        guild_record = await get_guild_by_guild_id(self.guild_id)
+        record = await get_guild_by_guild_id(self.guild_id)
+        fields = record.get("fields")
 
         sent_message = await channel.send(
             "Would you like to reuse your profile data from "
-            f"{guild_record.get('guild_name')} guild?"
+            f"{fields.get('guild_name')} guild?"
         )
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
