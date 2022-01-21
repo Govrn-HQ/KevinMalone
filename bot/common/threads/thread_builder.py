@@ -64,22 +64,18 @@ class StepKeys(Enum):
 
 class BaseThread:
     def __init__(
-        self,
-        user_id,
-        current_step,
-        message_id,
-        guild_id,
-        cache=RedisCache,
-        discord_bot=None,
+        self, user_id, current_step, message_id, guild_id, cache=None, discord_bot=None,
     ):
         if not current_step:
             raise Exception(f"No step for {current_step}")
+        if cache is None:
+            cache = RedisCache()
         self.user_id = user_id
         self.message_id = message_id
         self.guild_id = guild_id
         self.current_step = current_step
         self.skip = False
-        self.cache = cache()
+        self.cache = cache
         self.bot = discord_bot
         if not self.bot:
             self.bot = bot
@@ -114,9 +110,10 @@ class BaseThread:
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if self._should_save_previous_step:
+        if self._should_save_previous_step():
             await self._save_previous_step(message)
         msg, metadata = await self.step.current.send(message, self.user_id)
+
         if not metadata:
             u = await self.cache.get(self.user_id)
             if u:

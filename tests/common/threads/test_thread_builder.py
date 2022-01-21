@@ -1,7 +1,8 @@
 import pytest
 import hashlib
+import json
 
-from bot.common.threads.thread_builder import BaseThread, Step, BaseStep
+from bot.common.threads.thread_builder import BaseThread, Step, BaseStep, StepKeys
 from tests.test_utils import MockCache
 from unittest.mock import MagicMock, AsyncMock
 
@@ -236,25 +237,30 @@ async def test_thread_send_previous_step_no_skip():
             saved = True
 
     class MockThread(BaseThread):
+        name = "thread"
+
         async def get_steps(self):
             return Step(current=SendLogic()).add_next_step(EmojiLogic()).build()
 
     root_hash = get_root_hash()
+
+    cache = MockCache()
     thread = await MockThread(
-        user_id="",
+        user_id="2",
         current_step=root_hash,
         message_id="",
         guild_id="",
         discord_bot=AsyncMock(),
+        cache=cache,
     )
     hash_ = thread.step.get_next_step("emoji").hash_
     second_step = await MockThread(
-        user_id="",
+        user_id="2",
         current_step=hash_,
         message_id="",
         guild_id="",
-        cache=MockCache,
         discord_bot=AsyncMock(),
+        cache=cache,
     )
 
     await second_step.handle_reaction(MagicMock(message_id=""), "")
@@ -284,6 +290,8 @@ async def test_thread_send_previous_step_skip(mocker):
             saved = True
 
     class MockThread(BaseThread):
+        name = "thread"
+
         async def get_steps(self):
             return Step(current=EmojiLogic())
 
@@ -321,7 +329,7 @@ async def test_thread_send_no_previous_step_skip(mocker):
         name = "send"
 
         async def send(self, message, user_id):
-            return None, None
+            return None, {"example": 0}
 
         async def save(self, message, guild_id, user_id):
             global saved
@@ -331,9 +339,10 @@ async def test_thread_send_no_previous_step_skip(mocker):
         async def get_steps(self):
             return Step(current=SendLogic()).add_next_step(EmojiLogic()).build()
 
+    cache = MockCache()
     root_hash = get_root_hash()
     thread = await MockThread(
-        user_id="",
+        user_id="1",
         current_step=root_hash,
         message_id="",
         guild_id="",
@@ -341,25 +350,332 @@ async def test_thread_send_no_previous_step_skip(mocker):
     )
     hash_ = thread.step.get_next_step("emoji").hash_
     second_step = await MockThread(
-        user_id="",
+        user_id="1",
         current_step=hash_,
         message_id="",
         guild_id="",
-        cache=MockCache,
+        cache=cache,
         discord_bot=AsyncMock(),
     )
 
     await second_step.handle_reaction(MagicMock(message_id=""), "")
     assert saved is False
+    assert cache.internal == {}
 
 
-# TODO: Abstract shared logic
-# send
-# 5. if metadata from send then get thread and add metadata
-# 6. if not metadata skip
-# 7. if not next step then delete key
-# 8. if overriden with end delete key
-# 9. if override step then call send again with that step
-# 10. if trigger is set then run the next step,
-# 11. if triggered then and next step is an emoji throw the appropriate error
-# 12. test cache is set at the end
+@pytest.mark.asyncio
+async def test_thread_metadata_none(mocker):
+    """
+    Throw an error if we try to send on an emoji step
+    """
+
+    class FirstLogic(BaseStep):
+        name = "first"
+
+        async def send(self, message, user_id):
+            return message, {"example": 0}
+
+    class SendLogic(BaseStep):
+        name = "send"
+
+        async def send(self, message, user_id):
+            return message, None
+
+    class LastLogic(BaseStep):
+        name = "last"
+
+        async def send(self, message, user_id):
+            return None, None
+
+    class MockThread(BaseThread):
+        name = "thread"
+
+        async def get_steps(self):
+            return (
+                Step(current=FirstLogic())
+                .add_next_step(SendLogic())
+                .add_next_step(LastLogic())
+                .build()
+            )
+
+    cache = MockCache()
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="1",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await thread.send(AsyncMock(message_id="", id="1"))
+
+    hash_ = thread.step.get_next_step("send").hash_
+    t2 = await MockThread(
+        user_id="1",
+        current_step=hash_,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await t2.send(AsyncMock(message_id="", id="1"))
+    assert json.loads(await cache.get("1")).get("metadata") == {"example": 0}
+
+
+@pytest.mark.asyncio
+async def test_thread_metadata_set(mocker):
+    """
+    Throw an error if we try to send on an emoji step
+    """
+
+    class FirstLogic(BaseStep):
+        name = "first"
+
+        async def send(self, message, user_id):
+            return message, {"example": 0}
+
+    class SendLogic(BaseStep):
+        name = "send"
+
+        async def send(self, message, user_id):
+            return message, {"example": 2}
+
+    class LastLogic(BaseStep):
+        name = "last"
+
+        async def send(self, message, user_id):
+            return None, None
+
+    class MockThread(BaseThread):
+        name = "thread"
+
+        async def get_steps(self):
+            return (
+                Step(current=FirstLogic())
+                .add_next_step(SendLogic())
+                .add_next_step(LastLogic())
+                .build()
+            )
+
+    cache = MockCache()
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="1",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await thread.send(AsyncMock(message_id="", id="1"))
+
+    hash_ = thread.step.get_next_step("send").hash_
+    t2 = await MockThread(
+        user_id="1",
+        current_step=hash_,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await t2.send(AsyncMock(message_id="", id="1"))
+    assert json.loads(await cache.get("1")).get("metadata") == {"example": 2}
+
+
+@pytest.mark.asyncio
+async def test_thread_control_hook_end(mocker):
+    """
+    Throw an error if we try to send on an emoji step
+    """
+
+    class FirstLogic(BaseStep):
+        name = "first"
+
+        async def send(self, message, user_id):
+            return message, {"example": 0}
+
+    class SendLogic(BaseStep):
+        name = "send"
+
+        async def send(self, message, user_id):
+            return message, {"example": 2}
+
+        async def control_hook(self, message, user_id):
+            return StepKeys.END.value
+
+    class LastLogic(BaseStep):
+        name = "last"
+
+        async def send(self, message, user_id):
+            return None, None
+
+    class MockThread(BaseThread):
+        name = "thread"
+
+        async def get_steps(self):
+            return (
+                Step(current=FirstLogic())
+                .add_next_step(SendLogic())
+                .add_next_step(LastLogic())
+                .build()
+            )
+
+    cache = MockCache()
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="1",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await thread.send(AsyncMock(message_id="", id="1"))
+    assert json.loads(await cache.get("1")) is not None
+
+    hash_ = thread.step.get_next_step("send").hash_
+    t2 = await MockThread(
+        user_id="1",
+        current_step=hash_,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await t2.send(AsyncMock(message_id="", id="1"))
+    assert await cache.get("1") is None
+
+
+@pytest.mark.asyncio
+async def test_thread_override_step_and_step(mocker):
+    """
+    Throw an error if we try to send on an emoji step
+    """
+
+    global third_step
+    third_step = False
+
+    class FirstLogic(BaseStep):
+        name = "first"
+
+        async def send(self, message, user_id):
+            return message, {"example": 0}
+
+    class SendLogic(BaseStep):
+        name = "send"
+
+        async def send(self, message, user_id):
+            return message, {"example": 2}
+
+        async def control_hook(self, message, user_id):
+            return "last"
+
+    class LastLogic(BaseStep):
+        name = "last"
+
+        async def send(self, message, user_id):
+            global third_step
+            third_step = True
+            return None, None
+
+    class MockThread(BaseThread):
+        name = "thread"
+
+        async def get_steps(self):
+            return (
+                Step(current=FirstLogic())
+                .add_next_step(SendLogic())
+                .add_next_step(LastLogic())
+                .build()
+            )
+
+    cache = MockCache()
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="1",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await thread.send(AsyncMock(message_id="", id="1"))
+
+    hash_ = thread.step.get_next_step("send").hash_
+    t2 = await MockThread(
+        user_id="1",
+        current_step=hash_,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await t2.send(AsyncMock(message_id="", id="1"))
+    assert third_step is True
+
+
+@pytest.mark.asyncio
+async def test_thread_trigger(mocker):
+    """
+    Throw an error if we try to send on an emoji step
+    """
+
+    global third_step
+    third_step = False
+
+    class FirstLogic(BaseStep):
+        name = "first"
+
+        async def send(self, message, user_id):
+            return message, {"example": 0}
+
+    class SendLogic(BaseStep):
+        name = "send"
+        trigger = True
+
+        async def send(self, message, user_id):
+            return message, {"example": 2}
+
+    class LastLogic(BaseStep):
+        name = "last"
+
+        async def send(self, message, user_id):
+            global third_step
+            third_step = True
+            return None, None
+
+    class MockThread(BaseThread):
+        name = "thread"
+
+        async def get_steps(self):
+            return (
+                Step(current=FirstLogic())
+                .add_next_step(SendLogic())
+                .add_next_step(LastLogic())
+                .build()
+            )
+
+    cache = MockCache()
+    root_hash = get_root_hash()
+    thread = await MockThread(
+        user_id="1",
+        current_step=root_hash,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await thread.send(AsyncMock(message_id="", id="1"))
+
+    hash_ = thread.step.get_next_step("send").hash_
+    t2 = await MockThread(
+        user_id="1",
+        current_step=hash_,
+        message_id="",
+        guild_id="",
+        discord_bot=AsyncMock(),
+        cache=cache,
+    )
+    await t2.send(AsyncMock(message_id="", id="1"))
+    assert third_step is True
