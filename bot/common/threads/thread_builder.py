@@ -63,6 +63,39 @@ class StepKeys(Enum):
 
 
 class BaseThread:
+    """Base class for handling multi-interaction bot conversations
+
+    Developers define the interaction tree in a series of steps. In a 
+    conversation a user can either react to a message with an emoji or
+    reply to a previous message. The thread will handle either of these
+    scenarios and store the end state in a cache to pick up the current
+    conversation whenever it is continued.
+
+    Args:
+      user_id: Discord user id of the user interacting with the bot
+      current_step: A hash of the current step of the bot interaction
+      message_id: The id of the last message sent in the interaction
+      guild_id: the discord guild id the interaction applies to, this
+        can be None in some situations
+      cache: The cache to store the state at the end of a step
+      discord_bot: The discord bot client used to interact with the
+        discord api
+
+    Attributes:
+      user_id: Discord user id of the user interacting with the bot
+      message_id: The id of the last message sent in the interaction
+      guild_id: the discord guild id the interaction applies to, this
+        can be None in some situations
+      current_step: A hash of the current step of the bot interaction
+      skip: A boolean representing whether the next step should be skipped
+      cache: The cache to store the state at the end of a step
+      discord_bot: The discord bot client used to interact with the
+        discord api
+      steps: A tree of the interaction flow from the root node
+      step: A Step object of the current step of the interaction
+
+    """
+
     def __init__(
         self, user_id, current_step, message_id, guild_id, cache=None, discord_bot=None,
     ):
@@ -82,6 +115,17 @@ class BaseThread:
 
     @classmethod
     def find_step(cls, steps, hash_):
+        """Finds step in the thread tree
+
+        Gets the the step that corresponds to the the provide hash
+
+        Args:
+          steps: A tree of steps that comprise a discord bot conversation
+          hash_: The sha256 of the step that needs to be found
+
+        Returns:
+          A Step object that matches the hash or None
+        """
         if steps.hash_ == hash_:
             return steps
         for _, step in steps.next_steps.items():
@@ -103,6 +147,22 @@ class BaseThread:
             raise Exception("Class was never awaited and step is not set!")
 
     async def send(self, message):
+        """Run the send method on a step
+
+        Given a message, execute the send command for the current step of
+        the thread. If the step is an emoji step it cannot be run;
+        if there is an override step that step will be run after the current
+        step. If the current step has trigger set to true it will
+        immediately run the next step
+
+        Args:
+          message: A discord message object with the users response
+            to the last step
+
+        Returns:
+          A boolean indicating whether the next step was set in the cache
+          or if it is the final step whether it was deleted from the cache
+        """
         self._check_step()
         logger.info(f"Send {self.step.hash_}")
         if self.step.current.emoji is True:
@@ -156,6 +216,23 @@ class BaseThread:
 
     # TODO: assumption Emoji cannot follow emoji, message must follow emoji
     async def handle_reaction(self, reaction, user):
+        """Run the handle emoji method on a step
+
+        Given a reaction on the previous message and the user
+        who has applied that reaction run the handle_emoji logic
+        on the current step. If skip reaction then skip the next
+        step (a send step). If the step is an end step remove thread
+        from the cache
+
+        Args:
+          reaction: A discord reaction that holds the emoji applied to the
+            last message in the thread.
+          user: A discord user of the user who added the reaction
+
+        Returns:
+          None
+
+        """
         self._check_step()
         logger.info(f"Emoji {reaction}")
         # TODO: Add some error handling
@@ -196,6 +273,21 @@ class BaseThread:
 
 
 class BaseStep:
+    """A base class that holds logic for Step objects
+
+    When implemented this class will have the logic
+    necessary to move on to the next step with the
+    typical methods being a send, save, handle_emoji
+    and control_hook.
+
+    Attributes:
+      emoji: A boolean indicating whether this is an emoji
+        step
+      trigger: A boolean indicating whether to immediately
+        run the next step.
+
+    """
+
     emoji = False
     trigger = False
 
@@ -216,6 +308,18 @@ class Step:
     hash_: str = hashlib.sha256("".encode()).hexdigest()
 
     def add_next_step(self, step):
+        """Add a new Step after the current
+
+        Adds a step that the current steps points to
+        and derives a hash from the current and next
+        step.
+
+        Args:
+          step: A Step object representing the next step
+
+        Returns:
+          A Step obeject representing the next step
+        """
         if isinstance(step, BaseStep):
             step = Step(current=step)
         step.previous_step = self
@@ -226,6 +330,20 @@ class Step:
         return step
 
     def fork(self, logic_steps):
+        """Add multiple branches to the current step
+
+        If a reaction or response causes a branching then
+        the root of each of these branches can be added
+        with this method.
+
+        Args:
+          logic_steps: An Iterable of step objects that
+            represent each branch of the fork
+
+        Returns:
+          The current Step
+
+        """
         if not logic_steps:
             Exception("No steps specified")
         for step in logic_steps:
@@ -250,6 +368,14 @@ class Step:
         return copy.copy(step)
 
     def build(self):
+        """Finds the root node
+
+        Gets the root node from any position in the tree
+
+        Returns:
+          The root Step
+
+        """
         previous = self.previous_step
         while previous:
             if not previous.previous_step:
@@ -260,6 +386,17 @@ class Step:
         return previous
 
     def get_next_step(self, key):
+        """Gets next step by name
+
+        Args:
+          key: a string that corresponds to the name that is being
+            fetched.
+
+        Raises:
+          Exception: If the key does not correspond to one of the next 
+            steps.
+
+        """
         step = self.next_steps.get(key, "")
         if step == "":
             raise Exception(

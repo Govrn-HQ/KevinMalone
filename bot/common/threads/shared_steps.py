@@ -6,6 +6,13 @@ from bot.common.bot.bot import bot
 
 
 class SelectGuildEmojiStep(BaseStep):
+    """A step to allow a user to select a guild
+
+    Typically used at the beginning of threads to 
+    help set the guild_id value when a user interacts
+    in DMs.
+    """
+
     name = StepKeys.SELECT_GUILD_EMOJI.value
     emoji = True
 

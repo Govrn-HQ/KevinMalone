@@ -183,14 +183,7 @@ class InitialContributions(BaseThread):
             else:
                 # Return the yes path
                 previous_step.add_next_step(current_tree)
-                print(current_tree.next_steps.keys())
-                print(
-                    current_tree.next_steps.get(
-                        StepKeys.INITIAL_CONTRIBUTION_ACCEPT.value
-                    )
-                )
                 previous_step = yes_fork
-            print(previous_step.hash_)
         if not previous_step:
             raise Exception(
                 "Steps are none, most likely no contribution records were found"
