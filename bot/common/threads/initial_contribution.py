@@ -17,9 +17,14 @@ from bot.config import YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR
 
 
 class SendContributionInstructions(BaseStep):
-    """
-    There is an assumption here that there will be
-    at least one contribution.
+    """Ask the user whether they have completed the contribution
+
+    Attributes:
+      guild_id: id of the guild which the contribution relates to
+      contribution_number: identifying number of the contribution
+      instruction: The instruction for the contribution
+      total_contributions: the number of initial contributions
+      no_record: Whether there exists an initial record or not
     """
 
     name = StepKeys.SEND_CONTRIBUTION_INSTRUCTION.value
@@ -69,6 +74,8 @@ class SendContributionInstructions(BaseStep):
 
 
 class InitialContributionConfirmEmojiStep(BaseStep):
+    """Emoji reaction to the instructions for the initial contribution"""
+
     name = StepKeys.INITIAL_CONTRIBUTION_CONFIRM_EMOJI.value
     emoji = True
 
@@ -85,6 +92,8 @@ class InitialContributionConfirmEmojiStep(BaseStep):
 
 
 class InitialContributionAccept(BaseStep):
+    """Send congradulation if contribution was completed"""
+
     name = StepKeys.INITIAL_CONTRIBUTION_ACCEPT.value
     trigger = True
 
@@ -103,6 +112,8 @@ class InitialContributionAccept(BaseStep):
 
 
 class InitialContributionReject(BaseStep):
+    """Send resubmit instructions if the contribution was not completed"""
+
     name = StepKeys.INITIAL_CONTRIBUTION_REJECT.value
 
     async def send(self, message, userid):
