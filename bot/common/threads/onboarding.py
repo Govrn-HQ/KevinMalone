@@ -1,19 +1,19 @@
 import constants
 import discord
-from common.airtable import (
+from bot.common.airtable import (
     find_user,
     update_user,
     get_guild_by_guild_id,
     get_user_record,
     create_user,
 )
-from config import (
+from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
     SKIP_EMOJI,
     INFO_EMBED_COLOR,
 )
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseStep,
     StepKeys,
     Step,
@@ -30,6 +30,8 @@ def _handle_skip_emoji(raw_reaction, guild_id):
 
 
 class UserDisplayConfirmationStep(BaseStep):
+    """Confirm display name fetched from discord"""
+
     name = StepKeys.USER_DISPLAY_CONFIRM.value
     msg = "Would you like your Govrn display name to be"
 
@@ -49,6 +51,8 @@ class UserDisplayConfirmationStep(BaseStep):
 # save is a single branch so it can be one to one
 # handle_emoji can branch and the airtable logic can handle that
 class UserDisplayConfirmationEmojiStep(BaseStep):
+    """Emoji confirmation step of whether the Discord name should be accepted"""
+
     name = StepKeys.USER_DISPLAY_CONFIRM_EMOJI.value
     emoji = True
 
@@ -70,6 +74,8 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
 
 
 class UserDisplaySubmitStep(BaseStep):
+    """Submit new display name to be saved"""
+
     name = StepKeys.USER_DISPLAY_SUBMIT.value
 
     async def send(self, message, user_id):
@@ -88,6 +94,8 @@ class UserDisplaySubmitStep(BaseStep):
 
 
 class AddUserTwitterStep(BaseStep):
+    """Step to submit twitter name for the govrn profile"""
+
     name = StepKeys.ADD_USER_TWITTER.value
 
     def __init__(self, guild_id):
@@ -112,6 +120,8 @@ class AddUserTwitterStep(BaseStep):
 
 
 class AddUserWalletAddressStep(BaseStep):
+    """Step to submit wallet address for the govrn profile"""
+
     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
 
     def __init__(self, guild_id):
@@ -134,6 +144,8 @@ class AddUserWalletAddressStep(BaseStep):
 
 
 class AddDiscourseStep(BaseStep):
+    """Step to submit discourse username for the govrn profile"""
+
     name = StepKeys.ADD_USER_DISCOURSE.value
 
     def __init__(self, guild_id):
@@ -156,6 +168,8 @@ class AddDiscourseStep(BaseStep):
 
 
 class CongratsStep(BaseStep):
+    """Send congratulations for completing the profile"""
+
     name = StepKeys.ONBOARDING_CONGRATS.value
 
     def __init__(self, guild_id):
@@ -188,6 +202,8 @@ class CongratsStep(BaseStep):
 
 
 class GovrnProfilePrompt(BaseStep):
+    """Ask whether user wants to join the Govrn guild"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT.value
 
     async def send(self, message, user_id):
@@ -201,6 +217,8 @@ class GovrnProfilePrompt(BaseStep):
 
 
 class GovrnProfilePromptEmoji(BaseStep):
+    """Accept user emoji reaction to whether they want to join Govrn"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_EMOJI.value
 
     @property
@@ -216,6 +234,8 @@ class GovrnProfilePromptEmoji(BaseStep):
 
 
 class GovrnProfilePromptReject(BaseStep):
+    """Handle situation where does not want to join the govrn guild"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value
 
     async def send(self, message, user_id):
@@ -227,6 +247,8 @@ class GovrnProfilePromptReject(BaseStep):
 
 
 class GovrnProfilePromptSuccess(BaseStep):
+    """Ask user whether they want to reuse their guild profile"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT.value
 
     def __init__(self, guild_id):
@@ -248,6 +270,8 @@ class GovrnProfilePromptSuccess(BaseStep):
 
 
 class GovrnProfilePromptSuccessEmoji(BaseStep):
+    """Handle user reaction to whether they want to reuse their profile"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT_EMOJI.value
 
     def __init__(self, parent):

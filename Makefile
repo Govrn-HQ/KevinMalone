@@ -7,7 +7,11 @@ local:
 	python ./bot
 
 test:
-	pytest .
+	pytest ./tests -vv
+
+coverage:
+	coverage run -m pytest ./tests
+	coverage html
 
 lint:
 	flake8 . --count

@@ -1,25 +1,30 @@
 import discord
 import hashlib
-from common.airtable import (
+from bot.common.airtable import (
     add_user_to_contribution,
     get_highest_contribution_records,
     get_contribution_records,
     get_user_record,
 )
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseThread,
     BaseStep,
     StepKeys,
     Step,
     ThreadKeys,
 )
-from config import YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR
+from bot.config import YES_EMOJI, NO_EMOJI, INFO_EMBED_COLOR
 
 
 class SendContributionInstructions(BaseStep):
-    """
-    There is an assumption here that there will be
-    at least one contribution.
+    """Ask the user whether they have completed the contribution
+
+    Attributes:
+      guild_id: id of the guild which the contribution relates to
+      contribution_number: identifying number of the contribution
+      instruction: The instruction for the contribution
+      total_contributions: the number of initial contributions
+      no_record: Whether there exists an initial record or not
     """
 
     name = StepKeys.SEND_CONTRIBUTION_INSTRUCTION.value
@@ -71,6 +76,8 @@ class SendContributionInstructions(BaseStep):
 
 
 class InitialContributionConfirmEmojiStep(BaseStep):
+    """Emoji reaction to the instructions for the initial contribution"""
+
     name = StepKeys.INITIAL_CONTRIBUTION_CONFIRM_EMOJI.value
     emoji = True
 
@@ -87,6 +94,8 @@ class InitialContributionConfirmEmojiStep(BaseStep):
 
 
 class InitialContributionAccept(BaseStep):
+    """Send congradulation if contribution was completed"""
+
     name = StepKeys.INITIAL_CONTRIBUTION_ACCEPT.value
     trigger = True
 
@@ -105,6 +114,8 @@ class InitialContributionAccept(BaseStep):
 
 
 class InitialContributionReject(BaseStep):
+    """Send resubmit instructions if the contribution was not completed"""
+
     name = StepKeys.INITIAL_CONTRIBUTION_REJECT.value
 
     async def send(self, message, userid):
@@ -185,14 +196,7 @@ class InitialContributions(BaseThread):
             else:
                 # Return the yes path
                 previous_step.add_next_step(current_tree)
-                print(current_tree.next_steps.keys())
-                print(
-                    current_tree.next_steps.get(
-                        StepKeys.INITIAL_CONTRIBUTION_ACCEPT.value
-                    )
-                )
                 previous_step = yes_fork
-            print(previous_step.hash_)
         if not previous_step:
             raise Exception(
                 "Steps are none, most likely no contribution records were found"

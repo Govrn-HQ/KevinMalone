@@ -1,7 +1,7 @@
 import discord
 import json
 import aioredis
-import constants
+from bot import constants
 
 GUILD_IDS = [747131845317230695, 799328534988193793]
 REDIS_URL = constants.Bot.redis_url

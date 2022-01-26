@@ -1,9 +1,13 @@
 # KevinMalone
+
 A self reporting bot for the movement model
 
 ## Functionality
 
 - `/report` - creates a private message to the user with a link the guild's airtable
+- `/join` - Join a guild where this command is run
+- `/update` - Update a profile for a given community
+- `/add_onboarding_contributions` - Ask user whether they have completed the initial contributions
 
 ## Development in VS Code
 
@@ -39,13 +43,12 @@ Requires the following VS Code extensions to be installed:
 
 - Open Folder w/o Dev Container and check in code
 
-
 ## Setup Docker and Dev Container
 
 - Create a new folder
 - add a `bot` folder with these files:
-  - __init__.py
-  - __main__.py
+  - **init**.py
+  - **main**.py
   - commands.py
 - `Docker: Add Docker files to Workspace`
   - Application Platform: `Python: General`

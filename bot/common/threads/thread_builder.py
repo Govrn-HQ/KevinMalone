@@ -3,9 +3,9 @@ import json
 import hashlib
 import logging
 
-from common.core import bot
+from bot.common.bot.bot import bot
+from bot.common.cache import RedisCache
 from enum import Enum
-from config import Redis
 from typing import Dict, Optional
 
 from dataclasses import dataclass, field
@@ -62,20 +62,79 @@ class StepKeys(Enum):
 
 
 class BaseThread:
-    def __init__(self, user_id, current_step, message_id, guild_id):
+    """Base class for handling multi-interaction bot conversations
+
+    Developers define the interaction tree in a series of steps. In a
+    conversation a user can either react to a message with an emoji or
+    reply to a previous message. The thread will handle either of these
+    scenarios and store the end state in a cache to pick up the current
+    conversation whenever it is continued.
+
+    Args:
+      user_id: Discord user id of the user interacting with the bot
+      current_step: A hash of the current step of the bot interaction
+      message_id: The id of the last message sent in the interaction
+      guild_id: the discord guild id the interaction applies to, this
+        can be None in some situations
+      cache: The cache to store the state at the end of a step
+      discord_bot: The discord bot client used to interact with the
+        discord api
+
+    Attributes:
+      user_id: Discord user id of the user interacting with the bot
+      message_id: The id of the last message sent in the interaction
+      guild_id: the discord guild id the interaction applies to, this
+        can be None in some situations
+      current_step: A hash of the current step of the bot interaction
+      skip: A boolean representing whether the next step should be skipped
+      cache: The cache to store the state at the end of a step
+      discord_bot: The discord bot client used to interact with the
+        discord api
+      steps: A tree of the interaction flow from the root node
+      step: A Step object of the current step of the interaction
+
+    """
+
+    def __init__(
+        self,
+        user_id,
+        current_step,
+        message_id,
+        guild_id,
+        cache=None,
+        discord_bot=None,
+    ):
         if not current_step:
             raise Exception(f"No step for {current_step}")
+        if cache is None:
+            cache = RedisCache()
         self.user_id = user_id
         self.message_id = message_id
         self.guild_id = guild_id
         self.current_step = current_step
         self.skip = False
+        self.cache = cache
+        self.bot = discord_bot
+        if not self.bot:
+            self.bot = bot
 
-    def find_step(self, steps, hash_):
+    @classmethod
+    def find_step(cls, steps, hash_):
+        """Finds step in the thread tree
+
+        Gets the the step that corresponds to the the provide hash
+
+        Args:
+          steps: A tree of steps that comprise a discord bot conversation
+          hash_: The sha256 of the step that needs to be found
+
+        Returns:
+          A Step object that matches the hash or None
+        """
         if steps.hash_ == hash_:
             return steps
         for _, step in steps.next_steps.items():
-            steps = self.find_step(step, hash_)
+            steps = cls.find_step(step, hash_)
             if steps:
                 return steps
         return None
@@ -88,32 +147,48 @@ class BaseThread:
         self.step = self.find_step(self.steps, self.current_step)
         return self
 
+    def _check_step(self):
+        if not hasattr(self, "step"):
+            raise Exception("Class was never awaited and step is not set!")
+
     async def send(self, message):
+        """Run the send method on a step
+
+        Given a message, execute the send command for the current step of
+        the thread. If the step is an emoji step it cannot be run;
+        if there is an override step that step will be run after the current
+        step. If the current step has trigger set to true it will
+        immediately run the next step
+
+        Args:
+          message: A discord message object with the users response
+            to the last step
+
+        Returns:
+          A boolean indicating whether the next step was set in the cache
+          or if it is the final step whether it was deleted from the cache
+        """
+        self._check_step()
         logger.info(f"Send {self.step.hash_}")
         if self.step.current.emoji is True:
             await message.channel.send(
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if (
-            self.step.previous_step
-            and self.step.previous_step.current
-            and not self.skip
-        ):
-            await self.step.previous_step.current.save(
-                message, self.guild_id, self.user_id
-            )
+        if self._should_save_previous_step():
+            await self._save_previous_step(message)
         msg, metadata = await self.step.current.send(message, self.user_id)
+
         if not metadata:
-            u = await Redis.get(self.user_id)
+            u = await self.cache.get(self.user_id)
             if u:
                 metadata = json.loads(u).get("metadata")
         if not self.step.next_steps:
-            return await Redis.delete(self.user_id)
+            return await self.cache.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
         override_step = await self.step.current.control_hook(message, self.user_id)
         if override_step == StepKeys.END.value:
-            return await Redis.delete(self.user_id)
+            return await self.cache.delete(self.user_id)
         if override_step:
             step = self.step.get_next_step(override_step)
             # TODO: I am guessing this metadata will need to be refactored
@@ -125,7 +200,7 @@ class BaseThread:
             self.step = step
             return await self.send(msg)
 
-        return await Redis.set(
+        return await self.cache.set(
             self.user_id,
             build_cache_value(
                 self.name,
@@ -136,12 +211,41 @@ class BaseThread:
             ),
         )
 
+    async def _save_previous_step(self, message):
+        return await self.step.previous_step.current.save(
+            message, self.guild_id, self.user_id
+        )
+
+    def _should_save_previous_step(self):
+        return (
+            self.step.previous_step
+            and self.step.previous_step.current
+            and not self.skip
+        )
+
     # TODO: assumption Emoji cannot follow emoji, message must follow emoji
     async def handle_reaction(self, reaction, user):
+        """Run the handle emoji method on a step
 
+        Given a reaction on the previous message and the user
+        who has applied that reaction run the handle_emoji logic
+        on the current step. If skip reaction then skip the next
+        step (a send step). If the step is an end step remove thread
+        from the cache
+
+        Args:
+          reaction: A discord reaction that holds the emoji applied to the
+            last message in the thread.
+          user: A discord user of the user who added the reaction
+
+        Returns:
+          None
+
+        """
+        self._check_step()
         logger.info(f"Emoji {reaction}")
         # TODO: Add some error handling
-        channel = await bot.fetch_channel(reaction.channel_id)
+        channel = await self.bot.fetch_channel(reaction.channel_id)
         message = await channel.fetch_message(reaction.message_id)
 
         if reaction.message_id != self.message_id:
@@ -153,28 +257,46 @@ class BaseThread:
         try:
             step_name, skip = await self.step.current.handle_emoji(reaction)
         except Exception:
-            logger.exception("Fiailed to handle the emoji")
+            logger.exception("Failed to handle the emoji")
             await channel.send(
                 "In order to move to the following step please "
                 "react with one of the already existing emojis"
             )
             return
+
+        self.skip = skip
         if skip is True:
             next_step = self.step
         else:
             if not step_name:
                 if not list(self.step.next_steps.values()):
-                    return await Redis.delete(self.user_id)
+                    if self._should_save_previous_step():
+                        await self._save_previous_step(message)
+                    return await self.cache.delete(self.user_id)
                 step_name = list(self.step.next_steps.values())[0].current.name
             next_step = self.step.get_next_step(step_name)
         if not next_step:
-            return await Redis.delete(self.user_id)
+            return await self.cache.delete(self.user_id)
         self.step = next_step
-        self.skip = skip
         await self.send(message)
 
 
 class BaseStep:
+    """A base class that holds logic for Step objects
+
+    When implemented this class will have the logic
+    necessary to move on to the next step with the
+    typical methods being a send, save, handle_emoji
+    and control_hook.
+
+    Attributes:
+      emoji: A boolean indicating whether this is an emoji
+        step
+      trigger: A boolean indicating whether to immediately
+        run the next step.
+
+    """
+
     emoji = False
     trigger = False
 
@@ -195,6 +317,18 @@ class Step:
     hash_: str = hashlib.sha256("".encode()).hexdigest()
 
     def add_next_step(self, step):
+        """Add a new Step after the current
+
+        Adds a step that the current steps points to
+        and derives a hash from the current and next
+        step.
+
+        Args:
+          step: A Step object representing the next step
+
+        Returns:
+          A Step obeject representing the next step
+        """
         if isinstance(step, BaseStep):
             step = Step(current=step)
         step.previous_step = self
@@ -205,6 +339,20 @@ class Step:
         return step
 
     def fork(self, logic_steps):
+        """Add multiple branches to the current step
+
+        If a reaction or response causes a branching then
+        the root of each of these branches can be added
+        with this method.
+
+        Args:
+          logic_steps: An Iterable of step objects that
+            represent each branch of the fork
+
+        Returns:
+          The current Step
+
+        """
         if not logic_steps:
             Exception("No steps specified")
         for step in logic_steps:
@@ -229,6 +377,14 @@ class Step:
         return copy.copy(step)
 
     def build(self):
+        """Finds the root node
+
+        Gets the root node from any position in the tree
+
+        Returns:
+          The root Step
+
+        """
         previous = self.previous_step
         while previous:
             if not previous.previous_step:
@@ -239,6 +395,17 @@ class Step:
         return previous
 
     def get_next_step(self, key):
+        """Gets next step by name
+
+        Args:
+          key: a string that corresponds to the name that is being
+            fetched.
+
+        Raises:
+          Exception: If the key does not correspond to one of the next
+            steps.
+
+        """
         step = self.next_steps.get(key, "")
         if step == "":
             raise Exception(

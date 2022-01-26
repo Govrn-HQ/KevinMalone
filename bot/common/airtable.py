@@ -1,7 +1,7 @@
 import asyncio
 from pyairtable import Table
 from pyairtable.formulas import match
-from config import AIRTABLE_BASE, AIRTABLE_KEY
+from bot.config import AIRTABLE_BASE, AIRTABLE_KEY
 
 
 async def find_user(user_id, guild_id):

@@ -1,36 +1,32 @@
-import constants
+from bot import constants
 from distutils.util import strtobool
 import logging
-import discord
 import hashlib
-
-intents = discord.Intents.all()
-bot = discord.Bot(intents=intents)
+import discord
 
 
-from common.core import bot  # noqa: E402
-from common.airtable import (  # noqa: E402
+from bot.common.airtable import (
     find_user,
     create_user,
     get_discord_record,
     get_guild,
 )
-from common.threads.thread_builder import (  # noqa: E402
+from bot.common.bot.bot import bot
+from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
 )
-from common.threads.onboarding import Onboarding  # noqa: E402
-from common.threads.update import UpdateProfile  # noqa: E402
-from config import (  # noqa: E402
+from bot.common.threads.onboarding import Onboarding
+from bot.common.threads.update import UpdateProfile
+from bot.config import (
     read_file,
     GUILD_IDS,
     INFO_EMBED_COLOR,
     Redis,
     get_list_of_emojis,
 )
-from exceptions import NotGuildException  # noqa: E402
-from exceptions import ErrorHandler  # noqa: E402
-from common.guild_select import get_thread, GuildSelect  # noqa: E402
+from bot.exceptions import NotGuildException, ErrorHandler
+from bot.common.guild_select import get_thread, GuildSelect
 
 
 logger = logging.getLogger(__name__)
