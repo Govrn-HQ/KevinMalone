@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 # install git to pull code for installation
 RUN apt update
