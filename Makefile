@@ -4,7 +4,7 @@ IMAGE_PATH = /guild/govrn
 TAG = latest
 
 local:
-	python ./bot
+	PYTHONPATH=. python ./bot
 
 test:
 	pytest ./tests -vv

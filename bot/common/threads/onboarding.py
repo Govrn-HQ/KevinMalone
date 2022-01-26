@@ -20,7 +20,7 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
     BaseThread,
 )
-from common.core import bot
+from bot.common.bot import bot
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
