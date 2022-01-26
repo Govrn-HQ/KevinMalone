@@ -42,7 +42,9 @@ class SendContributionInstructions(BaseStep):
         user_dao_id = user_record.get("fields").get("user_dao_id")
 
         record = await get_highest_contribution_records(
-            self.guild_id, user_dao_id, self.total_contributions,
+            self.guild_id,
+            user_dao_id,
+            self.total_contributions,
         )
         if record:
             embed = discord.Embed(

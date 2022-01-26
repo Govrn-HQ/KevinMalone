@@ -103,7 +103,7 @@ def get_root_hash():
     return hashlib.sha256("".encode()).hexdigest()
 
 
-### Test find step ###
+# Test find step #
 
 
 @pytest.mark.asyncio

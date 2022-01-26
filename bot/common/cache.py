@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from bot.config import Redis
 
 
-## Abstract base class ##
+# Abstract base class #
 
 
 class Cache(ABC):

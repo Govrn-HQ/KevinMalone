@@ -6,7 +6,6 @@ import logging
 from bot.common.bot.bot import bot
 from bot.common.cache import RedisCache
 from enum import Enum
-from bot.config import Redis
 from typing import Dict, Optional
 
 from dataclasses import dataclass, field
@@ -65,7 +64,7 @@ class StepKeys(Enum):
 class BaseThread:
     """Base class for handling multi-interaction bot conversations
 
-    Developers define the interaction tree in a series of steps. In a 
+    Developers define the interaction tree in a series of steps. In a
     conversation a user can either react to a message with an emoji or
     reply to a previous message. The thread will handle either of these
     scenarios and store the end state in a cache to pick up the current
@@ -97,7 +96,13 @@ class BaseThread:
     """
 
     def __init__(
-        self, user_id, current_step, message_id, guild_id, cache=None, discord_bot=None,
+        self,
+        user_id,
+        current_step,
+        message_id,
+        guild_id,
+        cache=None,
+        discord_bot=None,
     ):
         if not current_step:
             raise Exception(f"No step for {current_step}")
@@ -198,7 +203,11 @@ class BaseThread:
         return await self.cache.set(
             self.user_id,
             build_cache_value(
-                self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
+                self.name,
+                step.hash_,
+                self.guild_id,
+                msg.id,
+                metadata=metadata,
             ),
         )
 
@@ -393,7 +402,7 @@ class Step:
             fetched.
 
         Raises:
-          Exception: If the key does not correspond to one of the next 
+          Exception: If the key does not correspond to one of the next
             steps.
 
         """
