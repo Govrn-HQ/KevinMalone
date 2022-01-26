@@ -14,6 +14,17 @@ jobs:
   build:
     name: Run code tests
     runs-on: ubuntu-latest
+    services:
+      # Label used to access the service container
+      redis:
+        # Docker Hub image
+        image: redis
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -27,7 +38,7 @@ jobs:
       - name: Build docker image
         run: docker build -t local .
       - name: Run tests
-        run: docker run local pytest .
+        run: docker run --env REDIS_URL=redis://redis local pytest .
       - name: Check formatting with black
         run: docker run local black . --check
       - name: Lint with flake8
