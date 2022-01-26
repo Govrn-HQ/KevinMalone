@@ -1,4 +1,4 @@
-import constants
+from bot import constants
 import discord
 from bot.common.airtable import (
     find_user,
