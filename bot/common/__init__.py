@@ -1,1 +1,1 @@
-from common.commands import *  # noqa: F403 F401
+from bot.common.commands import *  # noqa: F403 F401
