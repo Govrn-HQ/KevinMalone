@@ -8,6 +8,7 @@ on:
 
 env:
   APP_NAME: ${{ 'kevin-malone-test' }}
+  IS_DEV: True
 
 jobs:
   # Run code tests before building the image, to ensure it is good to go
