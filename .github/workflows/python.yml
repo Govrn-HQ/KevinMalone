@@ -8,7 +8,6 @@ on:
 
 env:
   APP_NAME: ${{ 'kevin-malone-test' }}
-  IS_DEV: True
 
 jobs:
   # Run code tests before building the image, to ensure it is good to go
@@ -39,7 +38,7 @@ jobs:
       - name: Build docker image
         run: docker build -t local .
       - name: Run tests
-        run: docker run --env REDIS_URL=redis://redis local pytest .
+        run: docker run --env REDIS_URL=redis://redis --env IS_DEV=True local pytest .
       - name: Check formatting with black
         run: docker run local black . --check
       - name: Lint with flake8
