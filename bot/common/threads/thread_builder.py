@@ -30,6 +30,7 @@ class ThreadKeys(Enum):
     UPDATE_PROFILE = "update_profile"
     INITIAL_CONTRIBUTIONS = "initial_contributions"
     GUILD_SELECT = "guild_select"
+    REPORT = "report"
 
 
 class StepKeys(Enum):
@@ -59,6 +60,7 @@ class StepKeys(Enum):
     INITIAL_CONTRIBUTION_REJECT = "inital_contribution_reject"
     INITIAL_CONTRIBUTION_REPORT_COMMAND = "initial_contribution_report_command"
     OVERRIDE_THREAD = "override_thread"
+    REPORT = "report"
 
 
 class BaseThread:
