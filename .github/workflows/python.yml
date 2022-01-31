@@ -38,7 +38,7 @@ jobs:
       - name: Build docker image
         run: docker build -t local .
       - name: Run tests
-        run: docker run --env REDIS_URL=redis://redis local pytest .
+        run: docker run --env REDIS_URL=redis://redis --env IS_DEV=True local pytest .
       - name: Check formatting with black
         run: docker run local black . --check
       - name: Lint with flake8
