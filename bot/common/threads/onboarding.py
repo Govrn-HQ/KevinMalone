@@ -20,7 +20,6 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
     BaseThread,
 )
-from bot.common.bot import bot
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
@@ -35,12 +34,15 @@ class UserDisplayConfirmationStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM.value
     msg = "Would you like your Govrn display name to be"
 
+    def __init__(self, bot):
+        self.bot = bot
+
     @property
     def emojis():
         return [YES_EMOJI, NO_EMOJI]
 
     async def send(self, message, user_id):
-        user = await bot.fetch_user(user_id)
+        user = await self.bot.fetch_user(user_id)
         channel = message.channel
         sent_message = await channel.send(f"{self.msg} `{user.display_name}`")
         await sent_message.add_reaction(YES_EMOJI)
@@ -56,6 +58,9 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM_EMOJI.value
     emoji = True
 
+    def __init__(self, bot):
+        self.bot = bot
+
     @property
     def emojis(self):
         return [YES_EMOJI, NO_EMOJI]
@@ -68,7 +73,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
-        user = await bot.fetch_user(user_id)
+        user = await self.bot.fetch_user(user_id)
         record_id = await find_user(user_id, guild_id)
         await update_user(record_id, "display_name", user.name)
 
@@ -172,13 +177,14 @@ class CongratsStep(BaseStep):
 
     name = StepKeys.ONBOARDING_CONGRATS.value
 
-    def __init__(self, guild_id):
+    def __init__(self, guild_id, bot):
         super().__init__()
         self.guild_id = guild_id
+        self.bot = bot
 
     async def send(self, message, user_id):
         channel = message.channel
-        guild = await bot.fetch_guild(self.guild_id)
+        guild = await self.bot.fetch_guild(self.guild_id)
         sent_message = await channel.send(
             f"Congratulations on completeing onboarding to {guild.name}"
         )
@@ -186,8 +192,8 @@ class CongratsStep(BaseStep):
 
     async def handle_emoji(self, raw_reaction):
         if SKIP_EMOJI in raw_reaction.emoji.name:
-            channel = await bot.fetch_channel(raw_reaction.channel_id)
-            guild = await bot.fetch_guild(self.guild_id)
+            channel = await self.bot.fetch_channel(raw_reaction.channel_id)
+            guild = await self.bot.fetch_guild(self.guild_id)
             await channel.send(
                 f"Congratulations on completeing onboarding to {guild.name}"
             )
@@ -310,8 +316,7 @@ class GovrnProfilePromptReuse(BaseStep):
         await update_user(record_id, "discourse", fields.get("discourse"))
 
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            description="We updated your Govrn Profile!",
+            colour=INFO_EMBED_COLOR, description="We updated your Govrn Profile!",
         )
         embed.add_field(name="Display Name", value=fields.get("display_name"))
         embed.add_field(name="Twitter", value=fields.get("twitter"))
@@ -355,7 +360,7 @@ class Onboarding(BaseThread):
             Step(current=AddUserTwitterStep(guild_id=self.guild_id))
             .add_next_step(AddUserWalletAddressStep(guild_id=self.guild_id))
             .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
-            .add_next_step(CongratsStep(guild_id=self.guild_id))
+            .add_next_step(CongratsStep(guild_id=self.guild_id, bot=self.bot))
         )
 
     async def get_steps(self):
@@ -371,8 +376,8 @@ class Onboarding(BaseThread):
             .build()
         )
         steps = (
-            Step(current=UserDisplayConfirmationStep())
-            .add_next_step(UserDisplayConfirmationEmojiStep())
+            Step(current=UserDisplayConfirmationStep(bot=self.bot))
+            .add_next_step(UserDisplayConfirmationEmojiStep(bot=self.bot))
             .fork((user_display_accept, data_retrival_chain))
         )
         return steps.build()
