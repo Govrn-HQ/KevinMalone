@@ -1,36 +1,32 @@
-import constants
+from bot import constants
 from distutils.util import strtobool
 import logging
-import discord
 import hashlib
-
-intents = discord.Intents.all()
-bot = discord.Bot(intents=intents)
+import discord
 
 
-from common.core import bot  # noqa: E402
-from common.airtable import (  # noqa: E402
+from bot.common.airtable import (
     find_user,
     create_user,
     get_discord_record,
     get_guild,
 )
-from common.threads.thread_builder import (  # noqa: E402
+from bot.common.bot.bot import bot
+from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
 )
-from common.threads.onboarding import Onboarding  # noqa: E402
-from common.threads.update import UpdateProfile  # noqa: E402
-from config import (  # noqa: E402
+from bot.common.threads.onboarding import Onboarding
+from bot.common.threads.update import UpdateProfile
+from bot.config import (
     read_file,
     GUILD_IDS,
     INFO_EMBED_COLOR,
     Redis,
     get_list_of_emojis,
 )
-from exceptions import NotGuildException  # noqa: E402
-from exceptions import ErrorHandler  # noqa: E402
-from common.guild_select import get_thread, GuildSelect  # noqa: E402
+from bot.exceptions import NotGuildException, ErrorHandler
+from bot.common.guild_select import get_thread, GuildSelect
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +39,39 @@ logger = logging.getLogger(__name__)
 async def report(ctx):
     is_guild = bool(ctx.guild)
     if not is_guild:
-        raise NotGuildException("Command was executed outside of a guild")
+        # Open report thread
+        # which will send either of the below messages
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description="Which community would you like to report a contribution to?",
+        )
+        error_embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description="You are not a par of any communities. "
+            "Please run the /join command in a guild you are in",
+        )
+
+        message, metadata = await select_guild(ctx, embed, error_embed)
+        thread = await GuildSelect(
+            ctx.author.id,
+            hashlib.sha256("".encode()).hexdigest(),
+            message.id,
+            "",
+        )
+        # TODO add thread and step
+        return await Redis.set(
+            ctx.author.id,
+            build_cache_value(
+                ThreadKeys.GUILD_SELECT.value,
+                thread.steps.hash_,
+                "",
+                message.id,
+                metadata={
+                    **metadata,
+                    "thread_name": ThreadKeys.REPORT.value,
+                },
+            ),
+        )
 
     airtableLinks = read_file()
     airtableLink = airtableLinks.get(str(ctx.guild.id))

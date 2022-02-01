@@ -1,6 +1,6 @@
 import json
 import hashlib
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
     Step,
@@ -8,12 +8,13 @@ from common.threads.thread_builder import (
     StepKeys,
     build_cache_value,
 )
-from common.threads.shared_steps import SelectGuildEmojiStep
+from bot.common.threads.shared_steps import SelectGuildEmojiStep
 
-from common.threads.onboarding import Onboarding  # noqa: E402
-from common.threads.update import UpdateProfile  # noqa: E402
-from common.threads.initial_contribution import InitialContributions
-from config import Redis
+from bot.common.threads.onboarding import Onboarding  # noqa: E402
+from bot.common.threads.update import UpdateProfile  # noqa: E402
+from bot.common.threads.initial_contribution import InitialContributions
+from bot.common.threads.report import Report
+from bot.config import Redis
 
 
 async def get_thread(user_id, key):
@@ -30,10 +31,20 @@ async def get_thread(user_id, key):
         return await InitialContributions(user_id, step, message_id, guild_id)
     elif thread == ThreadKeys.GUILD_SELECT.value:
         return await GuildSelect(user_id, step, message_id, guild_id)
+    elif thread == ThreadKeys.REPORT.value:
+        return await Report(user_id, step, message_id, guild_id)
     raise Exception("Unknown Thread!")
 
 
 class OverrideThreadStep(BaseStep):
+    """A step that overwrites the current thread
+
+    This step gets the name of the jump thread from
+    the cache metadata and then overwrites the current
+    steps in memory with the new threads steps.
+
+    """
+
     name = StepKeys.OVERRIDE_THREAD.value
 
     def __init__(self, cls):
@@ -59,6 +70,14 @@ class OverrideThreadStep(BaseStep):
 
 
 class GuildSelect(BaseThread):
+    """A thread that sets the guild_id for another thread
+
+    This thread is typically called from a command which
+    will set the next thread to jump to on the next step
+    and responds with an emoji prompt for a user to set
+    guild_id.
+    """
+
     name = ThreadKeys.GUILD_SELECT.value
 
     def __await__(self):

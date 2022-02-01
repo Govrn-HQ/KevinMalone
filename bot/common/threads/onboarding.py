@@ -1,26 +1,25 @@
-import constants
+from bot import constants
 import discord
-from common.airtable import (
+from bot.common.airtable import (
     find_user,
     update_user,
     get_guild_by_guild_id,
     get_user_record,
     create_user,
 )
-from config import (
+from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
     SKIP_EMOJI,
     INFO_EMBED_COLOR,
 )
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseStep,
     StepKeys,
     Step,
     ThreadKeys,
     BaseThread,
 )
-from common.core import bot
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
@@ -30,15 +29,20 @@ def _handle_skip_emoji(raw_reaction, guild_id):
 
 
 class UserDisplayConfirmationStep(BaseStep):
+    """Confirm display name fetched from discord"""
+
     name = StepKeys.USER_DISPLAY_CONFIRM.value
     msg = "Would you like your Govrn display name to be"
+
+    def __init__(self, bot):
+        self.bot = bot
 
     @property
     def emojis():
         return [YES_EMOJI, NO_EMOJI]
 
     async def send(self, message, user_id):
-        user = await bot.fetch_user(user_id)
+        user = await self.bot.fetch_user(user_id)
         channel = message.channel
         sent_message = await channel.send(f"{self.msg} `{user.display_name}`")
         await sent_message.add_reaction(YES_EMOJI)
@@ -49,8 +53,13 @@ class UserDisplayConfirmationStep(BaseStep):
 # save is a single branch so it can be one to one
 # handle_emoji can branch and the airtable logic can handle that
 class UserDisplayConfirmationEmojiStep(BaseStep):
+    """Emoji confirmation step of whether the Discord name should be accepted"""
+
     name = StepKeys.USER_DISPLAY_CONFIRM_EMOJI.value
     emoji = True
+
+    def __init__(self, bot):
+        self.bot = bot
 
     @property
     def emojis(self):
@@ -64,12 +73,14 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
-        user = await bot.fetch_user(user_id)
+        user = await self.bot.fetch_user(user_id)
         record_id = await find_user(user_id, guild_id)
         await update_user(record_id, "display_name", user.name)
 
 
 class UserDisplaySubmitStep(BaseStep):
+    """Submit new display name to be saved"""
+
     name = StepKeys.USER_DISPLAY_SUBMIT.value
 
     async def send(self, message, user_id):
@@ -88,6 +99,8 @@ class UserDisplaySubmitStep(BaseStep):
 
 
 class AddUserTwitterStep(BaseStep):
+    """Step to submit twitter name for the govrn profile"""
+
     name = StepKeys.ADD_USER_TWITTER.value
 
     def __init__(self, guild_id):
@@ -112,6 +125,8 @@ class AddUserTwitterStep(BaseStep):
 
 
 class AddUserWalletAddressStep(BaseStep):
+    """Step to submit wallet address for the govrn profile"""
+
     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
 
     def __init__(self, guild_id):
@@ -134,6 +149,8 @@ class AddUserWalletAddressStep(BaseStep):
 
 
 class AddDiscourseStep(BaseStep):
+    """Step to submit discourse username for the govrn profile"""
+
     name = StepKeys.ADD_USER_DISCOURSE.value
 
     def __init__(self, guild_id):
@@ -156,15 +173,18 @@ class AddDiscourseStep(BaseStep):
 
 
 class CongratsStep(BaseStep):
+    """Send congratulations for completing the profile"""
+
     name = StepKeys.ONBOARDING_CONGRATS.value
 
-    def __init__(self, guild_id):
+    def __init__(self, guild_id, bot):
         super().__init__()
         self.guild_id = guild_id
+        self.bot = bot
 
     async def send(self, message, user_id):
         channel = message.channel
-        guild = await bot.fetch_guild(self.guild_id)
+        guild = await self.bot.fetch_guild(self.guild_id)
         sent_message = await channel.send(
             f"Congratulations on completeing onboarding to {guild.name}"
         )
@@ -172,8 +192,8 @@ class CongratsStep(BaseStep):
 
     async def handle_emoji(self, raw_reaction):
         if SKIP_EMOJI in raw_reaction.emoji.name:
-            channel = await bot.fetch_channel(raw_reaction.channel_id)
-            guild = await bot.fetch_guild(self.guild_id)
+            channel = await self.bot.fetch_channel(raw_reaction.channel_id)
+            guild = await self.bot.fetch_guild(self.guild_id)
             await channel.send(
                 f"Congratulations on completeing onboarding to {guild.name}"
             )
@@ -188,6 +208,8 @@ class CongratsStep(BaseStep):
 
 
 class GovrnProfilePrompt(BaseStep):
+    """Ask whether user wants to join the Govrn guild"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT.value
 
     async def send(self, message, user_id):
@@ -201,6 +223,8 @@ class GovrnProfilePrompt(BaseStep):
 
 
 class GovrnProfilePromptEmoji(BaseStep):
+    """Accept user emoji reaction to whether they want to join Govrn"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_EMOJI.value
 
     @property
@@ -216,6 +240,8 @@ class GovrnProfilePromptEmoji(BaseStep):
 
 
 class GovrnProfilePromptReject(BaseStep):
+    """Handle situation where does not want to join the govrn guild"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value
 
     async def send(self, message, user_id):
@@ -227,6 +253,8 @@ class GovrnProfilePromptReject(BaseStep):
 
 
 class GovrnProfilePromptSuccess(BaseStep):
+    """Ask user whether they want to reuse their guild profile"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT.value
 
     def __init__(self, guild_id):
@@ -248,6 +276,8 @@ class GovrnProfilePromptSuccess(BaseStep):
 
 
 class GovrnProfilePromptSuccessEmoji(BaseStep):
+    """Handle user reaction to whether they want to reuse their profile"""
+
     name = StepKeys.GOVRN_PROFILE_PROMPT_ACCEPT_EMOJI.value
 
     def __init__(self, parent):
@@ -331,7 +361,7 @@ class Onboarding(BaseThread):
             Step(current=AddUserTwitterStep(guild_id=self.guild_id))
             .add_next_step(AddUserWalletAddressStep(guild_id=self.guild_id))
             .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
-            .add_next_step(CongratsStep(guild_id=self.guild_id))
+            .add_next_step(CongratsStep(guild_id=self.guild_id, bot=self.bot))
         )
 
     async def get_steps(self):
@@ -347,8 +377,8 @@ class Onboarding(BaseThread):
             .build()
         )
         steps = (
-            Step(current=UserDisplayConfirmationStep())
-            .add_next_step(UserDisplayConfirmationEmojiStep())
+            Step(current=UserDisplayConfirmationStep(bot=self.bot))
+            .add_next_step(UserDisplayConfirmationEmojiStep(bot=self.bot))
             .fork((user_display_accept, data_retrival_chain))
         )
         return steps.build()

@@ -1,6 +1,7 @@
 import logging
 import sys
-from common.commands import bot
+
+from bot.common.bot.bot import bot
 import constants
 
 logging.basicConfig(level=logging.INFO)

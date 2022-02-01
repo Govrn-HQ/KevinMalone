@@ -1,11 +1,18 @@
 import json
-from config import Redis
+from bot.config import Redis
 
-from common.threads.thread_builder import BaseStep, StepKeys
-from common.commands import bot
+from bot.common.threads.thread_builder import BaseStep, StepKeys
+from bot.common.bot.bot import bot
 
 
 class SelectGuildEmojiStep(BaseStep):
+    """A step to allow a user to select a guild
+
+    Typically used at the beginning of threads to
+    help set the guild_id value when a user interacts
+    in DMs.
+    """
+
     name = StepKeys.SELECT_GUILD_EMOJI.value
     emoji = True
 

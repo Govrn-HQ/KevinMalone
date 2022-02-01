@@ -1,13 +1,13 @@
 import discord
 import json
 
-from common.airtable import find_user, update_user, get_user_record
-from config import (
+from bot.common.airtable import find_user, update_user, get_user_record
+from bot.config import (
     Redis,
     INFO_EMBED_COLOR,
     get_list_of_emojis,
 )
-from common.threads.thread_builder import (
+from bot.common.threads.thread_builder import (
     BaseStep,
     StepKeys,
     Step,
@@ -16,10 +16,18 @@ from common.threads.thread_builder import (
     build_cache_value,
 )
 
-from common.threads.shared_steps import SelectGuildEmojiStep
+from bot.common.threads.shared_steps import SelectGuildEmojiStep
 
 
 class UpdateProfile(BaseThread):
+    """A thread to update a Govrn Guild Profile
+
+    The current steps allow the user to select a guild
+    then select the field they want to update; then
+    update that field with a new value; then congradulate
+    them.
+    """
+
     name = ThreadKeys.UPDATE_PROFILE.value
 
     async def get_steps(self):
@@ -33,9 +41,9 @@ class UpdateProfile(BaseThread):
         return steps.build()
 
 
-# Next step send another message with the current profile
-# and the following reactions to update a field
 class UserUpdateFieldSelectStep(BaseStep):
+    """Sends the message with all the fields a user can select from"""
+
     name = StepKeys.USER_UPDATE_FIELD_SELECT.value
 
     def __init__(self, cls):
@@ -79,6 +87,8 @@ class UserUpdateFieldSelectStep(BaseStep):
 
 
 class UpdateProfileFieldEmojiStep(BaseStep):
+    """Stores the field user responds with to the cache"""
+
     name = StepKeys.UPDATE_PROFILE_FIELD_EMOJI.value
     emoji = True
 
@@ -102,6 +112,8 @@ class UpdateProfileFieldEmojiStep(BaseStep):
 
 
 class UpdateFieldStep(BaseStep):
+    """Asks the user which field to update and then saves the response"""
+
     name = StepKeys.UPDATE_FIELD.value
 
     async def send(self, message, user_id):
@@ -122,6 +134,8 @@ class UpdateFieldStep(BaseStep):
 
 
 class CongratsFieldUpdateStep(BaseStep):
+    """Sends the user a congratulations message and then ends the thread"""
+
     name = StepKeys.CONGRATS_UPDATE_FIELD.value
 
     async def send(self, message, user_id):
