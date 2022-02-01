@@ -316,7 +316,8 @@ class GovrnProfilePromptReuse(BaseStep):
         await update_user(record_id, "discourse", fields.get("discourse"))
 
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR, description="We updated your Govrn Profile!",
+            colour=INFO_EMBED_COLOR,
+            description="We updated your Govrn Profile!",
         )
         embed.add_field(name="Display Name", value=fields.get("display_name"))
         embed.add_field(name="Twitter", value=fields.get("twitter"))
