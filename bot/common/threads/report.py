@@ -6,6 +6,7 @@ from bot.common.threads.thread_builder import (
     Step,
 )
 from bot.config import read_file
+from bot.common.airtable import get_guild_by_guild_id
 
 
 class ReportStep(BaseStep):
@@ -27,6 +28,12 @@ class ReportStep(BaseStep):
             " your community thriving 🌞. "
             f"Report you contributions via the form 👉 {airtableLink}",
         )
+        # Check cache that user hasn't sent in the last hour
+        fields = await get_guild_by_guild_id(self.guild_id)
+        congrats_channel_id = fields.get("fields").get("congrats_chanel_id")
+        # get count of uses
+        # bot get channel
+        # Send congrats mesage
         return sent_message, None
 
 
