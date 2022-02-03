@@ -172,6 +172,24 @@ async def get_guild(record_id):
     return await loop.run_in_executor(None, _find_guild)
 
 
+async def get_contribution_count(user_id, base_id):
+
+    """"""
+
+    loop = asyncio.get_running_loop()
+
+    def _count():
+        # Add logic to get count
+        table = Table(AIRTABLE_KEY, base_id, "")
+        records = table.get(str(record_id))
+        record = {}
+        if records:
+            record = records.get("fields")
+        return record
+
+    return await loop.run_in_executor(None, _find_guild)
+
+
 async def update_user(record_id, id_field, id_val):
 
     """Add or update user ID info given ID field, value,

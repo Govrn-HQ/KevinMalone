@@ -2,6 +2,10 @@ from abc import ABC, abstractmethod
 from bot.config import Redis
 
 
+def build_congrats_key(user_id):
+    return f"{user_id}-congrats"
+
+
 # Abstract base class #
 
 
