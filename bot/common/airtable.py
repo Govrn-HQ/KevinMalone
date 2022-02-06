@@ -188,7 +188,6 @@ async def get_contribution_count(user_id, base_id):
             raise Exception(f"Failed to fetch user from base {base_id}")
         user_display_name = users[0].get("fields").get("Display Name")
         records = table.all(formula=match({"member": user_display_name}))
-        r = table.all(formula=match({"member": "Keating"}))
         count = 0
         for record in records:
             count += 1

@@ -12,7 +12,6 @@ from bot.common.airtable import (
     get_user_record,
 )
 from bot.common.cache import build_congrats_key
-from bot.common.bot.bot import bot
 
 
 class ReportStep(BaseStep):
@@ -20,13 +19,16 @@ class ReportStep(BaseStep):
 
     name = StepKeys.USER_DISPLAY_CONFIRM.value
 
-    def __init__(self, guild_id, cache, bot):
+    def __init__(self, guild_id, cache, bot, channel=None):
         self.guild_id = guild_id
         self.cache = cache
         self.bot = bot
+        self.channel = channel
 
     async def send(self, message, user_id):
-        channel = message.channel
+        channel = self.channel
+        if message:
+            channel = message.channel
 
         airtableLinks = read_file()
         airtableLink = airtableLinks.get(str(self.guild_id))
@@ -51,7 +53,8 @@ class ReportStep(BaseStep):
             user_dao_id = fields.get("user_dao_id")
             count = await get_contribution_count(user_dao_id, base_id)
             await channel.send(
-                f"Congrats {user.display_name} for reporting {count} engagements this week!"
+                f"Congrats {user.display_name} for reporting {count} "
+                "engagements this week!"
             )
 
             # bot get channel
