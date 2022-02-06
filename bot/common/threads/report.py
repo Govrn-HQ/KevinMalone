@@ -33,10 +33,10 @@ class ReportStep(BaseStep):
         airtableLinks = read_file()
         airtableLink = airtableLinks.get(str(self.guild_id))
 
-        sent_message = await channel.send(
+        msg = (
             f"Woohoo! Nice job! Community contributions are what keeps"
             " your community thriving 🌞. "
-            f"Report you contributions via the form 👉 {airtableLink}",
+            f"Report you contributions via the form 👉 {airtableLink}"
         )
         # Check cache that user hasn't sent in the last hour
         if not await self.cache.get(build_congrats_key(user_id)):
@@ -56,10 +56,13 @@ class ReportStep(BaseStep):
                 f"Congrats {user.display_name} for reporting {count} "
                 "engagements this week!"
             )
+            await self.cache.set(
+                build_congrats_key(user_id), "True", ex=60 * 60
+            )  # Expires in an hour
 
             # bot get channel
             # Send congrats mesage
-        return sent_message, None
+        return None, {"msg": msg}
 
 
 class Report(BaseThread):

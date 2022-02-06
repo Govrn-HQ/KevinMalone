@@ -85,16 +85,16 @@ async def report(ctx):
         #     f"Report you contributions via the form 👉 {airtableLink}",
         #     ephemeral=True,
         # )
-        await ReportStep(
+        _, metadata = await ReportStep(
             guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel
         ).send(None, ctx.author.id)
         # send message to congrats channel
-        ctx.response.is_done()
+
+        await ctx.response.send_message(metadata.get("msg"))
     else:
         await ctx.response.send_message(
             "No airtable link was provided for this Discord server", ephemeral=True
         )
-        ctx.response.is_done()
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
