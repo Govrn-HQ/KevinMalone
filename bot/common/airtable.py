@@ -180,14 +180,21 @@ async def get_contribution_count(user_id, base_id):
 
     def _count():
         # Add logic to get count
-        table = Table(AIRTABLE_KEY, base_id, "")
-        records = table.get(str(record_id))
-        record = {}
-        if records:
-            record = records.get("fields")
-        return record
+        table = Table(AIRTABLE_KEY, base_id, "Activity History Staging")
 
-    return await loop.run_in_executor(None, _find_guild)
+        user_table = Table(AIRTABLE_KEY, base_id, "Member IDs")
+        users = user_table.all(formula=match({"Community ID": user_id}))
+        if not users:
+            raise Exception(f"Failed to fetch user from base {base_id}")
+        user_display_name = users[0].get("fields").get("Display Name")
+        records = table.all(formula=match({"member": user_display_name}))
+        r = table.all(formula=match({"member": "Keating"}))
+        count = 0
+        for record in records:
+            count += 1
+        return count
+
+    return await loop.run_in_executor(None, _count)
 
 
 async def update_user(record_id, id_field, id_val):
