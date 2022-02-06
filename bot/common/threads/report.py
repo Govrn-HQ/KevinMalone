@@ -15,7 +15,7 @@ from bot.common.cache import build_congrats_key
 
 
 class ReportStep(BaseStep):
-    """"""
+    """Sends a link for a user to report their contributions"""
 
     name = StepKeys.USER_DISPLAY_CONFIRM.value
 
@@ -38,7 +38,6 @@ class ReportStep(BaseStep):
             " your community thriving 🌞. "
             f"Report you contributions via the form 👉 {airtableLink}"
         )
-        # Check cache that user hasn't sent in the last hour
         if not await self.cache.get(build_congrats_key(user_id)):
             fields = await get_guild_by_guild_id(self.guild_id)
             congrats_channel_id = fields.get("fields").get("congrats_channel_id")
@@ -60,8 +59,6 @@ class ReportStep(BaseStep):
                 build_congrats_key(user_id), "True", ex=60 * 60
             )  # Expires in an hour
 
-            # bot get channel
-            # Send congrats mesage
         return None, {"msg": msg}
 
 

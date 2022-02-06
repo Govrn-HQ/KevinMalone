@@ -52,8 +52,6 @@ async def get_contribution_records(guild_id):
 
     def _get_contribution():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
-        print("Guild ID")
-        print(guild_id)
         records = table.all(formula=match({"Christine Guilds": str(guild_id)}))
         if records:
             record_id = records
@@ -174,7 +172,7 @@ async def get_guild(record_id):
 
 async def get_contribution_count(user_id, base_id):
 
-    """"""
+    """Get a count of contributions a user has made to a given guild"""
 
     loop = asyncio.get_running_loop()
 
