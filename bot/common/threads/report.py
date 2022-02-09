@@ -1,3 +1,5 @@
+import logging
+
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -12,6 +14,8 @@ from bot.common.airtable import (
     get_user_record,
 )
 from bot.common.cache import build_congrats_key
+
+logger = logging.getLogger(__name__)
 
 
 class ReportStep(BaseStep):
@@ -43,7 +47,8 @@ class ReportStep(BaseStep):
             congrats_channel_id = fields.get("fields").get("congrats_channel_id")
             base_id = fields.get("fields").get("base_id")
             if not congrats_channel_id:
-                raise Exception("No congrats channel id!")
+                logger.warn("No congrats channel id!")
+                return None, {"msg": msg}
             channel = self.bot.get_channel(int(congrats_channel_id))
             user = self.bot.get_user(user_id)
             # get count of uses
