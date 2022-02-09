@@ -1,3 +1,5 @@
+import logging
+
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -12,6 +14,8 @@ from bot.common.airtable import (
     get_user_record,
 )
 from bot.common.cache import build_congrats_key
+
+logger = logging.getLogger(__name__)
 
 
 class ReportStep(BaseStep):
