@@ -17,6 +17,7 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
 )
 from bot.common.threads.onboarding import Onboarding
+from bot.common.threads.report import ReportStep
 from bot.common.threads.update import UpdateProfile
 from bot.config import (
     read_file,
@@ -77,19 +78,16 @@ async def report(ctx):
     airtableLink = airtableLinks.get(str(ctx.guild.id))
 
     if airtableLink:
-        await bot.fetch_user(int(ctx.author.id))
-        await ctx.response.send_message(
-            f"Woohoo! Nice job! Community contributions are what keeps"
-            " your community thriving 🌞. "
-            f"Report you contributions via the form 👉 {airtableLink}",
-            ephemeral=True,
-        )
-        ctx.response.is_done()
+        _, metadata = await ReportStep(
+            guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel
+        ).send(None, ctx.author.id)
+        # send message to congrats channel
+
+        await ctx.response.send_message(metadata.get("msg"))
     else:
         await ctx.response.send_message(
             "No airtable link was provided for this Discord server", ephemeral=True
         )
-        ctx.response.is_done()
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")

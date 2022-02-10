@@ -52,8 +52,6 @@ async def get_contribution_records(guild_id):
 
     def _get_contribution():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Christine Contribution Flow")
-        print("Guild ID")
-        print(guild_id)
         records = table.all(formula=match({"Christine Guilds": str(guild_id)}))
         if records:
             record_id = records
@@ -170,6 +168,30 @@ async def get_guild(record_id):
         return record
 
     return await loop.run_in_executor(None, _find_guild)
+
+
+async def get_contribution_count(user_id, base_id):
+
+    """Get a count of contributions a user has made to a given guild"""
+
+    loop = asyncio.get_running_loop()
+
+    def _count():
+        # Add logic to get count
+        table = Table(AIRTABLE_KEY, base_id, "Activity History Staging")
+
+        user_table = Table(AIRTABLE_KEY, base_id, "Member IDs")
+        users = user_table.all(formula=match({"Community ID": user_id}))
+        if not users:
+            raise Exception(f"Failed to fetch user from base {base_id}")
+        user_display_name = users[0].get("fields").get("Display Name")
+        records = table.all(formula=match({"member": user_display_name}))
+        count = 0
+        for record in records:
+            count += 1
+        return count
+
+    return await loop.run_in_executor(None, _count)
 
 
 async def update_user(record_id, id_field, id_val):
