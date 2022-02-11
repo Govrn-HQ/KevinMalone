@@ -83,7 +83,7 @@ async def report(ctx):
         ).send(None, ctx.author.id)
         # send message to congrats channel
 
-        await ctx.response.send_message(metadata.get("msg"))
+        await ctx.response.send_message(metadata.get("msg"), ephmeral=True)
     else:
         await ctx.response.send_message(
             "No airtable link was provided for this Discord server", ephemeral=True
