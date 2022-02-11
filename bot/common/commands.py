@@ -34,8 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send users link to report engagement",
+    guild_id=GUILD_IDS, description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -54,10 +53,7 @@ async def report(ctx):
 
         message, metadata = await select_guild(ctx, embed, error_embed)
         thread = await GuildSelect(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            message.id,
-            "",
+            ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
         )
         # TODO add thread and step
         return await Redis.set(
@@ -67,10 +63,7 @@ async def report(ctx):
                 thread.steps.hash_,
                 "",
                 message.id,
-                metadata={
-                    **metadata,
-                    "thread_name": ThreadKeys.REPORT.value,
-                },
+                metadata={**metadata, "thread_name": ThreadKeys.REPORT.value,},
             ),
         )
 
@@ -83,7 +76,7 @@ async def report(ctx):
         ).send(None, ctx.author.id)
         # send message to congrats channel
 
-        await ctx.response.send_message(metadata.get("msg"), ephmeral=True)
+        await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
     else:
         await ctx.response.send_message(
             "No airtable link was provided for this Discord server", ephemeral=True
@@ -103,9 +96,7 @@ async def join(ctx):
         # on by sending all the commands
         application_commands = bot.application_commands
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            title="Welcome Back",
-            description="",
+            colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
         )
         for cmd in application_commands:
             if isinstance(cmd, discord.SlashCommand):
@@ -177,10 +168,7 @@ async def update(ctx):
         if not metadata:
             return
         thread = await UpdateProfile(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            message.id,
-            "",
+            ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
         )
         await Redis.set(
             ctx.author.id,
@@ -221,10 +209,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             if not metadata:
                 return
             thread = await GuildSelect(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
+                ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
             )
             await Redis.set(
                 ctx.author.id,
