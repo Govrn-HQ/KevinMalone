@@ -194,6 +194,28 @@ async def get_contribution_count(user_id, base_id):
     return await loop.run_in_executor(None, _count)
 
 
+async def get_contributions(user_id, base_id):
+
+    """Get a count of contributions a user has made to a given guild"""
+
+    loop = asyncio.get_running_loop()
+
+    # must accept date range
+    def _countributions():
+        # Add logic to get count
+        table = Table(AIRTABLE_KEY, base_id, "Activity History Staging")
+
+        user_table = Table(AIRTABLE_KEY, base_id, "Member IDs")
+        users = user_table.all(formula=match({"Community ID": user_id}))
+        if not users:
+            raise Exception(f"Failed to fetch user from base {base_id}")
+        user_display_name = users[0].get("fields").get("Display Name")
+        records = table.all(formula=match({"member": user_display_name}))
+        return records
+
+    return await loop.run_in_executor(None, _count)
+
+
 async def update_user(record_id, id_field, id_val):
 
     """Add or update user ID info given ID field, value,
