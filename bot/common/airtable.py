@@ -1,4 +1,6 @@
 import asyncio
+
+from datetime import datetime
 from pyairtable import Table
 from pyairtable.formulas import match
 from bot.config import AIRTABLE_BASE, AIRTABLE_KEY
@@ -194,14 +196,14 @@ async def get_contribution_count(user_id, base_id):
     return await loop.run_in_executor(None, _count)
 
 
-async def get_contributions(user_id, base_id):
+async def get_contributions(user_id, base_id, date):
 
     """Get a count of contributions a user has made to a given guild"""
 
     loop = asyncio.get_running_loop()
 
     # must accept date range
-    def _countributions():
+    def _contributions():
         # Add logic to get count
         table = Table(AIRTABLE_KEY, base_id, "Activity History Staging")
 
@@ -210,10 +212,14 @@ async def get_contributions(user_id, base_id):
         if not users:
             raise Exception(f"Failed to fetch user from base {base_id}")
         user_display_name = users[0].get("fields").get("Display Name")
+        kwargs = {}
+        if date:
+            date = datetime.now()
+
         records = table.all(formula=match({"member": user_display_name}))
         return records
 
-    return await loop.run_in_executor(None, _count)
+    return await loop.run_in_executor(None, _contributions)
 
 
 async def update_user(record_id, id_field, id_val):

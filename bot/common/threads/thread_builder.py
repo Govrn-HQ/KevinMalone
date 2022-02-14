@@ -62,6 +62,7 @@ class StepKeys(Enum):
     INITIAL_CONTRIBUTION_REPORT_COMMAND = "initial_contribution_report_command"
     OVERRIDE_THREAD = "override_thread"
     REPORT = "report"
+    DISPLAY_POINTS = "display_points"
 
 
 class BaseThread:
@@ -99,7 +100,13 @@ class BaseThread:
     """
 
     def __init__(
-        self, user_id, current_step, message_id, guild_id, cache=None, discord_bot=None,
+        self,
+        user_id,
+        current_step,
+        message_id,
+        guild_id,
+        cache=None,
+        discord_bot=None,
     ):
         if not current_step:
             raise Exception(f"No step for {current_step}")
@@ -200,7 +207,11 @@ class BaseThread:
         return await self.cache.set(
             self.user_id,
             build_cache_value(
-                self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
+                self.name,
+                step.hash_,
+                self.guild_id,
+                msg.id,
+                metadata=metadata,
             ),
         )
 

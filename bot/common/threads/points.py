@@ -1,5 +1,7 @@
+import json
 import logging
 
+from datetime import datetime
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -14,8 +16,17 @@ from bot.common.airtable import (
     get_contributions,
 )
 from bot.common.cache import build_congrats_key
+from texttable import Texttable
 
 logger = logging.getLogger(__name__)
+
+
+def build_table(header, rows):
+    table = Texttable()
+    r = [header, *rows]
+    # breakpoint()
+    table.add_rows(r)
+    return table
 
 
 class DisplayPointsStep(BaseStep):
@@ -40,10 +51,33 @@ class DisplayPointsStep(BaseStep):
         record = await get_user_record(user_id, self.guild_id)
         fields = record.get("fields")
         user_dao_id = fields.get("user_dao_id")
-        count = await get_contributions(user_dao_id, base_id)
-        # build table
+        cache_entry = await self.cache.get(user_id)
+        print(user_id)
+        days = json.loads(cache_entry).get("metadata").get("days")
+        date = None
+        if days != all:
+            date = datetime.now() - timedelta(days=int(days))
 
-        return None, {"msg": msg}
+        contributions = await get_contributions(user_dao_id, base_id, date)
+        # build table
+        header = []
+        rows = []
+        for contribution in contributions:
+            fields = contribution.get("fields")
+            if not header:
+                header = ["name", "created date", "activity"]
+            rows.append(
+                [
+                    fields.get("name only"),
+                    fields.get("Date of Submission"),
+                    fields.get("Activity"),
+                ]
+            )
+
+        table = build_table(header, rows)
+        await channel.send(f"```{table.draw()}```")
+
+        return None, None
 
 
 class Points(BaseThread):
@@ -51,5 +85,7 @@ class Points(BaseThread):
 
     async def get_steps(self):
         return Step(
-            current=PointsStep(guild_id=self.guild_id, cache=self.cache, bot=self.bot)
+            current=DisplayPointsStep(
+                guild_id=self.guild_id, cache=self.cache, bot=self.bot
+            )
         ).build()
