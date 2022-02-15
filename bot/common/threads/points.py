@@ -1,7 +1,7 @@
 import json
 import logging
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -34,11 +34,12 @@ class DisplayPointsStep(BaseStep):
 
     name = StepKeys.DISPLAY_POINTS.value
 
-    def __init__(self, guild_id, cache, bot, channel=None):
+    def __init__(self, guild_id, cache, bot, channel=None, days=None):
         self.guild_id = guild_id
         self.cache = cache
         self.bot = bot
         self.channel = channel
+        self.days = days
 
     async def send(self, message, user_id):
         channel = self.channel
@@ -53,7 +54,9 @@ class DisplayPointsStep(BaseStep):
         user_dao_id = fields.get("user_dao_id")
         cache_entry = await self.cache.get(user_id)
         print(user_id)
-        days = json.loads(cache_entry).get("metadata").get("days")
+        days = self.days
+        if cache_entry:
+            days = json.loads(cache_entry).get("metadata").get("days")
         date = None
         if days != all:
             date = datetime.now() - timedelta(days=int(days))
@@ -65,19 +68,29 @@ class DisplayPointsStep(BaseStep):
         for contribution in contributions:
             fields = contribution.get("fields")
             if not header:
-                header = ["name", "created date", "activity"]
+                header = [
+                    "Engagement",
+                    "status",
+                    "Date of Submission",
+                    "Date of Engagement",
+                    "Points",
+                ]
             rows.append(
                 [
-                    fields.get("name only"),
-                    fields.get("Date of Submission"),
                     fields.get("Activity"),
+                    fields.get("status"),
+                    fields.get("Date of Submission"),
+                    fields.get("Date of Engagement"),
+                    fields.get("Score"),
                 ]
             )
 
         table = build_table(header, rows)
-        await channel.send(f"```{table.draw()}```")
+        msg = f"```{table.draw()}```"
+        if not self.channel:
+            await channel.send(msg)
 
-        return None, None
+        return None, {"msg": msg}
 
 
 class Points(BaseThread):

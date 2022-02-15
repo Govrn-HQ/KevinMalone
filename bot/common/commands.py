@@ -19,6 +19,7 @@ from bot.common.threads.thread_builder import (
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep
+from bot.common.threads.points import DisplayPointsStep
 from bot.common.threads.update import UpdateProfile
 from bot.config import (
     read_file,
@@ -138,20 +139,12 @@ async def points(
             ),
         )
 
-    # airtableLinks = read_file()
-    # airtableLink = airtableLinks.get(str(ctx.guild.id))
+    _, metadata = await DisplayPointsStep(
+        guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel, days=days
+    ).send(None, ctx.author.id)
+    # send message to congrats channel
 
-    # if airtableLink:
-    #     _, metadata = await ReportStep(
-    #         guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel
-    #     ).send(None, ctx.author.id)
-    #     # send message to congrats channel
-
-    #     await ctx.response.send_message(metadata.get("msg"))
-    # else:
-    #     await ctx.response.send_message(
-    #         "No airtable link was provided for this Discord server", ephemeral=True
-    #     )
+    await ctx.response.send_message(metadata.get("msg"))
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
