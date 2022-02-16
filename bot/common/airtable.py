@@ -213,13 +213,15 @@ async def get_contributions(user_id, base_id, date):
             raise Exception(f"Failed to fetch user from base {base_id}")
         user_display_name = users[0].get("fields").get("Display Name")
         kwargs = {}
-        if date:
+        if not date:
             date = datetime.now()
+        formatted_date = date.strftime("%Y-%m-%dT%H:%M::%S.%fZ")
+        print(formatted_date)
 
-        # records = table.all(
-        #     formula=f"AND(match({{member}}='{user_display_name}'),is_before({{'Date of Submission}}=DATETIME_FORMAT('02/14/2022', 'MM/DD/YYYY'))"
-        # )
-        records = table.all(formula=match({"member": user_display_name}))
+        records = table.all(
+            formula=f"AND({{member}}='{user_display_name}',{{Date of Submission}}>='{formatted_date}')"
+        )
+        # records = table.all(formula=match({"member": user_display_name}))
         return records
 
     return await loop.run_in_executor(None, _contributions)

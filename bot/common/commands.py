@@ -144,7 +144,7 @@ async def points(
     ).send(None, ctx.author.id)
     # send message to congrats channel
 
-    await ctx.response.send_message(metadata.get("msg"))
+    await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
