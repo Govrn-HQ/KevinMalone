@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 def build_table(header, rows):
     table = Texttable()
     r = [header, *rows]
-    # breakpoint()
     table.add_rows(r)
     return table
 
@@ -48,7 +47,6 @@ class DisplayPointsStep(BaseStep):
 
         fields = await get_guild_by_guild_id(self.guild_id)
         base_id = fields.get("fields").get("base_id")
-        # get count of uses
         record = await get_user_record(user_id, self.guild_id)
         fields = record.get("fields")
         user_dao_id = fields.get("user_dao_id")
@@ -61,10 +59,7 @@ class DisplayPointsStep(BaseStep):
         if days != "all":
             date = datetime.now() - timedelta(days=int(days))
 
-        print(days)
-        print(date)
         contributions = await get_contributions(user_dao_id, base_id, date)
-        # build table
         header = []
         rows = []
         for contribution in contributions:

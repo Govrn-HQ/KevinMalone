@@ -104,8 +104,6 @@ async def points(
 ):
     is_guild = bool(ctx.guild)
     if not is_guild:
-        # Open report thread
-        # which will send either of the below messages
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             description="Which community would you like to get a list of engagements?",
@@ -123,7 +121,6 @@ async def points(
             message.id,
             "",
         )
-        # TODO add thread and step
         return await Redis.set(
             ctx.author.id,
             build_cache_value(
@@ -142,7 +139,6 @@ async def points(
     _, metadata = await DisplayPointsStep(
         guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel, days=days
     ).send(None, ctx.author.id)
-    # send message to congrats channel
 
     await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
 

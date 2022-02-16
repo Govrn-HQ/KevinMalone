@@ -202,9 +202,7 @@ async def get_contributions(user_id, base_id, date):
 
     loop = asyncio.get_running_loop()
 
-    # must accept date range
     def _contributions(date=date):
-        # Add logic to get count
         table = Table(AIRTABLE_KEY, base_id, "Activity History Staging")
 
         user_table = Table(AIRTABLE_KEY, base_id, "Member IDs")
@@ -216,12 +214,10 @@ async def get_contributions(user_id, base_id, date):
         if not date:
             date = datetime.now()
         formatted_date = date.strftime("%Y-%m-%dT%H:%M::%S.%fZ")
-        print(formatted_date)
 
         records = table.all(
             formula=f"AND({{member}}='{user_display_name}',{{Date of Submission}}>='{formatted_date}')"
         )
-        # records = table.all(formula=match({"member": user_display_name}))
         return records
 
     return await loop.run_in_executor(None, _contributions)
