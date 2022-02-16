@@ -99,7 +99,9 @@ async def report(ctx):
 async def points(
     ctx,
     days: Option(
-        str, "Days of contribution", choices=["1", "7", "30", "90", "180", "365", "all"]
+        str,
+        "Days of contribution",  # noqa: F722
+        choices=["1", "7", "30", "90", "180", "365", "all"],
     ),
 ):
     is_guild = bool(ctx.guild)

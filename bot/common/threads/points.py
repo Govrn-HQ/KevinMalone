@@ -9,13 +9,11 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
 )
-from bot.config import read_file
 from bot.common.airtable import (
     get_guild_by_guild_id,
     get_user_record,
     get_contributions,
 )
-from bot.common.cache import build_congrats_key
 from texttable import Texttable
 
 logger = logging.getLogger(__name__)
