@@ -55,7 +55,7 @@ class DisplayPointsStep(BaseStep):
             days = json.loads(cache_entry).get("metadata").get("days")
         date = None
         if days != "all":
-            date = datetime.now() - timedelta(days=int(days))
+            date = datetime.now() - timedelta(days=int(days or "1"))
 
         contributions = await get_contributions(user_dao_id, base_id, date)
         header = []
