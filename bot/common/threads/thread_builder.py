@@ -31,6 +31,7 @@ class ThreadKeys(Enum):
     INITIAL_CONTRIBUTIONS = "initial_contributions"
     GUILD_SELECT = "guild_select"
     REPORT = "report"
+    POINTS = "points"
 
 
 class StepKeys(Enum):
@@ -61,6 +62,7 @@ class StepKeys(Enum):
     INITIAL_CONTRIBUTION_REPORT_COMMAND = "initial_contribution_report_command"
     OVERRIDE_THREAD = "override_thread"
     REPORT = "report"
+    DISPLAY_POINTS = "display_points"
 
 
 class BaseThread:
