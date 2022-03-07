@@ -44,7 +44,6 @@ class DisplayPointsStep(BaseStep):
             channel = message.channel
 
         fields = await get_guild_by_guild_id(self.guild_id)
-        base_id = fields.get("fields").get("base_id")
         record = await get_user_record(user_id, self.guild_id)
         fields = record.get("fields")
         user_dao_id = fields.get("user_dao_id")
@@ -57,7 +56,7 @@ class DisplayPointsStep(BaseStep):
         if days != "all":
             date = datetime.now() - timedelta(days=int(days or "1"))
 
-        contributions = await get_contributions(user_dao_id, base_id, date)
+        contributions = await get_contributions(user_dao_id, date)
         header = []
         rows = []
         for contribution in contributions:
