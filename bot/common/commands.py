@@ -295,7 +295,7 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 async def select_guild(ctx, response_embed, error_embed):
     discord_rec = await get_discord_record(ctx.author.id)
-    airtable_guild_ids = discord_rec.get("fields").get("guild_id")
+    airtable_guild_ids = discord_rec.get("fields").get("guild_ids")
     if not airtable_guild_ids:
         await ctx.response.send_message(embed=error_embed)
         ctx.response.is_done()
