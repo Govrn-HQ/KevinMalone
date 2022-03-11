@@ -286,6 +286,7 @@ async def create_user(user_id, guild_id):
         global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "global")
         user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
         guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+        member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
 
         # check if user, guild combo already exists
         if record_id != "":  # existing combo
@@ -299,13 +300,18 @@ async def create_user(user_id, guild_id):
             user_dao_id = (
                 guild_table.get(guild_record).get("fields").get("total_members") + 1
             )
-            user_table.create(
+            i = user_table.create(
                 {
                     "discord_id": [discord_record],
                     "guild_id": [guild_record],
                     "user_dao_id": str(user_dao_id),
                 }
             )
+            member_id = member_table.create(
+                {"global_id": [i.get("id")], "Name": i.get("fields").get("Name")}
+            )
+            i.update({"Members": (member_id)})
+
             return record_id
 
     return await loop.run_in_executor(None, _create_user)
