@@ -27,7 +27,7 @@ def build_table(header, rows):
 
 
 class DisplayPointsStep(BaseStep):
-    """Sends a link for a user to report their contributions"""
+    """Displays points accrued by a given user"""
 
     name = StepKeys.DISPLAY_POINTS.value
 
@@ -86,6 +86,14 @@ class DisplayPointsStep(BaseStep):
 
         return None, {"msg": msg}
 
+
+class PromptForCsvStep(BaseStep):
+    """Prompts user if they'd like a csv representation of their points"""
+    def __init__():
+        pass
+
+    def send(self, message, user_id):
+        pass
 
 class Points(BaseThread):
     name = ThreadKeys.POINTS.value
