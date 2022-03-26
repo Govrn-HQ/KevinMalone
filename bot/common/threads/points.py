@@ -10,17 +10,14 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
     BaseStep,
     StepKeys,
-    Step
+    Step,
 )
 from bot.common.threads.shared_steps import EmptyStep
 from bot.common.airtable import (
     get_user_record,
     get_contributions,
 )
-from bot.config import (
-    YES_EMOJI,
-    NO_EMOJI
-)
+from bot.config import YES_EMOJI, NO_EMOJI
 from texttable import Texttable
 
 logger = logging.getLogger(__name__)
@@ -111,12 +108,12 @@ class DisplayPointsStep(BaseStep):
         sent_message = None
         if not self.channel:
             sent_message = await channel.send(msg)
-        # thread metadata returned from first interaction in a thread 
+        # thread metadata returned from first interaction in a thread
         # is not set if the first step is a trigger; this is a work-
-        # around for caching the contributions 
+        # around for caching the contributions
         await self.cache.set(
-            str(user_id) + '_contribution_rows',
-            json.dumps(contribution_rows))
+            str(user_id) + "_contribution_rows", json.dumps(contribution_rows)
+        )
 
         return sent_message, {"msg": msg, "contribution_rows": contribution_rows}
 
@@ -160,7 +157,7 @@ class GetContributionsCsvPropmtEmoji(BaseStep):
     async def handle_emoji(self, raw_reaction):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
-                await self.cache.delete(str(self.user_id) + '_contribution_rows')
+                await self.cache.delete(str(self.user_id) + "_contribution_rows")
                 return StepKeys.EMPTY_STEP.value, None
             return StepKeys.POINTS_CSV_PROMPT_ACCEPT.value, None
         # Throw here?
@@ -181,7 +178,7 @@ class GetContributionsCsvPropmtAccept(BaseStep):
         if message:
             channel = message.channel
 
-        contributions = await self.cache.get(str(user_id) + '_contribution_rows')
+        contributions = await self.cache.get(str(user_id) + "_contribution_rows")
         contributions = json.loads(contributions)
 
         csv = build_csv(contributions[0], contributions[1])
@@ -190,9 +187,10 @@ class GetContributionsCsvPropmtAccept(BaseStep):
             csv,
             str(user_id) + "_points.csv",
             description="A csv file of your points from contributions",
-            spoiler=False)
+            spoiler=False,
+        )
 
-        await self.cache.delete(str(user_id) + '_contribution_rows')
+        await self.cache.delete(str(user_id) + "_contribution_rows")
 
         msg = await channel.send(content="Here's your csv!", file=csvFile)
 
@@ -213,17 +211,13 @@ class Points(BaseThread):
         # contributions when generating the csv without going back to
         # airtable. the date range from the DisplayPointsStep is also
         # needed
-        points_csv_accept = Step(
-            current=GetContributionsCsvPropmtAccept(self.cache)
+        points_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
+
+        fork_steps = [points_csv_accept, Step(current=EmptyStep())]
+
+        return (
+            display_points_step.add_next_step(GetContributionsCsvPropmt())
+            .add_next_step(GetContributionsCsvPropmtEmoji(self.user_id, self.cache))
+            .fork(fork_steps)
+            .build()
         )
-
-        fork_steps = [
-            points_csv_accept,
-            Step(current=EmptyStep())
-        ]
-
-        return (display_points_step
-                .add_next_step(GetContributionsCsvPropmt())
-                .add_next_step(GetContributionsCsvPropmtEmoji(self.user_id, self.cache))
-                .fork(fork_steps)
-                .build())
