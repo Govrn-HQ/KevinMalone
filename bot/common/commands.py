@@ -19,7 +19,7 @@ from bot.common.threads.thread_builder import (
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep
-from bot.common.threads.points import DisplayPointsStep
+from bot.common.threads.points import Points
 from bot.common.threads.update import UpdateProfile
 from bot.config import (
     read_file,
@@ -286,11 +286,44 @@ if bool(strtobool(constants.Bot.is_dev)):
                 ),
             )
 
-        _, metadata = await DisplayPointsStep(
-            guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel, days=days
-        ).send(None, ctx.author.id)
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title="Your points!",
+            description="Below is a table representation of  "
+            "the points you've accrued from your contributions! "
+        )
+        try:
+            message = await ctx.response.send_message(
+                "Your points have been sent as a dm!")
+        except discord.Forbidden:
+            message = await ctx.followup.send(
+                "Please enable DM's in order to use the Govrn Bot!", ephemeral=True
+            )
+            return
 
-        await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
+        message = await ctx.author.send(embed=embed)
+
+        thread = await Points(
+            ctx.author.id,
+            hashlib.sha256("".encode()).hexdigest(),
+            message.id,
+            ctx.guild.id,
+            cache=Redis,
+            discord_bot=bot
+        )
+        await Redis.set(
+            ctx.author.id,
+            build_cache_value(
+                ThreadKeys.POINTS.value,
+                thread.steps.hash_,
+                ctx.guild.id,
+                metadata={
+                    "thread_name": ThreadKeys.POINTS.value,
+                    "days": days,
+                },
+            ),
+        )
+        await thread.send(message)
 
 
 async def select_guild(ctx, response_embed, error_embed):

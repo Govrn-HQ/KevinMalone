@@ -63,6 +63,10 @@ class StepKeys(Enum):
     OVERRIDE_THREAD = "override_thread"
     REPORT = "report"
     DISPLAY_POINTS = "display_points"
+    POINTS_CSV_PROMPT = "points_csv_prompt"
+    POINTS_CSV_PROMPT_EMOJI = "points_csv_prompt_emoji"
+    POINTS_CSV_PROMPT_ACCEPT = "points_csv_prompt_accept"
+    EMPTY_STEP = "empty_step"
 
 
 class BaseThread:
