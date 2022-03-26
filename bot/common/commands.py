@@ -290,11 +290,12 @@ if bool(strtobool(constants.Bot.is_dev)):
             colour=INFO_EMBED_COLOR,
             title="Your points!",
             description="Below is a table representation of  "
-            "the points you've accrued from your contributions! "
+            "the points you've accrued from your contributions! ",
         )
         try:
             message = await ctx.response.send_message(
-                "Your points have been sent as a dm!")
+                "Your points have been sent as a dm!"
+            )
         except discord.Forbidden:
             message = await ctx.followup.send(
                 "Please enable DM's in order to use the Govrn Bot!", ephemeral=True
@@ -309,7 +310,7 @@ if bool(strtobool(constants.Bot.is_dev)):
             message.id,
             ctx.guild.id,
             cache=Redis,
-            discord_bot=bot
+            discord_bot=bot,
         )
         await Redis.set(
             ctx.author.id,
