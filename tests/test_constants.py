@@ -1,10 +1,7 @@
 import inspect
 import typing
 import unittest
-from dotenv import load_dotenv
 from bot import constants
-
-load_dotenv()
 
 
 def is_annotation_instance(value: typing.Any, annotation: typing.Any) -> bool:
