@@ -50,7 +50,7 @@ async def report(ctx):
         )
         error_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
-            description="You are not a par of any communities. "
+            description="You are not a part of any communities. "
             "Please run the /join command in a guild you are in",
         )
 
