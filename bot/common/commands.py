@@ -294,15 +294,13 @@ if bool(strtobool(constants.Bot.is_dev)):
         )
         try:
             message = await ctx.response.send_message(
-                "Your points have been sent as a dm!"
+                embed=embed, ephemeral=True
             )
         except discord.Forbidden:
             message = await ctx.followup.send(
                 "Please enable DM's in order to use the Govrn Bot!", ephemeral=True
             )
             return
-
-        message = await ctx.author.send(embed=embed)
 
         thread = await Points(
             ctx.author.id,

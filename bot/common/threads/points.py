@@ -110,7 +110,7 @@ class DisplayPointsStep(BaseStep):
         msg = f"```{table.draw()}```"
         sent_message = None
         if not self.channel:
-            sent_message = await channel.send(msg)
+            sent_message = await channel.send(content=msg, ephemeral=True)
 
         metadata.msg = msg
         metadata.contribution_rows = contribution_rows
@@ -137,7 +137,8 @@ class GetContributionsCsvPropmt(BaseStep):
             channel = message.channel
 
         sent_message = await channel.send(
-            "Would you like a .csv file of your contributions?"
+            content="Would you like a .csv file of your contributions?",
+            ephemeral=True
         )
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
@@ -195,7 +196,10 @@ class GetContributionsCsvPropmtAccept(BaseStep):
             spoiler=False,
         )
 
-        msg = await channel.send(content="Here's your csv!", file=csvFile)
+        msg = await channel.send(
+            content="Here's your csv!",
+            file=csvFile,
+            ephemeral=True)
 
         return msg, None
 
