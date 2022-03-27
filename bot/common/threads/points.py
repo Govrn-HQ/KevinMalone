@@ -11,6 +11,7 @@ from bot.common.threads.thread_builder import (
     BaseStep,
     StepKeys,
     Step,
+    build_cache_value,
 )
 from bot.common.threads.shared_steps import EmptyStep
 from bot.common.airtable import (
@@ -91,10 +92,12 @@ class DisplayPointsStep(BaseStep):
         fields = record.get("fields")
         user_dao_id = fields.get("user_dao_id")
         cache_entry = await self.cache.get(user_id)
-        print(user_id)
+        cache_values = json.loads(cache_entry)
+        metadata = cache_values.get("metadata")
+        print('points ' + str(user_id))
         days = self.days
         if cache_entry:
-            days = json.loads(cache_entry).get("metadata").get("days")
+            days = metadata.get("days")
         date = None
         if days != "all":
             date = datetime.now() - timedelta(days=int(days or "1"))
@@ -108,14 +111,16 @@ class DisplayPointsStep(BaseStep):
         sent_message = None
         if not self.channel:
             sent_message = await channel.send(msg)
-        # thread metadata returned from first interaction in a thread
-        # is not set if the first step is a trigger; this is a work-
-        # around for caching the contributions
+
+        metadata.msg = msg
+        metadata.contribution_rows = contribution_rows
+        cache_values["metadata"] = metadata
         await self.cache.set(
-            str(user_id) + "_contribution_rows", json.dumps(contribution_rows)
+            user_id,
+            build_cache_value(**cache_values)
         )
 
-        return sent_message, {"msg": msg, "contribution_rows": contribution_rows}
+        return sent_message, metadata
 
 
 class GetContributionsCsvPropmt(BaseStep):
@@ -157,7 +162,6 @@ class GetContributionsCsvPropmtEmoji(BaseStep):
     async def handle_emoji(self, raw_reaction):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
-                await self.cache.delete(str(self.user_id) + "_contribution_rows")
                 return StepKeys.EMPTY_STEP.value, None
             return StepKeys.POINTS_CSV_PROMPT_ACCEPT.value, None
         # Throw here?
@@ -178,8 +182,9 @@ class GetContributionsCsvPropmtAccept(BaseStep):
         if message:
             channel = message.channel
 
-        contributions = await self.cache.get(str(user_id) + "_contribution_rows")
-        contributions = json.loads(contributions)
+        cache_entry = await self.cache.get(user_id)
+        cache_values = json.loads(cache_entry)
+        contributions = cache_values.get("metadata").get("contributions")
 
         csv = build_csv(contributions[0], contributions[1])
 
@@ -189,8 +194,6 @@ class GetContributionsCsvPropmtAccept(BaseStep):
             description="A csv file of your points from contributions",
             spoiler=False,
         )
-
-        await self.cache.delete(str(user_id) + "_contribution_rows")
 
         msg = await channel.send(content="Here's your csv!", file=csvFile)
 
