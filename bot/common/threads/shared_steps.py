@@ -36,15 +36,3 @@ class SelectGuildEmojiStep(BaseStep):
         if not selected_guild_reaction:
             raise Exception("Reacted with the wrong emoji")
         return None, None
-
-
-class EmptyStep(BaseStep):
-    """An empty step that acts as a leaf on the
-
-    This step serves to end a thread without further response
-    """
-
-    name = StepKeys.EMPTY_STEP.value
-
-    async def send(self):
-        return None, None

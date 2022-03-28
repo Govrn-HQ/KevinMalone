@@ -163,7 +163,7 @@ class GetContributionsCsvPropmtEmoji(BaseStep):
     async def handle_emoji(self, raw_reaction):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
-                return StepKeys.EMPTY_STEP.value, None
+                return StepKeys.END.value, None
             return StepKeys.POINTS_CSV_PROMPT_ACCEPT.value, None
         # Throw here?
         raise Exception("Reacted with the wrong emoji")
