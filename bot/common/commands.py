@@ -270,6 +270,9 @@ if bool(strtobool(constants.Bot.is_dev)):
                 hashlib.sha256("".encode()).hexdigest(),
                 message.id,
                 "",
+                cache=Redis,
+                discord_bot=bot,
+                context=ctx
             )
             return await Redis.set(
                 ctx.author.id,
@@ -286,29 +289,14 @@ if bool(strtobool(constants.Bot.is_dev)):
                 ),
             )
 
-        embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            title="Your points!",
-            description="Below is a table representation of  "
-            "the points you've accrued from your contributions! ",
-        )
-        try:
-            message = await ctx.response.send_message(
-                embed=embed, ephemeral=True
-            )
-        except discord.Forbidden:
-            message = await ctx.followup.send(
-                "Please enable DM's in order to use the Govrn Bot!", ephemeral=True
-            )
-            return
-
         thread = await Points(
             ctx.author.id,
             hashlib.sha256("".encode()).hexdigest(),
-            message.id,
+            None,
             ctx.guild.id,
             cache=Redis,
             discord_bot=bot,
+            context=ctx,
         )
         await Redis.set(
             ctx.author.id,
@@ -322,7 +310,7 @@ if bool(strtobool(constants.Bot.is_dev)):
                 },
             ),
         )
-        await thread.send(message)
+        await thread.send(None)
 
 
 async def select_guild(ctx, response_embed, error_embed):
