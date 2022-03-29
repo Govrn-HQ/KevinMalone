@@ -17,6 +17,7 @@ from bot.common.threads.thread_builder import (
 from bot.common.airtable import (
     get_user_record,
     get_contributions,
+    get_guild_by_guild_id,
 )
 from bot.config import (
     YES_EMOJI,
@@ -94,8 +95,16 @@ class DisplayPointsStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
+        fields = await get_guild_by_guild_id(self.guild_id)
         record = await get_user_record(user_id, self.guild_id)
-
+        logger.info(
+            "user_id "
+            + str(user_id)
+            + "guild id "
+            + self.guild_id
+            + " records: "
+            + json.dumps(record)
+        )
         if record is None:
             self.end_flow = True
             content = "Looks like you're not yet onboarded to the guild! "
@@ -132,8 +141,8 @@ class DisplayPointsStep(BaseStep):
         if cache_entry:
             days = metadata.get("days")
         date = None
-        if days != "all":
-            date = datetime.now() - timedelta(days=int(days or "1"))
+        td = timedelta(years=20) if days == "all" else timedelta(days=int(days or "1"))
+        date = datetime.now() - td
 
         contributions = await get_contributions(user_dao_id, date)
         # [0] is headers, [1] is a list of rows
