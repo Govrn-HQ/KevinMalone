@@ -101,7 +101,7 @@ class DisplayPointsStep(BaseStep):
             "user_id "
             + str(user_id)
             + "guild id "
-            + self.guild_id
+            + str(self.guild_id)
             + " records: "
             + json.dumps(record)
         )
