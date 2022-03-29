@@ -141,7 +141,7 @@ class DisplayPointsStep(BaseStep):
         if cache_entry:
             days = metadata.get("days")
         date = None
-        td = timedelta(years=20) if days == "all" else timedelta(days=int(days or "1"))
+        td = timedelta(weeks=52 * 20) if days == "all" else timedelta(days=int(days or "1"))
         date = datetime.now() - td
 
         contributions = await get_contributions(user_dao_id, date)
