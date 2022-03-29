@@ -18,24 +18,24 @@ from bot.common.threads.points import Points
 from bot.config import Redis
 
 
-async def get_thread(user_id, key):
+async def get_thread(user_id, key, cache=None):
     val = json.loads(key)
     thread = val.get("thread")
     step = val.get("step")
     message_id = val.get("message_id")
     guild_id = val.get("guild_id")
     if thread == ThreadKeys.ONBOARDING.value:
-        return await Onboarding(user_id, step, message_id, guild_id)
+        return await Onboarding(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.UPDATE_PROFILE.value:
-        return await UpdateProfile(user_id, step, message_id, guild_id)
+        return await UpdateProfile(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.INITIAL_CONTRIBUTIONS.value:
-        return await InitialContributions(user_id, step, message_id, guild_id)
+        return await InitialContributions(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.GUILD_SELECT.value:
-        return await GuildSelect(user_id, step, message_id, guild_id)
+        return await GuildSelect(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.REPORT.value:
-        return await Report(user_id, step, message_id, guild_id)
+        return await Report(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.POINTS.value:
-        return await Points(user_id, step, message_id, guild_id)
+        return await Points(user_id, step, message_id, guild_id, cache)
     raise Exception("Unknown Thread!")
 
 
@@ -62,6 +62,7 @@ class OverrideThreadStep(BaseStep):
                 self.cls.guild_id,
                 message.id,
             ),
+            self.cls.cache,
         )
         # this is dangerous
         self.cls.get_steps = thread.get_steps

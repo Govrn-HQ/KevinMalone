@@ -107,4 +107,4 @@ airtable:
   base_url: "http://airtable.com"
 
 config:
-  required_keys: ["bot.token"]
+  required_keys: ["bot.token", "bot.redis_url"]
