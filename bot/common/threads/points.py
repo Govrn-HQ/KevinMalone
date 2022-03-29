@@ -99,7 +99,7 @@ class DisplayPointsStep(BaseStep):
         if record is None:
             self.end_flow = True
             content = "Looks like you're not yet onboarded to the guild! "
-            "Complete the intial onboarding before trying to run `/points`"
+            "Complete the intial onboarding /join command before running `/points`"
             if is_in_dms:
                 return await message.channel.send(content), None
             else:
@@ -110,7 +110,7 @@ class DisplayPointsStep(BaseStep):
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Your points!",
-            description="Below is a table representation of  "
+            description="Below is a table of  "
             "the points you've accrued from your contributions! ",
         )
 
