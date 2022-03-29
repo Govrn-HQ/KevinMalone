@@ -62,7 +62,7 @@ class OverrideThreadStep(BaseStep):
                 self.cls.guild_id,
                 message.id,
             ),
-            self.cls.cache
+            self.cls.cache,
         )
         # this is dangerous
         self.cls.get_steps = thread.get_steps

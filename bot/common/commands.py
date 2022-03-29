@@ -272,7 +272,7 @@ if bool(strtobool(constants.Bot.is_dev)):
                 "",
                 cache=Redis,
                 discord_bot=bot,
-                context=ctx
+                context=ctx,
             )
             return await Redis.set(
                 ctx.author.id,

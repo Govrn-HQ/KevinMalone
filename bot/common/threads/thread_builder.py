@@ -112,7 +112,7 @@ class BaseThread:
         guild_id,
         cache=None,
         discord_bot=None,
-        context=None
+        context=None,
     ):
         if not current_step:
             raise Exception(f"No step for {current_step}")

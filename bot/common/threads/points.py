@@ -103,9 +103,12 @@ class DisplayPointsStep(BaseStep):
             if is_in_dms:
                 return await message.channel.send(content), None
             else:
-                return await self.context.response.send_message(
-                    content=content, ephemeral=True
-                ), None
+                return (
+                    await self.context.response.send_message(
+                        content=content, ephemeral=True
+                    ),
+                    None,
+                )
 
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
@@ -117,16 +120,14 @@ class DisplayPointsStep(BaseStep):
         if is_in_dms:
             await message.channel.send(embed=embed)
         else:
-            await self.context.response.send_message(
-                embed=embed, ephemeral=True
-            )
+            await self.context.response.send_message(embed=embed, ephemeral=True)
 
         fields = record.get("fields")
         user_dao_id = fields.get("user_dao_id")
         cache_entry = await self.cache.get(user_id)
         cache_values = json.loads(cache_entry)
         metadata = cache_values.get("metadata")
-        print('points ' + str(user_id))
+        print("points " + str(user_id))
         days = self.days
         if cache_entry:
             days = metadata.get("days")
@@ -147,22 +148,17 @@ class DisplayPointsStep(BaseStep):
             sent_message = await message.channel.send(msg)
         else:
             csv_file = build_csv_file(
-                contribution_rows[0],
-                contribution_rows[1],
-                user_id)
+                contribution_rows[0], contribution_rows[1], user_id
+            )
             followup = self.context.interaction.followup
             sent_message = await followup.send(
-                content=msg,
-                ephemeral=True,
-                file=csv_file)
+                content=msg, ephemeral=True, file=csv_file
+            )
             return sent_message, metadata
 
         metadata["contribution_rows"] = contribution_rows
         cache_values["metadata"] = metadata
-        await self.cache.set(
-            user_id,
-            build_cache_value(**cache_values)
-        )
+        await self.cache.set(user_id, build_cache_value(**cache_values))
 
         return sent_message, metadata
 
@@ -220,9 +216,7 @@ class GetContributionsCsvPropmtAccept(BaseStep):
 
         csv_file = build_csv_file(contributions[0], contributions[1], user_id)
 
-        msg = await message.channel.send(
-            content="Here's your csv!",
-            file=csv_file)
+        msg = await message.channel.send(content="Here's your csv!", file=csv_file)
 
         return msg, None
 
@@ -240,8 +234,7 @@ class Points(BaseThread):
             )
         )
 
-        points_csv_accept = Step(current=GetContributionsCsvPropmtAccept(
-            self.cache))
+        points_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
 
         return (
             display_points_step.add_next_step(GetContributionsCsvPropmt())
