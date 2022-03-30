@@ -2,6 +2,7 @@ from bot import constants
 import discord
 from bot.common.airtable import (
     find_user,
+    update_member,
     update_user,
     get_guild_by_guild_id,
     get_user_record,
@@ -92,7 +93,10 @@ class UserDisplaySubmitStep(BaseStep):
 
     async def save(self, message, guild_id, user_id):
         record_id = await find_user(user_id, guild_id)
-        await update_user(record_id, "display_name", message.content.strip())
+        val = message.content.strip()
+        await update_user(record_id, "display_name", val)
+        user_record = await get_user_record(user_id, guild_id)
+        await update_member(user_record.get("fields").get("Members"), "Name", val)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)

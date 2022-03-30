@@ -236,6 +236,20 @@ async def update_user(record_id, id_field, id_val):
     return await loop.run_in_executor(None, _update_user)
 
 
+async def update_member(record_id, id_field, id_val):
+
+    """Add or update member ID given ID field, value,
+    and member table airtable record number."""
+
+    loop = asyncio.get_running_loop()
+
+    def _update_member():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
+        table.update(record_id, {id_field: id_val})
+
+    return await loop.run_in_executor(None, _update_member)
+
+
 async def add_user_to_contribution(guild_id, user_id, order):
 
     """Add or update user ID info given ID field, value,
