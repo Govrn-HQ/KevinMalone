@@ -206,10 +206,10 @@ async def get_contributions(user_id, date):
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Activity History Staging")
 
         member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
-        users = member_table.all(formula=match({"community_id": user_id}))
-        if not users:
+        members = member_table.all(formula=match({"global_id": user_id}))
+        if not members:
             raise Exception(f"Failed to fetch user from base {AIRTABLE_BASE}")
-        user_display_name = users[0].get("fields").get("Name")
+        user_display_name = members[0].get("fields").get("Name")
         if not date:
             date = datetime.now()
         formatted_date = date.strftime("%Y-%m-%dT%H:%M::%S.%fZ")

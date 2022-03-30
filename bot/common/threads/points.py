@@ -17,7 +17,6 @@ from bot.common.threads.thread_builder import (
 from bot.common.airtable import (
     get_user_record,
     get_contributions,
-    get_guild_by_guild_id,
 )
 from bot.config import (
     YES_EMOJI,
@@ -95,7 +94,6 @@ class DisplayPointsStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        fields = await get_guild_by_guild_id(self.guild_id)
         record = await get_user_record(user_id, self.guild_id)
         logger.info(
             "user_id "
@@ -132,7 +130,7 @@ class DisplayPointsStep(BaseStep):
             await self.context.response.send_message(embed=embed, ephemeral=True)
 
         fields = record.get("fields")
-        user_dao_id = fields.get("user_dao_id")
+        user_dao_id = fields.get("global_id")
         cache_entry = await self.cache.get(user_id)
         cache_values = json.loads(cache_entry)
         metadata = cache_values.get("metadata")
