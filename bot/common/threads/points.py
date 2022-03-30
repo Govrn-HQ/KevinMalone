@@ -130,7 +130,7 @@ class DisplayPointsStep(BaseStep):
             await self.context.response.send_message(embed=embed, ephemeral=True)
 
         fields = record.get("fields")
-        user_dao_id = fields.get("global_id")
+        global_id = fields.get("global_id")
         cache_entry = await self.cache.get(user_id)
         cache_values = json.loads(cache_entry)
         metadata = cache_values.get("metadata")
@@ -146,7 +146,7 @@ class DisplayPointsStep(BaseStep):
         )
         date = datetime.now() - td
 
-        contributions = await get_contributions(user_dao_id, date)
+        contributions = await get_contributions(global_id, date)
         # [0] is headers, [1] is a list of rows
         contribution_rows = get_contribution_rows(contributions)
 
