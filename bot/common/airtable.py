@@ -196,7 +196,7 @@ async def get_contribution_count(user_id, base_id):
     return await loop.run_in_executor(None, _count)
 
 
-async def get_contributions(user_id, date):
+async def get_contributions(global_id, date):
 
     """Get a count of contributions a user has made to a given guild"""
 
@@ -206,7 +206,7 @@ async def get_contributions(user_id, date):
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Activity History Staging")
 
         member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
-        members = member_table.all(formula=match({"global_id": user_id}))
+        members = member_table.all(formula=match({"global_id": global_id}))
         if not members:
             raise Exception(f"Failed to fetch user from base {AIRTABLE_BASE}")
         user_display_name = members[0].get("fields").get("Name")
