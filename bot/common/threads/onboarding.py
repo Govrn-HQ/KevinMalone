@@ -2,6 +2,7 @@ from bot import constants
 import discord
 from bot.common.airtable import (
     find_user,
+    update_member,
     update_user,
     get_guild_by_guild_id,
     get_user_record,
@@ -76,6 +77,9 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         user = await self.bot.fetch_user(user_id)
         record_id = await find_user(user_id, guild_id)
         await update_user(record_id, "display_name", user.name)
+        user_record = await get_user_record(user_id, guild_id)
+        member_id = user_record.get("fields").get("Members")[0]
+        await update_member(member_id, "Name", user.name)
 
 
 class UserDisplaySubmitStep(BaseStep):
@@ -92,7 +96,11 @@ class UserDisplaySubmitStep(BaseStep):
 
     async def save(self, message, guild_id, user_id):
         record_id = await find_user(user_id, guild_id)
-        await update_user(record_id, "display_name", message.content.strip())
+        val = message.content.strip()
+        await update_user(record_id, "display_name", val)
+        user_record = await get_user_record(user_id, guild_id)
+        member_id = user_record.get("fields").get("Members")[0]
+        await update_member(member_id, "Name", val)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
