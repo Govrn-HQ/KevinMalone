@@ -1,5 +1,4 @@
 import discord
-import json
 import aioredis
 from bot import constants
 
