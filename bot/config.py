@@ -23,11 +23,6 @@ REPORTING_FORM_FMT = "https://report.govrn.app/#/contribution/%s"
 emojis = [ALIEN_EMOJI, ALIEN_MONSTER_EMOJI, ROBOT_EMOJI, GHOST_EMOJI, CLOWN_EMOJI]
 
 
-def read_file():
-    with open("govrn_config.json") as f:
-        return json.load(f)
-
-
 def get_list_of_emojis(num):
     return emojis[0:num]
 
