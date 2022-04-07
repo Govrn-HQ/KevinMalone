@@ -22,7 +22,7 @@ from bot.common.threads.report import ReportStep
 from bot.common.threads.points import DisplayPointsStep
 from bot.common.threads.update import UpdateProfile
 from bot.config import (
-    read_file,
+    REPORTING_FORM_FMT,
     GUILD_IDS,
     INFO_EMBED_COLOR,
     Redis,
@@ -73,8 +73,7 @@ async def report(ctx):
             ),
         )
 
-    airtableLinks = read_file()
-    airtableLink = airtableLinks.get(str(ctx.guild.id))
+    airtableLink = REPORTING_FORM_FMT % ctx.guild.id
 
     if airtableLink:
         _, metadata = await ReportStep(
