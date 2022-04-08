@@ -196,7 +196,7 @@ async def get_contribution_count(user_id, base_id):
     return await loop.run_in_executor(None, _count)
 
 
-async def get_contributions(user_id, date):
+async def get_contributions(global_id, date):
 
     """Get a count of contributions a user has made to a given guild"""
 
@@ -205,11 +205,11 @@ async def get_contributions(user_id, date):
     def _contributions(date=date):
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Activity History Staging")
 
-        user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
-        users = user_table.all(formula=match({"community_id": user_id}))
-        if not users:
+        member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
+        members = member_table.all(formula=match({"global_id": global_id}))
+        if not members:
             raise Exception(f"Failed to fetch user from base {AIRTABLE_BASE}")
-        user_display_name = users[0].get("fields").get("Name")
+        user_display_name = members[0].get("fields").get("Name")
         if not date:
             date = datetime.now()
         formatted_date = date.strftime("%Y-%m-%dT%H:%M::%S.%fZ")
@@ -234,6 +234,20 @@ async def update_user(record_id, id_field, id_val):
         table.update(record_id, {id_field: id_val})
 
     return await loop.run_in_executor(None, _update_user)
+
+
+async def update_member(record_id, id_field, id_val):
+
+    """Add or update member ID given ID field, value,
+    and member table airtable record number."""
+
+    loop = asyncio.get_running_loop()
+
+    def _update_member():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
+        table.update(record_id, {id_field: id_val})
+
+    return await loop.run_in_executor(None, _update_member)
 
 
 async def add_user_to_contribution(guild_id, user_id, order):

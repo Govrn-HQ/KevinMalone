@@ -19,7 +19,7 @@ from bot.common.threads.thread_builder import (
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep
-from bot.common.threads.points import DisplayPointsStep
+from bot.common.threads.points import Points
 from bot.common.threads.update import UpdateProfile
 from bot.config import (
     read_file,
@@ -50,7 +50,7 @@ async def report(ctx):
         )
         error_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
-            description="You are not a par of any communities. "
+            description="You are not a part of any communities. "
             "Please run the /join command in a guild you are in",
         )
 
@@ -270,6 +270,9 @@ if bool(strtobool(constants.Bot.is_dev)):
                 hashlib.sha256("".encode()).hexdigest(),
                 message.id,
                 "",
+                cache=Redis,
+                discord_bot=bot,
+                context=ctx,
             )
             return await Redis.set(
                 ctx.author.id,
@@ -286,11 +289,28 @@ if bool(strtobool(constants.Bot.is_dev)):
                 ),
             )
 
-        _, metadata = await DisplayPointsStep(
-            guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel, days=days
-        ).send(None, ctx.author.id)
-
-        await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
+        thread = await Points(
+            ctx.author.id,
+            hashlib.sha256("".encode()).hexdigest(),
+            None,
+            ctx.guild.id,
+            cache=Redis,
+            discord_bot=bot,
+            context=ctx,
+        )
+        await Redis.set(
+            ctx.author.id,
+            build_cache_value(
+                ThreadKeys.POINTS.value,
+                thread.steps.hash_,
+                ctx.guild.id,
+                metadata={
+                    "thread_name": ThreadKeys.POINTS.value,
+                    "days": days,
+                },
+            ),
+        )
+        await thread.send(None)
 
 
 async def select_guild(ctx, response_embed, error_embed):

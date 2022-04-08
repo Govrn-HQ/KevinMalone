@@ -63,6 +63,9 @@ class StepKeys(Enum):
     OVERRIDE_THREAD = "override_thread"
     REPORT = "report"
     DISPLAY_POINTS = "display_points"
+    POINTS_CSV_PROMPT = "points_csv_prompt"
+    POINTS_CSV_PROMPT_EMOJI = "points_csv_prompt_emoji"
+    POINTS_CSV_PROMPT_ACCEPT = "points_csv_prompt_accept"
 
 
 class BaseThread:
@@ -83,6 +86,8 @@ class BaseThread:
       cache: The cache to store the state at the end of a step
       discord_bot: The discord bot client used to interact with the
         discord api
+      context: the context of the interaction which was triggered by
+        the user
 
     Attributes:
       user_id: Discord user id of the user interacting with the bot
@@ -107,6 +112,7 @@ class BaseThread:
         guild_id,
         cache=None,
         discord_bot=None,
+        context=None,
     ):
         if not current_step:
             raise Exception(f"No step for {current_step}")
@@ -121,6 +127,7 @@ class BaseThread:
         self.bot = discord_bot
         if not self.bot:
             self.bot = bot
+        self.context = context
 
     @classmethod
     def find_step(cls, steps, hash_):
