@@ -193,6 +193,80 @@ async def update(ctx):
         )
 
 
+@bot.slash_command(
+    guild_id=GUILD_IDS,
+    description="Send user points for a given community",
+)
+async def points(
+    ctx,
+    days: Option(
+        str,
+        "Days of contribution",  # noqa: F722
+        choices=["1", "7", "30", "90", "180", "365", "all"],
+    ),
+):
+    is_guild = bool(ctx.guild)
+    if not is_guild:
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description="Which community would you like to get a list of "
+            "engagements?",
+        )
+        error_embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            description="You are not a part of any communities. "
+            "Please run the /points command in a guild you are in",
+        )
+
+        message, metadata = await select_guild(ctx, embed, error_embed)
+        thread = await GuildSelect(
+            ctx.author.id,
+            hashlib.sha256("".encode()).hexdigest(),
+            message.id,
+            "",
+            cache=Redis,
+            discord_bot=bot,
+            context=ctx,
+        )
+        return await Redis.set(
+            ctx.author.id,
+            build_cache_value(
+                ThreadKeys.GUILD_SELECT.value,
+                thread.steps.hash_,
+                "",
+                message.id,
+                metadata={
+                    **metadata,
+                    "thread_name": ThreadKeys.POINTS.value,
+                    "days": days,
+                },
+            ),
+        )
+
+    thread = await Points(
+        ctx.author.id,
+        hashlib.sha256("".encode()).hexdigest(),
+        None,
+        ctx.guild.id,
+        cache=Redis,
+        discord_bot=bot,
+        context=ctx,
+    )
+    await Redis.set(
+        ctx.author.id,
+        build_cache_value(
+            ThreadKeys.POINTS.value,
+            thread.steps.hash_,
+            ctx.guild.id,
+            metadata={
+                "thread_name": ThreadKeys.POINTS.value,
+                "days": days,
+            },
+        ),
+    )
+    await thread.send(None)
+
+
 if bool(strtobool(constants.Bot.is_dev)):
 
     @bot.slash_command(
@@ -238,79 +312,6 @@ if bool(strtobool(constants.Bot.is_dev)):
                     },
                 ),
             )
-
-    @bot.slash_command(
-        guild_id=GUILD_IDS,
-        description="Send user points for a given community",
-    )
-    async def points(
-        ctx,
-        days: Option(
-            str,
-            "Days of contribution",  # noqa: F722
-            choices=["1", "7", "30", "90", "180", "365", "all"],
-        ),
-    ):
-        is_guild = bool(ctx.guild)
-        if not is_guild:
-            embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                description="Which community would you like to get a list of "
-                "engagements?",
-            )
-            error_embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                description="You are not a part of any communities. "
-                "Please run the /points command in a guild you are in",
-            )
-
-            message, metadata = await select_guild(ctx, embed, error_embed)
-            thread = await GuildSelect(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
-                cache=Redis,
-                discord_bot=bot,
-                context=ctx,
-            )
-            return await Redis.set(
-                ctx.author.id,
-                build_cache_value(
-                    ThreadKeys.GUILD_SELECT.value,
-                    thread.steps.hash_,
-                    "",
-                    message.id,
-                    metadata={
-                        **metadata,
-                        "thread_name": ThreadKeys.POINTS.value,
-                        "days": days,
-                    },
-                ),
-            )
-
-        thread = await Points(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            None,
-            ctx.guild.id,
-            cache=Redis,
-            discord_bot=bot,
-            context=ctx,
-        )
-        await Redis.set(
-            ctx.author.id,
-            build_cache_value(
-                ThreadKeys.POINTS.value,
-                thread.steps.hash_,
-                ctx.guild.id,
-                metadata={
-                    "thread_name": ThreadKeys.POINTS.value,
-                    "days": days,
-                },
-            ),
-        )
-        await thread.send(None)
 
 
 async def select_guild(ctx, response_embed, error_embed):
