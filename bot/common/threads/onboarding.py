@@ -1,5 +1,8 @@
 from bot import constants
+from datetime import datetime, timedelta
 import discord
+import re
+import twint
 from bot.common.airtable import (
     find_user,
     update_user,
@@ -8,10 +11,16 @@ from bot.common.airtable import (
     create_user,
 )
 from bot.config import (
+    MAX_TWEET_LOOKBACK_MINUTES,
+    MAX_TWEETS_TO_RETRIEVE,
     YES_EMOJI,
     NO_EMOJI,
     SKIP_EMOJI,
     INFO_EMBED_COLOR,
+    REQUESTED_TWEET,
+    TWITTER_URL_REGEXP,
+    REQUESTED_SIGNED_MESSAGE,
+    WALLET_VERIFICATION_INSTRUCTIONS_FMT,
 )
 from bot.common.threads.thread_builder import (
     BaseStep,
@@ -19,7 +28,12 @@ from bot.common.threads.thread_builder import (
     Step,
     ThreadKeys,
     BaseThread,
+    get_cache_metadata,
+    write_cache_metadata,
 )
+
+TWITTER_HANDLE_STORAGE_KEY = "twitter"
+WALLET_STORAGE_KEY = "wallet"
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
@@ -143,6 +157,75 @@ class AddUserWalletAddressStep(BaseStep):
     async def save(self, message, guild_id, user_id):
         record_id = await find_user(message.author.id, guild_id)
         await update_user(record_id, "wallet", message.content.strip())
+
+
+def verify_twitter_url(tweet_url, expected_profile):
+    #  ensure the shared tweet matches the account and message
+    match = re.search(TWITTER_URL_REGEXP, tweet_url)
+
+    if match is None:
+        raise Exception("Tweet URL %s was not in the expected format" % tweet_url)
+
+    profile = match.group(1)
+
+    if profile != expected_profile:
+        errMsg = (
+            "Tweet profile %s does not match the supplied handle %s" % profile,
+            expected_profile,
+        )
+        raise Exception(errMsg)
+
+    status_id = match.group(2)
+
+    return profile, status_id
+
+
+def retrieve_tweet(profile, status_id):
+    tweets = []
+    kmalone_tweet = None
+    try:
+        since = datetime.now() - timedelta(minutes=MAX_TWEET_LOOKBACK_MINUTES)
+        c = twint.Config()
+        c.Username = profile
+        c.Limit = MAX_TWEETS_TO_RETRIEVE
+        c.Since = since.strftime("%Y-%m-%d %H:%M:%S")
+        c.Store_object = True
+        c.Store_object_tweets_list = tweets
+        response = twint.run.Search(c)
+    except Exception as e:
+        raise Exception(
+            "Error in retrieving tweet %s from %s: %s" % status_id, profile, e
+        )
+
+    for tweet in tweets:
+        if tweet.id == status_id:
+            kmalone_tweet = tweet
+            break
+
+    if kmalone_tweet is None:
+        err_msg = (
+            (
+                "Could not find tweet with supplied id %s in %s's twitter history."
+                " Please make sure that you tweeted in the last %s minutes, and the"
+                " verification tweet is amoung your %s most recent."
+            )
+            % status_id,
+            profile,
+            MAX_TWEET_LOOKBACK_MINUTES,
+            MAX_TWEETS_TO_RETRIEVE,
+        )
+        raise Exception(err_msg)
+
+    return response.text
+
+
+def verify_tweet_text(tweet_text, expected_tweet_text):
+    if tweet_text != expected_tweet_text:
+        raise Exception(
+            "Tweet text %s doesn't match the verification tweet %s" % tweet_text,
+            expected_tweet_text,
+        )
+
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
