@@ -4,6 +4,9 @@ from datetime import datetime, timedelta
 import discord
 import re
 import twint
+from eth_account import Account
+from eth_account.messages import encode_defunct
+from web3 import Web3
 from bot.common.airtable import (
     find_user,
     update_user,
@@ -327,8 +330,93 @@ def verify_tweet_text(tweet_text, expected_tweet_text):
         )
 
 
+class AddUserWalletAddressStep(AddUserAccountStep):
+    """Step to submit wallet address for the govrn profile"""
+
+    name = StepKeys.ADD_USER_WALLET_ADDRESS.value
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__(user_id, guild_id, cache)
+
+    def get_account_descriptor(self):
+        return "Ethereum wallet address"
+
+    def sanitize_account_input(self, message):
+        stripped_message = message.strip()
+        if not Web3.isAddress(stripped_message):
+            raise Exception(
+                "Supplied address %s is not a valid ethereum address" % stripped_message
+            )
+
+        return stripped_message
+
+    def get_account_storage_key(self):
+        return WALLET_STORAGE_KEY
+
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
+
+
+class PromptUserWalletMessageSignatureStep(PromptForAccountVerificationStep):
+    """Prompts the user to sign a message with their specified wallet"""
+
+    name = StepKeys.PROMPT_USER_WALLET_ADDRESS.value
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__(user_id, guild_id, cache)
+
+    def get_account_verification_prompt(self, channel):
+        wallet_address = get_cache_metadata(
+            self.user_id, self.cache, WALLET_STORAGE_KEY
+        )
+        wallet_verification_instructions = WALLET_VERIFICATION_INSTRUCTIONS_FMT % {
+            "s": wallet_address
+        }
+        instructions_embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title="Verification instructions",
+            description=wallet_verification_instructions,
+        )
+
+        channel.send(instructions_embed)
+
+        next_message = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title="Please sign the below message with your wallet",
+            description=REQUESTED_SIGNED_MESSAGE,
+        )
+        return next_message
+
+
+class VerifyUserWalletMessageSignatureStep(VerifyAccountStep):
+    """Verifies the message supplied by the user was signed by their specified wallet"""
+
+    name = StepKeys.VERIFY_USER_WALLET_ADDRESS.value
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__(user_id, guild_id, cache)
+
+    async def verify_account(self, authentication_message):
+        address = get_cache_metadata(self.user_id, self.cache, WALLET_STORAGE_KEY)
+        stripped_supplied_signature = authentication_message.strip()
+        requested_msg_hex = encode_defunct(text=REQUESTED_SIGNED_MESSAGE)
+        recovered_address = Account.recover_message(
+            requested_msg_hex, signature="0x" + stripped_supplied_signature
+        )
+
+        if address != recovered_address:
+            raise Exception(
+                "Recovered address from message & signature doesn't match supplied"
+            )
+
+    async def save_authenticated_account(self):
+        #  retrieve and save handle from cache into airtable
+        record_id = await find_user(self.user_id, self.guild_id)
+        #  TODO: should this be .toLowered?
+        wallet_address = get_cache_metadata(
+            self.user_id, self.cache, WALLET_STORAGE_KEY
+        )
+        await update_user(record_id, WALLET_STORAGE_KEY, wallet_address)
 
 
 class AddDiscourseStep(BaseStep):
@@ -541,8 +629,24 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=AddUserTwitterStep(guild_id=self.guild_id))
-            .add_next_step(AddUserWalletAddressStep(guild_id=self.guild_id))
+            Step(current=AddUserTwitterStep(self.user_id, self.guild_id, self.cache))
+            .add_next_step(PromptUserTweetStep(self.user_id, self.guild_id, self.cache))
+            .add_next_step(
+                VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+            )
+            .add_next_step(
+                AddUserWalletAddressStep(self.user_id, self.guild_id, self.cache)
+            )
+            .add_next_step(
+                PromptUserWalletMessageSignatureStep(
+                    self.user_id, self.guild_id, self.cache
+                )
+            )
+            .add_next_step(
+                VerifyUserWalletMessageSignatureStep(
+                    self.user_id, self.guild_id, self.cache
+                )
+            )
             .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
             .add_next_step(CongratsStep(guild_id=self.guild_id, bot=self.bot))
         )

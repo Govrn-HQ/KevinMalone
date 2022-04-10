@@ -59,6 +59,8 @@ class StepKeys(Enum):
     VERIFY_USER_TWITTER = "verify_user_twitter"
     ONBOARDING_CONGRATS = "onboarding_congrats"
     ADD_USER_WALLET_ADDRESS = "add_user_wallet_address"
+    PROMPT_USER_WALLET_ADDRESS = "prompt_user_wallet_address"
+    VERIFY_USER_WALLET_ADDRESS = "verify_user_wallet_address"
     ADD_USER_DISCOURSE = "add_user_discourse"
     SELECT_GUILD_EMOJI = "select_guild_emoji"
     USER_UPDATE_FIELD_SELECT = "user_update_select"
