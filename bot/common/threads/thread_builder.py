@@ -55,6 +55,8 @@ class StepKeys(Enum):
     USER_DISPLAY_CONFIRM_EMOJI = "user_display_confirm_emoji"
     USER_DISPLAY_SUBMIT = "user_display_submit"
     ADD_USER_TWITTER = "add_user_twitter"
+    PROMPT_USER_TWEET = "prompt_user_tweet"
+    VERIFY_USER_TWITTER = "verify_user_twitter"
     ONBOARDING_CONGRATS = "onboarding_congrats"
     ADD_USER_WALLET_ADDRESS = "add_user_wallet_address"
     ADD_USER_DISCOURSE = "add_user_discourse"

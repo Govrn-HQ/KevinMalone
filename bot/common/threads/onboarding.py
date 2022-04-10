@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from bot import constants
 from datetime import datetime, timedelta
 import discord
@@ -112,51 +113,150 @@ class UserDisplaySubmitStep(BaseStep):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
-class AddUserTwitterStep(BaseStep):
+class AddUserAccountStep(BaseStep):
+    """Step which prompts user for an account name. Derived classes"""
+
+    """override the message and cache name for the response"""
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__()
+        self.user_id = user_id
+        self.guild_id = guild_id
+        self.cache = cache
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            "What %s would you like to associate with this guild?"
+            % self.get_account_descriptor()
+        )
+        return sent_message, None
+
+    async def save(self, message, guild_id, user_id):
+        metadata_key = self.get_account_storage_key()
+        account_name = self.sanitize_account_input(message)
+        await write_cache_metadata(user_id, self.cache, metadata_key, account_name)
+
+    @abstractmethod
+    def get_account_descriptor(self):
+        pass
+
+    @abstractmethod
+    def sanitize_account_input(self, message):
+        pass
+
+    @abstractmethod
+    def get_account_storage_key(self):
+        pass
+
+
+class PromptForAccountVerificationStep(BaseStep):
+    """Step to prompt user for authenticated message"""
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__()
+        self.user_id = user_id
+        self.guild_id = guild_id
+        self.cache = cache
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        verification_message = self.get_account_verification_prompt(channel)
+        sent_message = await channel.send(verification_message)
+        return sent_message, None
+
+    @abstractmethod
+    def get_account_verification_prompt(self, channel):
+        pass
+
+
+class VerifyAccountStep(BaseStep):
+    """Verififes the response to the authentication prompt for a given account"""
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__()
+        self.user_id = user_id
+        self.guild_id = guild_id
+        self.cache = cache
+
+    async def send(self, message, user_id):
+        # this should throw if the verification fails
+        self.verify_account(message)
+        # account can be retrieved from metadata
+        self.save_authenticated_account()
+
+    @abstractmethod
+    async def verify_account(self, authentication_message):
+        pass
+
+    @abstractmethod
+    async def save_authenticated_account(self):
+        pass
+
+
+class AddUserTwitterStep(AddUserAccountStep):
     """Step to submit twitter name for the govrn profile"""
 
     name = StepKeys.ADD_USER_TWITTER.value
 
-    def __init__(self, guild_id):
-        super().__init__()
-        self.guild_id = guild_id
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__(user_id, guild_id, cache)
 
-    async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(
-            "What twitter handle would you like to associate with this guild!"
+    def get_account_descriptor(self):
+        return "twitter handle"
+
+    def sanitize_account_input(self, message):
+        return message.content.strip().replace("@", "")
+
+    def get_account_storage_key(self):
+        return TWITTER_HANDLE_STORAGE_KEY
+
+
+class PromptUserTweetStep(PromptForAccountVerificationStep):
+    """Prompts user to share a URL to a tweet sent from their account"""
+
+    name = StepKeys.PROMPT_USER_TWEET.value
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__(user_id, guild_id, cache)
+
+    def get_account_verification_prompt(self, channel):
+        embed_title = (
+            "To verify your twitter, please tweet the below message from your"
+            " selected account, and reply with the URL to the tweet"
         )
-        return sent_message, None
-
-    async def save(self, message, guild_id, user_id):
-        record_id = await find_user(message.author.id, guild_id)
-        await update_user(
-            record_id, "twitter", message.content.strip().replace("@", "")
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title=embed_title,
+            description=REQUESTED_TWEET,
         )
-
-    async def handle_emoji(self, raw_reaction):
-        return _handle_skip_emoji(raw_reaction, self.guild_id)
+        return embed
 
 
-class AddUserWalletAddressStep(BaseStep):
-    """Step to submit wallet address for the govrn profile"""
+class VerifyUserTwitterStep(VerifyAccountStep):
+    """Step to verify user's twitter profile"""
 
-    name = StepKeys.ADD_USER_WALLET_ADDRESS.value
+    name = StepKeys.VERIFY_USER_TWITTER.value
 
-    def __init__(self, guild_id):
-        super().__init__()
-        self.guild_id = guild_id
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__(user_id, guild_id, cache)
 
-    async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(
-            "What Ethereum wallet address would you like to associate with this guild!"
+    async def verify_account(self, authentication_message):
+        twitter_handle = get_cache_metadata(
+            self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
         )
-        return sent_message, None
+        tweet_url = authentication_message.strip()
+        profile, status_id = verify_twitter_url(tweet_url, twitter_handle)
+        tweet_text = retrieve_tweet(profile, status_id)
+        verify_tweet_text(tweet_text, REQUESTED_TWEET)
 
-    async def save(self, message, guild_id, user_id):
-        record_id = await find_user(message.author.id, guild_id)
-        await update_user(record_id, "wallet", message.content.strip())
+    async def save_authenticated_account(self):
+        # retrieve and save handle from cache into airtable
+        record_id = await find_user(self.user_id, self.guild_id)
+        twitter_handle = get_cache_metadata(
+            self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
+        )
+        await update_user(record_id, "twitter", twitter_handle)
 
 
 def verify_twitter_url(tweet_url, expected_profile):
