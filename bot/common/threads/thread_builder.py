@@ -25,6 +25,22 @@ def build_cache_value(thread, step, guild_id, message_id="", **kwargs):
     )
 
 
+async def write_cache_metadata(user_id, cache, key, value):
+    cache_entry = await cache.get(user_id)
+    cache_values = json.loads(cache_entry)
+    metadata = cache_values.get("metadata")
+    metadata[key] = value
+    cache_values["metadata"] = metadata
+    await cache.set(user_id, build_cache_value(**cache_values))
+
+
+async def get_cache_metadata(user_id, cache, key):
+    cache_entry = await cache.get(user_id)
+    cache_values = json.loads(cache_entry)
+    metadata = cache_values.get("metadata")
+    return metadata.get(key)
+
+
 class ThreadKeys(Enum):
     ONBOARDING = "onboarding"
     UPDATE_PROFILE = "update_profile"
