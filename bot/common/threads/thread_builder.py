@@ -89,7 +89,7 @@ class StepKeys(Enum):
     REPORT = "report"
     DISPLAY_POINTS = "display_points"
 
-    
+
 class BaseThread:
     """Base class for handling multi-interaction bot conversations
 
@@ -213,9 +213,7 @@ class BaseThread:
                 await self._save_previous_step(message)
             msg, metadata = await self.step.current.send(message, self.user_id)
         except ThreadTerminatingException as e:
-            await message.channel.send(
-                str(e)
-            )
+            await message.channel.send(str(e))
             raise e
 
         if not metadata:

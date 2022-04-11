@@ -281,9 +281,9 @@ def verify_twitter_url(tweet_url, expected_profile):
     profile = match.group(1)
 
     if profile != expected_profile:
-        errMsg = (
-            "Tweet profile %s does not match the supplied handle %s" 
-            % (profile, expected_profile)
+        errMsg = "Tweet profile %s does not match the supplied handle %s" % (
+            profile,
+            expected_profile,
         )
         raise ThreadTerminatingException(errMsg)
 
@@ -323,13 +323,10 @@ async def retrieve_tweet(profile, status_id):
 
     if kmalone_tweet is None:
         err_msg = (
-            (
-                "Could not find tweet with supplied id %s in %s's twitter history."
-                " Please make sure that you tweeted in the last %s minutes, and the"
-                " verification tweet is among your %s most recent."
-            )
-            % (status_id, profile, MAX_TWEET_LOOKBACK_MINUTES, MAX_TWEETS_TO_RETRIEVE)
-        )
+            "Could not find tweet with supplied id %s in %s's twitter history."
+            " Please make sure that you tweeted in the last %s minutes, and the"
+            " verification tweet is among your %s most recent."
+        ) % (status_id, profile, MAX_TWEET_LOOKBACK_MINUTES, MAX_TWEETS_TO_RETRIEVE)
         raise ThreadTerminatingException(err_msg)
 
     return kmalone_tweet
@@ -405,7 +402,7 @@ class VerifyUserWalletMessageSignatureStep(VerifyAccountStep):
         address = await get_cache_metadata(self.user_id, self.cache, WALLET_STORAGE_KEY)
         stripped_supplied_signature = authentication_message.content.strip()
 
-        try :
+        try:
             int(stripped_supplied_signature)
         except ValueError:
             raise ThreadTerminatingException("The response wasn't a correct signature!")
