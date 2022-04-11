@@ -89,7 +89,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
-            return StepKeys.ADD_USER_WALLET_ADDRESS.value, None
+            return StepKeys.ADD_USER_TWITTER.value, None
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
@@ -282,8 +282,8 @@ def verify_twitter_url(tweet_url, expected_profile):
 
     if profile != expected_profile:
         errMsg = (
-            "Tweet profile %s does not match the supplied handle %s" % profile,
-            expected_profile,
+            "Tweet profile %s does not match the supplied handle %s" 
+            % (profile, expected_profile)
         )
         raise ThreadTerminatingException(errMsg)
 
@@ -295,6 +295,7 @@ def verify_twitter_url(tweet_url, expected_profile):
 async def retrieve_tweet(profile, status_id):
     loop = asyncio.get_event_loop()
     tweets = []
+    kmalone_tweet = None
 
     def _retrieve_tweet():
         try:
@@ -308,7 +309,7 @@ async def retrieve_tweet(profile, status_id):
             twint.run.Search(c)
         except Exception as e:
             raise ThreadTerminatingException(
-                "Error in retrieving tweet %s from %s: %s" % status_id, profile, e
+                "Error in retrieving tweet %s from %s: %s" % (status_id, profile, e)
             )
 
         return tweets
@@ -325,7 +326,7 @@ async def retrieve_tweet(profile, status_id):
             (
                 "Could not find tweet with supplied id %s in %s's twitter history."
                 " Please make sure that you tweeted in the last %s minutes, and the"
-                " verification tweet is amoung your %s most recent."
+                " verification tweet is among your %s most recent."
             )
             % (status_id, profile, MAX_TWEET_LOOKBACK_MINUTES, MAX_TWEETS_TO_RETRIEVE)
         )
@@ -337,8 +338,8 @@ async def retrieve_tweet(profile, status_id):
 def verify_tweet_text(tweet_text, expected_tweet_text):
     if tweet_text != expected_tweet_text:
         raise ThreadTerminatingException(
-            "Tweet text %s doesn't match the verification tweet %s" % tweet_text,
-            expected_tweet_text,
+            "Tweet text %s doesn't match the verification tweet %s"
+            % (tweet_text, expected_tweet_text)
         )
 
 
