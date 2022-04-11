@@ -403,6 +403,12 @@ class VerifyUserWalletMessageSignatureStep(VerifyAccountStep):
     async def verify_account(self, authentication_message):
         address = await get_cache_metadata(self.user_id, self.cache, WALLET_STORAGE_KEY)
         stripped_supplied_signature = authentication_message.content.strip()
+
+        try :
+            int(stripped_supplied_signature)
+        except ValueError:
+            raise ThreadTerminatingException("The response wasn't a correct signature!")
+
         requested_msg_hex = encode_defunct(text=REQUESTED_SIGNED_MESSAGE)
         recovered_address = Account.recover_message(
             requested_msg_hex, signature="0x" + stripped_supplied_signature
