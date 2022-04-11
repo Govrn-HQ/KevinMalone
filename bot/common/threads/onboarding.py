@@ -639,13 +639,13 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            #Step(current=AddUserTwitterStep(self.user_id, self.guild_id, self.cache))
-            #.add_next_step(PromptUserTweetStep(self.user_id, self.guild_id, self.cache))
-            #.add_next_step(
-            #    VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
-            #)
-            Step(
-                current=AddUserWalletAddressStep(self.user_id, self.guild_id, self.cache)
+            Step(current=AddUserTwitterStep(self.user_id, self.guild_id, self.cache))
+            .add_next_step(PromptUserTweetStep(self.user_id, self.guild_id, self.cache))
+            .add_next_step(
+                VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+            )
+            .add_next_step(
+                AddUserWalletAddressStep(self.user_id, self.guild_id, self.cache)
             )
             .add_next_step(
                 PromptUserWalletMessageSignatureStep(
