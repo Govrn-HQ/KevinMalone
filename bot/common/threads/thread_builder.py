@@ -205,6 +205,9 @@ class BaseThread:
             )
             return
 
+        msg = None
+        metadata = None
+
         try:
             if self._should_save_previous_step():
                 await self._save_previous_step(message)
@@ -214,7 +217,6 @@ class BaseThread:
                 str(e)
             )
             raise e
-
 
         if not metadata:
             u = await self.cache.get(self.user_id)
