@@ -14,15 +14,15 @@ MAX_TWEETS_TO_RETRIEVE = 5
 MAX_TWEET_LOOKBACK_MINUTES = 10
 
 REQUESTED_SIGNED_MESSAGE = "Kevin Malone told me to sign this"
-WALLET_VERIFICATION_INSTRUCTIONS_FMT = (
-    "To verify you have access to wallet at address %s, follow these steps:"
+WALLET_VERIFICATION_INSTRUCTIONS = (
+    "To verify you have access to the wallet at your address, follow these steps:"
     "\n1: Navigate to myetherwallet.com/wallet/sign"
     "\n2: When prompted, connect with your metamask wallet in the browser"
     "\n3: Copy and paste the message below into the 'Signature' box"
     "\n4: Click the 'Sign' button"
     "\n5: Approve the metamask notification and sign the message"
     "\n6: Copy the long string right after 'sig' (without quotes)"
-    "\n7: Paste that string into this conversation to verify ownership of %s"
+    "\n7: Paste that string into this conversation to verify ownership"
 )
 
 YES_EMOJI = "\U0001F44D"

@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from bot import constants
 from datetime import datetime, timedelta
+import asyncio
 import discord
 import re
 import twint
@@ -24,7 +25,7 @@ from bot.config import (
     REQUESTED_TWEET,
     TWITTER_URL_REGEXP,
     REQUESTED_SIGNED_MESSAGE,
-    WALLET_VERIFICATION_INSTRUCTIONS_FMT,
+    WALLET_VERIFICATION_INSTRUCTIONS,
 )
 from bot.common.threads.thread_builder import (
     BaseStep,
@@ -35,6 +36,7 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata,
     write_cache_metadata,
 )
+from bot.exceptions import ThreadTerminatingException
 
 TWITTER_HANDLE_STORAGE_KEY = "twitter"
 WALLET_STORAGE_KEY = "wallet"
@@ -87,7 +89,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
-            return StepKeys.ADD_USER_TWITTER.value, None
+            return StepKeys.ADD_USER_WALLET_ADDRESS.value, None
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
@@ -164,17 +166,20 @@ class PromptForAccountVerificationStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        verification_message = self.get_account_verification_prompt(channel)
-        sent_message = await channel.send(verification_message)
+        verification_embeds = self.get_account_verification_prompts()
+        for verification_embed in verification_embeds:
+            sent_message = await channel.send(embed=verification_embed)
         return sent_message, None
 
     @abstractmethod
-    def get_account_verification_prompt(self, channel):
+    def get_account_verification_prompts(self):
         pass
 
 
 class VerifyAccountStep(BaseStep):
     """Verififes the response to the authentication prompt for a given account"""
+
+    trigger = True
 
     def __init__(self, user_id, guild_id, cache):
         super().__init__()
@@ -184,9 +189,11 @@ class VerifyAccountStep(BaseStep):
 
     async def send(self, message, user_id):
         # this should throw if the verification fails
-        self.verify_account(message)
+        await self.verify_account(message)
         # account can be retrieved from metadata
-        self.save_authenticated_account()
+        await self.save_authenticated_account()
+
+        return message, None
 
     @abstractmethod
     async def verify_account(self, authentication_message):
@@ -223,7 +230,7 @@ class PromptUserTweetStep(PromptForAccountVerificationStep):
     def __init__(self, user_id, guild_id, cache):
         super().__init__(user_id, guild_id, cache)
 
-    def get_account_verification_prompt(self, channel):
+    def get_account_verification_prompts(self):
         embed_title = (
             "To verify your twitter, please tweet the below message from your"
             " selected account, and reply with the URL to the tweet"
@@ -233,7 +240,7 @@ class PromptUserTweetStep(PromptForAccountVerificationStep):
             title=embed_title,
             description=REQUESTED_TWEET,
         )
-        return embed
+        return [embed]
 
 
 class VerifyUserTwitterStep(VerifyAccountStep):
@@ -245,18 +252,18 @@ class VerifyUserTwitterStep(VerifyAccountStep):
         super().__init__(user_id, guild_id, cache)
 
     async def verify_account(self, authentication_message):
-        twitter_handle = get_cache_metadata(
+        twitter_handle = await get_cache_metadata(
             self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
         )
-        tweet_url = authentication_message.strip()
+        tweet_url = authentication_message.content.strip()
         profile, status_id = verify_twitter_url(tweet_url, twitter_handle)
-        tweet_text = retrieve_tweet(profile, status_id)
+        tweet_text = await retrieve_tweet(profile, status_id)
         verify_tweet_text(tweet_text, REQUESTED_TWEET)
 
     async def save_authenticated_account(self):
         # retrieve and save handle from cache into airtable
         record_id = await find_user(self.user_id, self.guild_id)
-        twitter_handle = get_cache_metadata(
+        twitter_handle = await get_cache_metadata(
             self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
         )
         await update_user(record_id, "twitter", twitter_handle)
@@ -267,7 +274,9 @@ def verify_twitter_url(tweet_url, expected_profile):
     match = re.search(TWITTER_URL_REGEXP, tweet_url)
 
     if match is None:
-        raise Exception("Tweet URL %s was not in the expected format" % tweet_url)
+        raise ThreadTerminatingException(
+            "Tweet URL %s was not in the expected format" % tweet_url
+        )
 
     profile = match.group(1)
 
@@ -276,33 +285,39 @@ def verify_twitter_url(tweet_url, expected_profile):
             "Tweet profile %s does not match the supplied handle %s" % profile,
             expected_profile,
         )
-        raise Exception(errMsg)
+        raise ThreadTerminatingException(errMsg)
 
     status_id = match.group(2)
 
     return profile, status_id
 
 
-def retrieve_tweet(profile, status_id):
+async def retrieve_tweet(profile, status_id):
+    loop = asyncio.get_event_loop()
     tweets = []
-    kmalone_tweet = None
-    try:
-        since = datetime.now() - timedelta(minutes=MAX_TWEET_LOOKBACK_MINUTES)
-        c = twint.Config()
-        c.Username = profile
-        c.Limit = MAX_TWEETS_TO_RETRIEVE
-        c.Since = since.strftime("%Y-%m-%d %H:%M:%S")
-        c.Store_object = True
-        c.Store_object_tweets_list = tweets
-        response = twint.run.Search(c)
-    except Exception as e:
-        raise Exception(
-            "Error in retrieving tweet %s from %s: %s" % status_id, profile, e
-        )
+
+    def _retrieve_tweet():
+        try:
+            since = datetime.now() - timedelta(minutes=MAX_TWEET_LOOKBACK_MINUTES)
+            c = twint.Config()
+            c.Username = profile
+            c.Limit = MAX_TWEETS_TO_RETRIEVE
+            c.Since = since.strftime("%Y-%m-%d %H:%M:%S")
+            c.Store_object = True
+            c.Store_object_tweets_list = tweets
+            twint.run.Search(c)
+        except Exception as e:
+            raise ThreadTerminatingException(
+                "Error in retrieving tweet %s from %s: %s" % status_id, profile, e
+            )
+
+        return tweets
+
+    tweets = await loop.run_in_executor(None, _retrieve_tweet)
 
     for tweet in tweets:
-        if tweet.id == status_id:
-            kmalone_tweet = tweet
+        if str(tweet.id) == status_id:
+            kmalone_tweet = tweet.tweet
             break
 
     if kmalone_tweet is None:
@@ -312,19 +327,16 @@ def retrieve_tweet(profile, status_id):
                 " Please make sure that you tweeted in the last %s minutes, and the"
                 " verification tweet is amoung your %s most recent."
             )
-            % status_id,
-            profile,
-            MAX_TWEET_LOOKBACK_MINUTES,
-            MAX_TWEETS_TO_RETRIEVE,
+            % (status_id, profile, MAX_TWEET_LOOKBACK_MINUTES, MAX_TWEETS_TO_RETRIEVE)
         )
-        raise Exception(err_msg)
+        raise ThreadTerminatingException(err_msg)
 
-    return response.text
+    return kmalone_tweet
 
 
 def verify_tweet_text(tweet_text, expected_tweet_text):
     if tweet_text != expected_tweet_text:
-        raise Exception(
+        raise ThreadTerminatingException(
             "Tweet text %s doesn't match the verification tweet %s" % tweet_text,
             expected_tweet_text,
         )
@@ -342,9 +354,9 @@ class AddUserWalletAddressStep(AddUserAccountStep):
         return "Ethereum wallet address"
 
     def sanitize_account_input(self, message):
-        stripped_message = message.strip()
+        stripped_message = message.content.strip()
         if not Web3.isAddress(stripped_message):
-            raise Exception(
+            raise ThreadTerminatingException(
                 "Supplied address %s is not a valid ethereum address" % stripped_message
             )
 
@@ -365,27 +377,19 @@ class PromptUserWalletMessageSignatureStep(PromptForAccountVerificationStep):
     def __init__(self, user_id, guild_id, cache):
         super().__init__(user_id, guild_id, cache)
 
-    def get_account_verification_prompt(self, channel):
-        wallet_address = get_cache_metadata(
-            self.user_id, self.cache, WALLET_STORAGE_KEY
-        )
-        wallet_verification_instructions = WALLET_VERIFICATION_INSTRUCTIONS_FMT % {
-            "s": wallet_address
-        }
+    def get_account_verification_prompts(self):
         instructions_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Verification instructions",
-            description=wallet_verification_instructions,
+            description=WALLET_VERIFICATION_INSTRUCTIONS,
         )
 
-        channel.send(instructions_embed)
-
-        next_message = discord.Embed(
+        prompt = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Please sign the below message with your wallet",
             description=REQUESTED_SIGNED_MESSAGE,
         )
-        return next_message
+        return [instructions_embed, prompt]
 
 
 class VerifyUserWalletMessageSignatureStep(VerifyAccountStep):
@@ -397,15 +401,15 @@ class VerifyUserWalletMessageSignatureStep(VerifyAccountStep):
         super().__init__(user_id, guild_id, cache)
 
     async def verify_account(self, authentication_message):
-        address = get_cache_metadata(self.user_id, self.cache, WALLET_STORAGE_KEY)
-        stripped_supplied_signature = authentication_message.strip()
+        address = await get_cache_metadata(self.user_id, self.cache, WALLET_STORAGE_KEY)
+        stripped_supplied_signature = authentication_message.content.strip()
         requested_msg_hex = encode_defunct(text=REQUESTED_SIGNED_MESSAGE)
         recovered_address = Account.recover_message(
             requested_msg_hex, signature="0x" + stripped_supplied_signature
         )
 
         if address != recovered_address:
-            raise Exception(
+            raise ThreadTerminatingException(
                 "Recovered address from message & signature doesn't match supplied"
             )
 
@@ -413,7 +417,7 @@ class VerifyUserWalletMessageSignatureStep(VerifyAccountStep):
         #  retrieve and save handle from cache into airtable
         record_id = await find_user(self.user_id, self.guild_id)
         #  TODO: should this be .toLowered?
-        wallet_address = get_cache_metadata(
+        wallet_address = await get_cache_metadata(
             self.user_id, self.cache, WALLET_STORAGE_KEY
         )
         await update_user(record_id, WALLET_STORAGE_KEY, wallet_address)
@@ -629,13 +633,13 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=AddUserTwitterStep(self.user_id, self.guild_id, self.cache))
-            .add_next_step(PromptUserTweetStep(self.user_id, self.guild_id, self.cache))
-            .add_next_step(
-                VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
-            )
-            .add_next_step(
-                AddUserWalletAddressStep(self.user_id, self.guild_id, self.cache)
+            #Step(current=AddUserTwitterStep(self.user_id, self.guild_id, self.cache))
+            #.add_next_step(PromptUserTweetStep(self.user_id, self.guild_id, self.cache))
+            #.add_next_step(
+            #    VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+            #)
+            Step(
+                current=AddUserWalletAddressStep(self.user_id, self.guild_id, self.cache)
             )
             .add_next_step(
                 PromptUserWalletMessageSignatureStep(

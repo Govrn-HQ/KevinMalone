@@ -5,6 +5,7 @@ import logging
 
 from bot.common.bot.bot import bot
 from bot.common.cache import RedisCache
+from bot.exceptions import ThreadTerminatingException
 from enum import Enum
 from typing import Dict, Optional
 
@@ -29,6 +30,10 @@ async def write_cache_metadata(user_id, cache, key, value):
     cache_entry = await cache.get(user_id)
     cache_values = json.loads(cache_entry)
     metadata = cache_values.get("metadata")
+
+    if metadata is None:
+        metadata = {}
+
     metadata[key] = value
     cache_values["metadata"] = metadata
     await cache.set(user_id, build_cache_value(**cache_values))
@@ -84,7 +89,7 @@ class StepKeys(Enum):
     REPORT = "report"
     DISPLAY_POINTS = "display_points"
 
-
+    
 class BaseThread:
     """Base class for handling multi-interaction bot conversations
 
@@ -199,9 +204,17 @@ class BaseThread:
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if self._should_save_previous_step():
-            await self._save_previous_step(message)
-        msg, metadata = await self.step.current.send(message, self.user_id)
+
+        try:
+            if self._should_save_previous_step():
+                await self._save_previous_step(message)
+            msg, metadata = await self.step.current.send(message, self.user_id)
+        except ThreadTerminatingException as e:
+            await message.channel.send(
+                str(e)
+            )
+            raise e
+
 
         if not metadata:
             u = await self.cache.get(self.user_id)
