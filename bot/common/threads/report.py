@@ -7,7 +7,7 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
 )
-from bot.config import read_file
+from bot.config import REPORTING_FORM_FMT
 from bot.common.airtable import (
     get_guild_by_guild_id,
     get_contribution_count,
@@ -34,8 +34,7 @@ class ReportStep(BaseStep):
         if message:
             channel = message.channel
 
-        airtableLinks = read_file()
-        airtableLink = airtableLinks.get(str(self.guild_id))
+        airtableLink = REPORTING_FORM_FMT % self.guild_id
 
         msg = (
             f"Woohoo! Nice job! Community contributions are what keeps"
