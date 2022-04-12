@@ -132,8 +132,8 @@ class AddUserAccountStep(BaseStep):
     async def send(self, message, user_id):
         channel = message.channel
         sent_message = await channel.send(
-            "What %s would you like to associate with this guild?"
-            % self.get_account_descriptor()
+            f"What {self.get_account_descriptor()}"
+            " would you like to associate with this guild?"
         )
         return sent_message, None
 
@@ -275,15 +275,15 @@ def verify_twitter_url(tweet_url, expected_profile):
 
     if match is None:
         raise ThreadTerminatingException(
-            "Tweet URL %s was not in the expected format" % tweet_url
+            f"Tweet URL {tweet_url} was not in the expected format"
         )
 
     profile = match.group(1)
 
     if profile != expected_profile:
-        errMsg = "Tweet profile %s does not match the supplied handle %s" % (
-            profile,
-            expected_profile,
+        errMsg = (
+            f"Tweet profile {profile} does not match the supplied"
+            f" handle {expected_profile}"
         )
         raise ThreadTerminatingException(errMsg)
 
@@ -309,7 +309,7 @@ async def retrieve_tweet(profile, status_id):
             twint.run.Search(c)
         except Exception as e:
             raise ThreadTerminatingException(
-                "Error in retrieving tweet %s from %s: %s" % (status_id, profile, e)
+                f"Error in retrieving tweet {status_id} from {profile}: {e}"
             )
 
         return tweets
@@ -323,10 +323,11 @@ async def retrieve_tweet(profile, status_id):
 
     if kmalone_tweet is None:
         err_msg = (
-            "Could not find tweet with supplied id %s in %s's twitter history."
-            " Please make sure that you tweeted in the last %s minutes, and the"
-            " verification tweet is among your %s most recent."
-        ) % (status_id, profile, MAX_TWEET_LOOKBACK_MINUTES, MAX_TWEETS_TO_RETRIEVE)
+            f"Could not find tweet with supplied id {status_id} in {profile}'s"
+            f" twitter history. Please make sure that you tweeted in the last"
+            f" {MAX_TWEET_LOOKBACK_MINUTES} minutes, and the verification tweet is"
+            f" among your {MAX_TWEETS_TO_RETRIEVE} most recent."
+        )
         raise ThreadTerminatingException(err_msg)
 
     return kmalone_tweet
@@ -335,8 +336,8 @@ async def retrieve_tweet(profile, status_id):
 def verify_tweet_text(tweet_text, expected_tweet_text):
     if tweet_text != expected_tweet_text:
         raise ThreadTerminatingException(
-            "Tweet text %s doesn't match the verification tweet %s"
-            % (tweet_text, expected_tweet_text)
+            f"Tweet text {tweet_text} doesn't match the verification"
+            f" tweet {expected_tweet_text}"
         )
 
 
@@ -355,7 +356,7 @@ class AddUserWalletAddressStep(AddUserAccountStep):
         stripped_message = message.content.strip()
         if not Web3.isAddress(stripped_message):
             raise ThreadTerminatingException(
-                "Supplied address %s is not a valid ethereum address" % stripped_message
+                f"Supplied address {stripped_message} is not a valid ethereum address" 
             )
 
         return stripped_message
