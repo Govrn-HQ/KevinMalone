@@ -440,13 +440,14 @@ class VerifyUserWalletMessageSignatureStep(BaseStep):
 
         if address != recovered_address:
             raise ThreadTerminatingException(
-                "Recovered address from message & signature doesn't match supplied"
+                "Recovered address from message & signature doesn't match supplied."
+                " Make sure there's no extra line when pasting the message into"
+                " myetherwallet.com's signature box."
             )
 
     async def save_authenticated_account(self):
         #  retrieve and save handle from cache into airtable
         record_id = await find_user(self.user_id, self.guild_id)
-        #  TODO: should this be .toLowered?
         wallet_address = await get_cache_metadata(
             self.user_id, self.cache, WALLET_STORAGE_KEY
         )
