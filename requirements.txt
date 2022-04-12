@@ -8,4 +8,4 @@ pyyaml
 -e git+https://github.com/Pycord-Development/pycord.git@27e8dc37f10baddb7a4c4d235887c759f8fd8e1d#egg=py-cord
 eth-account >= 0.4.0
 web3 >= 5.28.0
-twint >= 2.1.21
+twint >= 2.1.20
