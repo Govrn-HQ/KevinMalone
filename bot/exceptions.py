@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 class NotGuildException(commands.ApplicationCommandError):
     pass
 
+class ThreadTerminatingException(Exception):
+    pass
 
 class ErrorHandler:
     def __init__(self, error):

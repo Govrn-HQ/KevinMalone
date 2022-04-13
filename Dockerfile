@@ -10,7 +10,7 @@ ENV PYTHONPATH=/app
 
 # install git to pull code for installation
 RUN apt update
-RUN apt install -y git make
+RUN apt install -y git make gcc
 
 # Install pip requirements
 COPY requirements.txt .
