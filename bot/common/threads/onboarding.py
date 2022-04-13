@@ -125,14 +125,15 @@ class UserDisplaySubmitStep(BaseStep):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
-class AddUserAccount():
-    """Prompts user for an account name. """
+class AddUserAccount:
+    """Prompts user for an account name."""
 
     def __init__(
-        self, cache,
+        self,
+        cache,
         get_account_descriptor,
         sanititze_account_input,
-        get_account_storage_key
+        get_account_storage_key,
     ):
         self.cache = cache
         self.get_account_descriptor = get_account_descriptor
@@ -153,7 +154,7 @@ class AddUserAccount():
         await write_cache_metadata(user_id, self.cache, metadata_key, account_name)
 
 
-class PromptForAccountVerification():
+class PromptForAccountVerification:
     """Prompts user for authenticated message"""
 
     def __init__(self, get_account_verification_prompts):
@@ -168,7 +169,7 @@ class PromptForAccountVerification():
         return last_sent
 
 
-class VerifyAccount():
+class VerifyAccount:
     """Verififes the response to the authentication prompt for a given account"""
 
     def __init__(self, verify_account, save_authenticated_account):
@@ -192,8 +193,10 @@ class AddUserTwitterStep(BaseStep):
     def __init__(self, cache):
         super().__init__()
         self.add_user_account = AddUserAccount(
-            cache, self.get_account_descriptor,
-            self.sanitize_account_input, self.get_account_storage_key
+            cache,
+            self.get_account_descriptor,
+            self.sanitize_account_input,
+            self.get_account_storage_key,
         )
 
     async def send(self, message, user_id):
@@ -356,8 +359,10 @@ class AddUserWalletAddressStep(BaseStep):
     def __init__(self, cache):
         super().__init__()
         self.add_user_account = AddUserAccount(
-            cache, self.get_account_descriptor,
-            self.sanitize_account_input, self.get_account_storage_key
+            cache,
+            self.get_account_descriptor,
+            self.sanitize_account_input,
+            self.get_account_storage_key,
         )
 
     async def send(self, message, user_id):
@@ -677,12 +682,8 @@ class Onboarding(BaseThread):
             .add_next_step(
                 VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
             )
-            .add_next_step(
-                AddUserWalletAddressStep(self.cache)
-            )
-            .add_next_step(
-                PromptUserWalletMessageSignatureStep()
-            )
+            .add_next_step(AddUserWalletAddressStep(self.cache))
+            .add_next_step(PromptUserWalletMessageSignatureStep())
             .add_next_step(
                 VerifyUserWalletMessageSignatureStep(
                     self.user_id, self.guild_id, self.cache
