@@ -1,11 +1,15 @@
 import logging
 
-from discord import commands
+from discord import errors
 
 logger = logging.getLogger(__name__)
 
 
-class NotGuildException(commands.ApplicationCommandError):
+class NotGuildException(errors.ApplicationCommandError):
+    pass
+
+
+class ThreadTerminatingException(Exception):
     pass
 
 
