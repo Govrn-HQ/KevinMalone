@@ -65,8 +65,8 @@ def get_contribution_rows(contributions):
             [
                 fields.get("Activity"),
                 fields.get("status"),
-                fields.get("Date of Submission"),
-                fields.get("Date of Engagement"),
+                fields.get("DateofSubmission").split("T")[0],
+                fields.get("DateOfEngagement"),
                 fields.get("Score"),
             ]
         )
