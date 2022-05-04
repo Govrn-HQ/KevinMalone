@@ -43,6 +43,14 @@ Requires the following VS Code extensions to be installed:
 
 - Open Folder w/o Dev Container and check in code
 
+### Setup local redis instance
+
+- Install redis server + redis-cli
+- Run `sudo service redis-server start`
+- Run `redis-cli`
+- In the cli, run `monitor`
+- In your .env file, set the redis url to your local instance `REDIS_URL=redis://localhost` 
+
 ## Setup Docker and Dev Container
 
 - Create a new folder
