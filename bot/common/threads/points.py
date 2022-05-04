@@ -5,6 +5,7 @@ import io
 import discord
 
 from datetime import datetime, timedelta
+from dateutil import parser
 from discord import File
 from bot.common.threads.thread_builder import (
     BaseThread,
@@ -59,14 +60,17 @@ def get_contribution_rows(contributions):
         "Points",
     ]
     rows = []
+    time_fmt = "%Y-%m-%d"
     for contribution in contributions:
         fields = contribution.get("fields")
+        submit_date = parser.parse(fields.get("DateofSubmission"))
+        engage_date = parser.parse(fields.get("DateOfEngagement"))
         rows.append(
             [
                 fields.get("Activity"),
                 fields.get("status"),
-                fields.get("DateofSubmission").split("T")[0],
-                fields.get("DateOfEngagement"),
+                submit_date.strftime(time_fmt),
+                engage_date.strftime(time_fmt),
                 fields.get("Score"),
             ]
         )
