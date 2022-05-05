@@ -7,7 +7,7 @@ REDIS_URL = constants.Bot.redis_url
 AIRTABLE_KEY = constants.Bot.airtable_key
 AIRTABLE_BASE = constants.Bot.airtable_base
 
-REQUESTED_TWEET = "Kevin Malone told me to say this"
+REQUESTED_TWEET_FMT = "Kevin Malone told me to tweet this number {} on {}"
 TWITTER_URL_REGEXP = r"^https://twitter.com/(.+)/status/([0-9]+)"
 MAX_TWEETS_TO_RETRIEVE = 5
 MAX_TWEET_LOOKBACK_MINUTES = 10

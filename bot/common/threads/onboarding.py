@@ -1,5 +1,6 @@
 from bot import constants
 from datetime import datetime, timedelta
+from hashlib import sha256
 import asyncio
 import discord
 import re
@@ -22,7 +23,7 @@ from bot.config import (
     NO_EMOJI,
     SKIP_EMOJI,
     INFO_EMBED_COLOR,
-    REQUESTED_TWEET,
+    REQUESTED_TWEET_FMT,
     TWITTER_URL_REGEXP,
     REQUESTED_SIGNED_MESSAGE,
     WALLET_VERIFICATION_INSTRUCTIONS,
@@ -160,9 +161,9 @@ class PromptForAccountVerification:
     def __init__(self, get_account_verification_prompts):
         self.get_account_verification_prompts = get_account_verification_prompts
 
-    async def prompt(self, message):
+    async def prompt(self, user_id, message):
         channel = message.channel
-        verification_embeds = self.get_account_verification_prompts()
+        verification_embeds = self.get_account_verification_prompts(user_id)
         last_sent = None
         for verification_embed in verification_embeds:
             last_sent = await channel.send(embed=verification_embed)
@@ -220,25 +221,34 @@ class PromptUserTweetStep(BaseStep):
 
     name = StepKeys.PROMPT_USER_TWEET.value
 
-    def __init__(self):
+    def __init__(self, cache):
         super().__init__()
+        self.cache = cache
 
         self.prompt_for_verification = PromptForAccountVerification(
             self.get_account_verification_prompts
         )
 
     async def send(self, message, user_id):
-        return await self.prompt_for_verification.prompt(message), None
+        return await self.prompt_for_verification.prompt(user_id, message), None
 
-    def get_account_verification_prompts(self):
+    def get_account_verification_prompts(self, user_id):
         embed_title = (
             "To verify your twitter, please tweet the below message from your"
             " selected account, and reply with the URL to the tweet"
         )
+
+        now = datetime.now()
+
+        nonce = self.get_nonce(now, user_id)
+        requested_tweet = REQUESTED_TWEET_FMT.format(nonce)
+
+        # save requested tweet in cache
+
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title=embed_title,
-            description=REQUESTED_TWEET,
+            description=REQUESTED_TWEET_FMT.format(nonce),
         )
         return [embed]
 
@@ -402,9 +412,9 @@ class PromptUserWalletMessageSignatureStep(BaseStep):
         )
 
     async def send(self, message, user_id):
-        return await self.prompt_for_verification.prompt(message), None
+        return await self.prompt_for_verification.prompt(user_id, message), None
 
-    def get_account_verification_prompts(self):
+    def get_account_verification_prompts(self, user_id):
         instructions_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Verification instructions",
@@ -677,8 +687,7 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=AddUserTwitterStep(self.cache))
-            .add_next_step(PromptUserTweetStep())
+            Step(current=PromptUserTweetStep())
             .add_next_step(
                 VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
             )
