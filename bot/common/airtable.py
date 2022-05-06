@@ -182,7 +182,7 @@ async def get_contribution_count(user_id):
         # Add logic to get count
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Activity History Staging")
 
-        user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Member")
+        user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
         users = user_table.all(formula=match({"community_id": user_id}))
         if not users:
             raise Exception(f"Failed to fetch user from base {AIRTABLE_BASE}")
