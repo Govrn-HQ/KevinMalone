@@ -57,7 +57,7 @@ class ReportStep(BaseStep):
             record = await get_user_record(user_id, self.guild_id)
             fields = record.get("fields")
             user_dao_id = fields.get("user_dao_id")
-            count = await get_contribution_count(user_dao_id, base_id)
+            count = await get_contribution_count(user_dao_id)
             await channel.send(
                 f"Congrats {user.display_name} for reporting {count} "
                 "engagements this week!"
