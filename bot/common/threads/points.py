@@ -22,6 +22,7 @@ from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
     INFO_EMBED_COLOR,
+    MAX_CONTRIBUTIONS_TO_DISPLAY,
 )
 from texttable import Texttable
 
@@ -145,12 +146,13 @@ class DisplayPointsStep(BaseStep):
             else timedelta(days=int(days or "1"))
         )
         date = datetime.now() - td
-
         contributions = await get_contributions(global_id, date)
         # [0] is headers, [1] is a list of rows
         contribution_rows = get_contribution_rows(contributions)
 
-        table = build_table(contribution_rows[0], contribution_rows[1])
+        table = build_table(
+            contribution_rows[0], contribution_rows[1][:MAX_CONTRIBUTIONS_TO_DISPLAY]
+        )
         msg = f"```{table.draw()}```"
         sent_message = None
         metadata["msg"] = msg
