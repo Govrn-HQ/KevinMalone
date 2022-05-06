@@ -6,4 +6,6 @@ pyairtable==1.0.0.post1
 texttable==1.6.4
 pyyaml
 -e git+https://github.com/Pycord-Development/pycord.git@44eb9a0c92c406c38ac06d46583391c76c611bf6#egg=py-cord
-
+eth-account >= 0.4.0
+web3 >= 5.28.0
+-e git+https://github.com/twintproject/twint.git@e7c8a0c764f6879188e5c21e25fb6f1f856a7221#egg=twint
