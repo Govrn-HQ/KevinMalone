@@ -40,14 +40,13 @@ class ReportStep(BaseStep):
         msg = (
             f"Woohoo! Nice job! Community contributions are what keeps"
             " your community thriving 🌞. "
-            f"Report you contributions via the form 👉 {airtableLink}"
+            f"Report your contributions via the form 👉 {airtableLink}"
         )
         if message:
             await channel.send(msg)
         if not await self.cache.get(build_congrats_key(user_id)):
             fields = await get_guild_by_guild_id(self.guild_id)
             congrats_channel_id = fields.get("fields").get("congrats_channel_id")
-            base_id = fields.get("fields").get("base_id")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
                 return None, {"msg": msg}
@@ -57,14 +56,15 @@ class ReportStep(BaseStep):
             record = await get_user_record(user_id, self.guild_id)
             fields = record.get("fields")
             user_dao_id = fields.get("user_dao_id")
-            count = await get_contribution_count(user_dao_id, base_id)
-            await channel.send(
-                f"Congrats {user.display_name} for reporting {count} "
-                "engagements this week!"
-            )
-            await self.cache.set(
-                build_congrats_key(user_id), "True", ex=60 * 60
-            )  # Expires in an hour
+            count = await get_contribution_count(user_dao_id)
+            if count > 0:
+                await channel.send(
+                    f"Congrats {user.display_name} for reporting {count} "
+                    "engagements this week!"
+                )
+                await self.cache.set(
+                    build_congrats_key(user_id), "True", ex=60 * 60
+                )  # Expires in an hour
 
         return None, {"msg": msg}
 
