@@ -32,3 +32,5 @@ def get_list_of_emojis(num):
 
 INFO_EMBED_COLOR = discord.Colour.blue()
 Redis = aioredis.from_url(f"{REDIS_URL}")
+
+MAX_CONTRIBUTIONS_TO_DISPLAY = 5
