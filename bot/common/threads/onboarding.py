@@ -1,6 +1,7 @@
 from bot import constants
 from datetime import datetime, timedelta
-from hashlib import sha256
+import random
+import string
 import asyncio
 import discord
 import re
@@ -27,6 +28,7 @@ from bot.config import (
     TWITTER_URL_REGEXP,
     REQUESTED_SIGNED_MESSAGE,
     WALLET_VERIFICATION_INSTRUCTIONS,
+    TWEET_NONCE_LEGNTH,
 )
 from bot.common.threads.thread_builder import (
     BaseStep,
@@ -34,18 +36,20 @@ from bot.common.threads.thread_builder import (
     Step,
     ThreadKeys,
     BaseThread,
-    get_cache_metadata,
+    get_cache_metadata_key,
     write_cache_metadata,
 )
 from bot.exceptions import ThreadTerminatingException
 
+REQUESTED_TWEET_STORAGE_KEY = "requested_tweet"
 TWITTER_HANDLE_STORAGE_KEY = "twitter"
 WALLET_STORAGE_KEY = "wallet"
 
 
-def _handle_skip_emoji(raw_reaction, guild_id):
+def _handle_skip_emoji(raw_reaction, guild_id, next_step=None):
+    skip = next_step is None
     if SKIP_EMOJI in raw_reaction.emoji.name:
-        return None, True
+        return next_step, skip
     raise Exception("Reacted with the wrong emoji")
 
 
@@ -90,7 +94,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
-            return StepKeys.ADD_USER_TWITTER.value, None
+            return StepKeys.PROMPT_USER_TWEET.value, None
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
@@ -163,7 +167,7 @@ class PromptForAccountVerification:
 
     async def prompt(self, user_id, message):
         channel = message.channel
-        verification_embeds = self.get_account_verification_prompts(user_id)
+        verification_embeds = await self.get_account_verification_prompts(user_id)
         last_sent = None
         for verification_embed in verification_embeds:
             last_sent = await channel.send(embed=verification_embed)
@@ -186,44 +190,15 @@ class VerifyAccount:
         return message, None
 
 
-class AddUserTwitterStep(BaseStep):
-    """Step to submit twitter name for the govrn profile"""
-
-    name = StepKeys.ADD_USER_TWITTER.value
-
-    def __init__(self, cache):
-        super().__init__()
-        self.add_user_account = AddUserAccount(
-            cache,
-            self.get_account_descriptor,
-            self.sanitize_account_input,
-            self.get_account_storage_key,
-        )
-
-    async def send(self, message, user_id):
-        return await self.add_user_account.send(message)
-
-    async def save(self, message, guild_id, user_id):
-        await self.add_user_account.save(message, user_id)
-
-    def get_account_descriptor(self):
-        return "twitter handle"
-
-    def sanitize_account_input(self, message):
-        return message.content.strip().replace("@", "")
-
-    def get_account_storage_key(self):
-        return TWITTER_HANDLE_STORAGE_KEY
-
-
 class PromptUserTweetStep(BaseStep):
     """Prompts user to share a URL to a tweet sent from their account"""
 
     name = StepKeys.PROMPT_USER_TWEET.value
 
-    def __init__(self, cache):
+    def __init__(self, cache, guild_id):
         super().__init__()
         self.cache = cache
+        self.guild_id = guild_id
 
         self.prompt_for_verification = PromptForAccountVerification(
             self.get_account_verification_prompts
@@ -232,25 +207,31 @@ class PromptUserTweetStep(BaseStep):
     async def send(self, message, user_id):
         return await self.prompt_for_verification.prompt(user_id, message), None
 
-    def get_account_verification_prompts(self, user_id):
+    async def get_account_verification_prompts(self, user_id):
         embed_title = (
             "To verify your twitter, please tweet the below message from your"
             " selected account, and reply with the URL to the tweet"
         )
 
-        now = datetime.now()
-
-        nonce = self.get_nonce(now, user_id)
+        nonce = self.get_nonce()
         requested_tweet = REQUESTED_TWEET_FMT.format(nonce)
 
         # save requested tweet in cache
+        await write_cache_metadata(
+            user_id, self.cache, "requested_tweet", requested_tweet
+        )
 
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title=embed_title,
-            description=REQUESTED_TWEET_FMT.format(nonce),
+            description=requested_tweet,
         )
         return [embed]
+
+    def get_nonce(self):
+        return "".join(
+            random.choice(string.ascii_letters) for i in range(TWEET_NONCE_LEGNTH)
+        )
 
 
 class VerifyUserTwitterStep(BaseStep):
@@ -259,11 +240,11 @@ class VerifyUserTwitterStep(BaseStep):
     trigger = True
     name = StepKeys.VERIFY_USER_TWITTER.value
 
-    def __init__(self, user_id, guild_id, cache):
+    def __init__(self, cache, user_id, guild_id):
         super().__init__()
+        self.cache = cache
         self.user_id = user_id
         self.guild_id = guild_id
-        self.cache = cache
         self.verify_account = VerifyAccount(
             self.verify_message, self.save_authenticated_account
         )
@@ -272,24 +253,33 @@ class VerifyUserTwitterStep(BaseStep):
         return await self.verify_account.verify(message)
 
     async def verify_message(self, authentication_message):
-        twitter_handle = await get_cache_metadata(
-            self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
+        requested_tweet = await get_cache_metadata_key(
+            self.user_id, self.cache, REQUESTED_TWEET_STORAGE_KEY
         )
         tweet_url = authentication_message.content.strip()
-        profile, status_id = verify_twitter_url(tweet_url, twitter_handle)
+        profile, status_id = verify_twitter_url(tweet_url)
         tweet_text = await retrieve_tweet(profile, status_id)
-        verify_tweet_text(tweet_text, REQUESTED_TWEET)
+        verify_tweet_text(tweet_text, requested_tweet)
+        # update handle for save_authenticated_account
+        await write_cache_metadata(
+            self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY, profile
+        )
 
     async def save_authenticated_account(self):
         # retrieve and save handle from cache into airtable
         record_id = await find_user(self.user_id, self.guild_id)
-        twitter_handle = await get_cache_metadata(
+        twitter_handle = await get_cache_metadata_key(
             self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
         )
         await update_user(record_id, "twitter", twitter_handle)
 
+    async def handle_emoji(self, raw_reaction):
+        return _handle_skip_emoji(
+            raw_reaction, self.guild_id, StepKeys.ADD_USER_WALLET_ADDRESS.value
+        )
 
-def verify_twitter_url(tweet_url, expected_profile):
+
+def verify_twitter_url(tweet_url):
     #  ensure the shared tweet matches the account and message
     match = re.search(TWITTER_URL_REGEXP, tweet_url)
 
@@ -299,14 +289,6 @@ def verify_twitter_url(tweet_url, expected_profile):
         )
 
     profile = match.group(1)
-
-    if profile.lower() != expected_profile.lower():
-        errMsg = (
-            f"Tweet profile {profile} does not match the supplied"
-            f" handle {expected_profile}"
-        )
-        raise ThreadTerminatingException(errMsg)
-
     status_id = match.group(2)
 
     return profile, status_id
@@ -354,7 +336,7 @@ async def retrieve_tweet(profile, status_id):
 
 
 def verify_tweet_text(tweet_text, expected_tweet_text):
-    if tweet_text != expected_tweet_text:
+    if tweet_text.strip() != expected_tweet_text.strip():
         raise ThreadTerminatingException(
             f"Tweet text {tweet_text} doesn't match the verification"
             f" tweet {expected_tweet_text}"
@@ -366,7 +348,7 @@ class AddUserWalletAddressStep(BaseStep):
 
     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
 
-    def __init__(self, cache):
+    def __init__(self, cache, guild_id):
         super().__init__()
         self.add_user_account = AddUserAccount(
             cache,
@@ -374,6 +356,7 @@ class AddUserWalletAddressStep(BaseStep):
             self.sanitize_account_input,
             self.get_account_storage_key,
         )
+        self.guild_id = guild_id
 
     async def send(self, message, user_id):
         return await self.add_user_account.send(message)
@@ -405,16 +388,24 @@ class PromptUserWalletMessageSignatureStep(BaseStep):
 
     name = StepKeys.PROMPT_USER_WALLET_ADDRESS.value
 
-    def __init__(self):
+    def __init__(self, cache, guild_id):
         super().__init__()
         self.prompt_for_verification = PromptForAccountVerification(
             self.get_account_verification_prompts
         )
+        self.cache = cache
+        self.guild_id = guild_id
 
     async def send(self, message, user_id):
         return await self.prompt_for_verification.prompt(user_id, message), None
 
-    def get_account_verification_prompts(self, user_id):
+    async def save(self, message, guild_id, user_id):
+        await self.verify_message(message)
+        await self.save_authenticated_account(user_id, guild_id)
+
+    async def get_account_verification_prompts(self, user_id):
+        # workaround to async-ify this method
+        await asyncio.sleep(0.001)
         instructions_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Verification instructions",
@@ -428,27 +419,10 @@ class PromptUserWalletMessageSignatureStep(BaseStep):
         )
         return [instructions_embed, prompt]
 
-
-class VerifyUserWalletMessageSignatureStep(BaseStep):
-    """Verifies the message supplied by the user was signed by their specified wallet"""
-
-    trigger = True
-    name = StepKeys.VERIFY_USER_WALLET_ADDRESS.value
-
-    def __init__(self, user_id, guild_id, cache):
-        super().__init__()
-        self.user_id = user_id
-        self.guild_id = guild_id
-        self.cache = cache
-        self.verify_account = VerifyAccount(
-            self.verify_message, self.save_authenticated_account
-        )
-
-    async def send(self, message, user_id):
-        return await self.verify_account.verify(message)
-
     async def verify_message(self, authentication_message):
-        address = await get_cache_metadata(self.user_id, self.cache, WALLET_STORAGE_KEY)
+        address = await get_cache_metadata_key(
+            self.user_id, self.cache, WALLET_STORAGE_KEY
+        )
         stripped_supplied_signature = authentication_message.content.strip()
 
         try:
@@ -468,13 +442,16 @@ class VerifyUserWalletMessageSignatureStep(BaseStep):
                 " myetherwallet.com's signature box."
             )
 
-    async def save_authenticated_account(self):
+    async def save_authenticated_account(self, user_id, guild_id):
         #  retrieve and save handle from cache into airtable
-        record_id = await find_user(self.user_id, self.guild_id)
-        wallet_address = await get_cache_metadata(
-            self.user_id, self.cache, WALLET_STORAGE_KEY
+        record_id = await find_user(user_id, guild_id)
+        wallet_address = await get_cache_metadata_key(
+            user_id, self.cache, WALLET_STORAGE_KEY
         )
         await update_user(record_id, WALLET_STORAGE_KEY, wallet_address)
+
+    async def handle_emoji(self, raw_reaction):
+        return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
 class AddDiscourseStep(BaseStep):
@@ -687,19 +664,16 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=PromptUserTweetStep())
+            Step(current=PromptUserTweetStep(self.cache, self.guild_id))
             .add_next_step(
-                VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+                VerifyUserTwitterStep(self.cache, self.user_id, self.guild_id)
             )
-            .add_next_step(AddUserWalletAddressStep(self.cache))
-            .add_next_step(PromptUserWalletMessageSignatureStep())
+            .add_next_step(AddUserWalletAddressStep(self.cache, self.guild_id))
             .add_next_step(
-                VerifyUserWalletMessageSignatureStep(
-                    self.user_id, self.guild_id, self.cache
-                )
+                PromptUserWalletMessageSignatureStep(self.cache, self.guild_id)
             )
-            .add_next_step(AddDiscourseStep(guild_id=self.guild_id))
-            .add_next_step(CongratsStep(guild_id=self.guild_id, bot=self.bot))
+            .add_next_step(AddDiscourseStep(self.guild_id))
+            .add_next_step(CongratsStep(self.guild_id, self.bot))
         )
 
     async def get_steps(self):

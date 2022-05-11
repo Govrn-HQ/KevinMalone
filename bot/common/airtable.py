@@ -210,6 +210,7 @@ async def get_contributions(global_id, date):
         if not members:
             raise Exception(f"Failed to fetch user from base {AIRTABLE_BASE}")
         user_display_name = members[0].get("fields").get("Name")
+        user_display_name = "USERC"
         if not date:
             date = datetime.now()
         formatted_date = date.strftime("%Y-%m-%dT%H:%M::%S.%fZ")

@@ -39,10 +39,15 @@ async def write_cache_metadata(user_id, cache, key, value):
     await cache.set(user_id, build_cache_value(**cache_values))
 
 
-async def get_cache_metadata(user_id, cache, key):
+async def get_cache_metadata(user_id, cache):
     cache_entry = await cache.get(user_id)
     cache_values = json.loads(cache_entry)
     metadata = cache_values.get("metadata")
+    return metadata
+
+
+async def get_cache_metadata_key(user_id, cache, key):
+    metadata = await get_cache_metadata(user_id, cache)
     return metadata.get(key)
 
 
