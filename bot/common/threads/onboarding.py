@@ -483,8 +483,9 @@ class CongratsStep(BaseStep):
 
     name = StepKeys.ONBOARDING_CONGRATS.value
 
-    def __init__(self, guild_id, bot):
+    def __init__(self, user_id, guild_id, bot):
         super().__init__()
+        self.user_id = user_id
         self.guild_id = guild_id
         self.bot = bot
 
@@ -498,12 +499,16 @@ class CongratsStep(BaseStep):
 
     async def handle_emoji(self, raw_reaction):
         if SKIP_EMOJI in raw_reaction.emoji.name:
+            next_step = None
             channel = await self.bot.fetch_channel(raw_reaction.channel_id)
             guild = await self.bot.fetch_guild(self.guild_id)
             await channel.send(
                 f"Congratulations on completeing onboarding to {guild.name}"
             )
-            return None, False
+            govrn_profile = await find_user(self.user_id, constants.Bot.govrn_guild_id)
+            if govrn_profile:
+                next_step = StepKeys.END.value
+            return next_step, False
         raise Exception("Reacted with the wrong emoji")
 
     async def control_hook(self, message, user_id):
@@ -673,7 +678,7 @@ class Onboarding(BaseThread):
                 PromptUserWalletMessageSignatureStep(self.cache, self.guild_id)
             )
             .add_next_step(AddDiscourseStep(self.guild_id))
-            .add_next_step(CongratsStep(self.guild_id, self.bot))
+            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
         )
 
     async def get_steps(self):
