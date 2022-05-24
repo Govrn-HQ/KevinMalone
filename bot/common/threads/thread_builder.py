@@ -323,6 +323,8 @@ class BaseThread:
                         await self._save_previous_step(message)
                     return await self.cache.delete(self.user_id)
                 step_name = list(self.step.next_steps.values())[0].current.name
+            if step_name == StepKeys.END.value:
+                return await self.cache.delete(self.user_id)
             next_step = self.step.get_next_step(step_name)
         if not next_step:
             return await self.cache.delete(self.user_id)
