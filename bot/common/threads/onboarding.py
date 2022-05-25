@@ -306,7 +306,7 @@ class ReuseGuildProfileForGovrnEmoji(BaseStep):
 
 
 class ReuseGuildProfileForGovrnStep(BaseStep):
-    """Update the user's Govrn profile with information from the current server profile"""
+    """Update the user's Govrn profile with information from the current profile"""
 
     name = StepKeys.REUSE_GUILD_PROFILE_FOR_GOVRN.value
 
