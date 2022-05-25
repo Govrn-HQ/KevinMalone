@@ -19,13 +19,13 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
     ThreadKeys,
-    BaseThread
+    BaseThread,
 )
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
     if SKIP_EMOJI in raw_reaction.emoji.name:
-        return None, True 
+        return None, True
     raise Exception("Reacted with the wrong emoji")
 
 
