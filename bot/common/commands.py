@@ -289,7 +289,7 @@ async def add_dao(ctx):
     thread = await AddDao(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
-        None,
+        sent_message.id,
         None,
         cache=Redis,
         discord_bot=bot,

@@ -17,6 +17,7 @@ from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key
 )
+from bot.exceptions import ThreadTerminatingException
 
 
 logger = logging.getLogger(__name__)
@@ -40,32 +41,24 @@ class AddDaoPromptId(BaseStep):
         )
         return sent_message, None
 
-    async def control_hook(self, message, user_id):
+    async def save(self, message, guild_id, user_id):
         message_content = message.content.strip()
         dao_id = None
 
         try:
             dao_id = int(message_content)
         except ValueError:
-            await message.channel.send(
-                f"{message_content} is not a valid discord id!"
-            )
-            return StepKeys.END.value
+            message = f"{message_content} is not a valid discord id!"
+            raise ThreadTerminatingException(message)
 
         guild = await get_guild_by_guild_id(dao_id)
         if guild:
-            await message.channel.send(
+            message = (
                 f"It looks like guild {dao_id} has already been onboarded as "
                 f"{guild.get('fields').get('guild_name')}! You can report your "
                 " contributions with /report!"
             )
-            return StepKeys.END.value
-
-        return StepKeys.ADD_DAO_PROMPT_NAME.value
-
-    async def save(self, message, guild_id, user_id):
-        # check if the guild has already been added
-        dao_id = int(message.content.strip())
+            raise ThreadTerminatingException(message)
 
         # add validated dao_id to metadata cache for lookup on next step
         await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
