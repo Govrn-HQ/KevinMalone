@@ -46,7 +46,10 @@ class AddDaoPromptId(BaseStep):
         dao_id = None
 
         try:
-            dao_id = int(message_content)
+            # we consider this exceptional if the supplied value is not
+            # an actual number, but airtable will not accept values other
+            # than strings for this column value
+            dao_id = str(int(message_content))
         except ValueError:
             message = f"{message_content} is not a valid discord id!"
             raise ThreadTerminatingException(message)
