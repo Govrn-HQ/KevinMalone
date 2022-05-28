@@ -358,22 +358,23 @@ async def select_guild(ctx, response_embed, error_embed):
         return None, None
 
     await ctx.response.defer()
-    guild_ids = []
+    guild_metadata = []
     for record_id in airtable_guild_ids:
         g = await get_guild(record_id)
         guild_id = g.get("guild_id")
+        guild_name = g.get("guild_name")
         if guild_id:
-            guild_ids.append(guild_id)
+            guild_metadata.append([guild_id, guild_name])
     embed = response_embed
-    emojis = get_list_of_emojis(len(guild_ids))
+    emojis = get_list_of_emojis(len(guild_metadata))
     daos = {}
-    for idx, guild_id in enumerate(guild_ids):
-        guild = await bot.fetch_guild(guild_id)
-        if not guild:
-            continue
+    for idx, guild_data in enumerate(guild_metadata):
+        # omitting this call, which fails with 403 if Kevin
+        # hasn't yet been added to the guild_id in question
+        # guild = await bot.fetch_guild(guild_id)
         emoji = emojis[idx]
-        daos[emoji] = guild.id
-        embed.add_field(name=guild.name, value=emoji)
+        daos[emoji] = guild_data[0]
+        embed.add_field(name=guild_data[1], value=emoji)
     message = await ctx.followup.send(embed=embed)
     for emoji in emojis:
         await message.add_reaction(emoji)
