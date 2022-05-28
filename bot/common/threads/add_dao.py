@@ -11,11 +11,11 @@ from bot.common.airtable import (
     get_guild_by_guild_id,
     create_guild,
     create_user,
-    update_guild
+    update_guild,
 )
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
-    get_cache_metadata_key
+    get_cache_metadata_key,
 )
 from bot.exceptions import ThreadTerminatingException
 
@@ -37,7 +37,7 @@ class AddDaoPromptId(BaseStep):
         sent_message = await channel.send(
             "What is the discord ID of the guild you'd like to add? "
             "(You can find this by right-clicking the guild icon and clicking "
-            "\"Copy ID\")"
+            '"Copy ID")'
         )
         return sent_message, None
 
@@ -105,10 +105,13 @@ class AddDaoSuccess(BaseStep):
 
     async def send(self, message, user_id):
         guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
-        return await message.channel.send(
-            f"Thanks for adding {guild_name} as a new guild! You can now report your "
-            "contributions using the /report command."
-        ), None
+        return (
+            await message.channel.send(
+                f"Thanks for adding {guild_name} as a new guild! You can now report your "
+                "contributions using the /report command."
+            ),
+            None,
+        )
 
 
 class AddDao(BaseThread):

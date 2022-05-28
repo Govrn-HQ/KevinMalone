@@ -282,7 +282,7 @@ async def add_dao(ctx):
         colour=INFO_EMBED_COLOR,
         title="Add DAO",
         description="Add a new guild so that you can report your contributions,"
-        " even if Kevin Malone hasn't been added to the server"
+        " even if Kevin Malone hasn't been added to the server",
     )
     sent_message = await ctx.response.send_message(embed=embed)
 
@@ -295,23 +295,15 @@ async def add_dao(ctx):
         discord_bot=bot,
         context=ctx,
     )
-    cache_value = build_cache_value(
-        ThreadKeys.ADD_DAO.value,
-        thread.steps.hash_,
-        ""
-    )
+    cache_value = build_cache_value(ThreadKeys.ADD_DAO.value, thread.steps.hash_, "")
 
-    logger.info(
-        f"Key: {cache_value}"
-    )
-    await Redis.set(
-        ctx.author.id,
-        cache_value
-    )
+    logger.info(f"Key: {cache_value}")
+    await Redis.set(ctx.author.id, cache_value)
     await thread.send(sent_message)
 
 
 if bool(strtobool(constants.Bot.is_dev)):
+
     @bot.slash_command(
         guild_id=GUILD_IDS, description="Add first contributions to the guild"
     )
