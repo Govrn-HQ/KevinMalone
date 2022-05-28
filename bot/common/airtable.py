@@ -255,10 +255,11 @@ async def update_guild(guild_id, id_field, id_val):
     """Add or update guild ID given a field and value."""
 
     loop = asyncio.get_running_loop()
+    guild_record = await get_guild_by_guild_id(guild_id)
 
     def _update_guild():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-        table.update(guild_id, {id_field: id_val})
+        table.update(guild_record.get("id"), {id_field: id_val})
 
     return await loop.run_in_executor(None, _update_guild)
 

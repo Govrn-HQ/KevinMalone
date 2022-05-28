@@ -105,10 +105,10 @@ class AddDaoSuccess(BaseStep):
 
     async def send(self, message, user_id):
         guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
-        await message.channel.send(
+        return await message.channel.send(
             f"Thanks for adding {guild_name} as a new guild! You can now report your "
             "contributions using the /report command."
-        )
+        ), None
 
 
 class AddDao(BaseThread):
