@@ -473,7 +473,7 @@ class Onboarding(BaseThread):
     def _govrn_profile_reuse_steps(self):
         reuse_govrn_profile_steps = (
             Step(current=ReuseGovrnProfileForGuild(self.guild_id))
-            .add_next_step(CongratsStep(self.guild_id, self.bot))
+            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
             .build()
         )
         create_new_govrn_profile_steps = self._non_govrn_profile_reuse_steps()
