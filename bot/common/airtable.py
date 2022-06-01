@@ -313,7 +313,7 @@ async def create_guild(guild_id):
 
     def _create_guild():
         guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-        guild_record = guild_table.create({"guild_id": guild_id})
+        guild_record = guild_table.create({"guild_id": guild_id, "Status": "inputted"})
         return guild_record.get("id")
 
     return await loop.run_in_executor(None, _create_guild)
