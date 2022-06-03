@@ -345,7 +345,10 @@ class CheckForGovrnProfile(BaseStep):
         # the StepKey for prompting to reuse the Govrn profile
         # if they do, and the user display prompt if not
         current_profile = await get_user_record(user_id, constants.Bot.govrn_guild_id)
-        if current_profile is not None and constants.Bot.govrn_guild_id != self.guild_id:
+        if (
+            current_profile is not None
+            and constants.Bot.govrn_guild_id != self.guild_id
+        ):
             return StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD_PROMPT.value
         return StepKeys.USER_DISPLAY_CONFIRM.value
 
