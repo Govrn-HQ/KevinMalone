@@ -334,6 +334,9 @@ class CheckForGovrnProfile(BaseStep):
 
     name = StepKeys.CHECK_FOR_GOVRN_PROFILE.value
 
+    def __init__(self, guild_id):
+        self.guild_id = guild_id
+
     async def send(self, message, user_id):
         return None, None
 
@@ -342,7 +345,7 @@ class CheckForGovrnProfile(BaseStep):
         # the StepKey for prompting to reuse the Govrn profile
         # if they do, and the user display prompt if not
         current_profile = await get_user_record(user_id, constants.Bot.govrn_guild_id)
-        if current_profile is not None:
+        if current_profile is not None and constants.Bot.govrn_guild_id != self.guild_id:
             return StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD_PROMPT.value
         return StepKeys.USER_DISPLAY_CONFIRM.value
 
@@ -357,8 +360,7 @@ class ReuseGovrnProfileForGuildPrompt(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        # Get past guild and add the name
-        record = await get_guild_by_guild_id(self.guild_id)
+        record = await get_guild_by_guild_id(constants.Bot.govrn_guild_id)
         fields = record.get("fields")
 
         sent_message = await channel.send(
