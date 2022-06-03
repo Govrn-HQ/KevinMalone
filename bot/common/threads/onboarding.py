@@ -437,7 +437,11 @@ async def copy_user_profile_to_guild(user_id, from_guild_id, to_guild_id):
     await update_user(record_id, "display_name", fields.get("display_name"))
     await update_user(record_id, "twitter", fields.get("twitter"))
     await update_user(record_id, "wallet", fields.get("wallet"))
-    await update_user(record_id, "discourse", fields.get("discourse"))
+    user_record = await update_user(record_id, "discourse", fields.get("discourse"))
+
+    # Need to update the name field in the member table also
+    member_id = user_record.get("fields").get("Members")[0]
+    await update_member(member_id, "Name", fields.get("display_name"))
 
     return fields
 

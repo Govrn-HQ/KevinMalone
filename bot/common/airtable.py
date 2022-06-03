@@ -231,7 +231,7 @@ async def update_user(record_id, id_field, id_val):
 
     def _update_user():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
-        table.update(record_id, {id_field: id_val})
+        return table.update(record_id, {id_field: id_val})
 
     return await loop.run_in_executor(None, _update_user)
 
@@ -245,7 +245,7 @@ async def update_member(record_id, id_field, id_val):
 
     def _update_member():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
-        table.update(record_id, {id_field: id_val})
+        return table.update(record_id, {id_field: id_val})
 
     return await loop.run_in_executor(None, _update_member)
 
