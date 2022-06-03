@@ -1,5 +1,6 @@
 import logging
 import sys
+from bot.common.tasks import tasks
 
 from bot.common.bot.bot import bot
 import constants
