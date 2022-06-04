@@ -347,7 +347,7 @@ class CheckForGovrnProfile(BaseStep):
         current_profile = await get_user_record(user_id, constants.Bot.govrn_guild_id)
         if (
             current_profile is not None
-            and constants.Bot.govrn_guild_id != self.guild_id
+            and int(constants.Bot.govrn_guild_id) != self.guild_id
         ):
             return StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD_PROMPT.value
         return StepKeys.USER_DISPLAY_CONFIRM.value
@@ -528,7 +528,7 @@ class Onboarding(BaseThread):
         govrn_reuse_steps = self._govrn_profile_reuse_steps()
         non_govrn_reuse_steps = self._non_govrn_profile_reuse_steps()
 
-        steps = Step(current=CheckForGovrnProfile()).fork(
+        steps = Step(current=CheckForGovrnProfile(self.guild_id)).fork(
             [govrn_reuse_steps, non_govrn_reuse_steps]
         )
         return steps.build()
