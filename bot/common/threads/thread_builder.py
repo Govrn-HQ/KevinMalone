@@ -58,6 +58,7 @@ class ThreadKeys(Enum):
     GUILD_SELECT = "guild_select"
     REPORT = "report"
     POINTS = "points"
+    ADD_DAO = "add_dao"
 
 
 class StepKeys(Enum):
@@ -96,6 +97,9 @@ class StepKeys(Enum):
     POINTS_CSV_PROMPT = "points_csv_prompt"
     POINTS_CSV_PROMPT_EMOJI = "points_csv_prompt_emoji"
     POINTS_CSV_PROMPT_ACCEPT = "points_csv_prompt_accept"
+    ADD_DAO_PROMPT_ID = "add_dao_prompt_id"
+    ADD_DAO_PROMPT_NAME = "add_dao_prompt_name"
+    ADD_DAO_SUCCESS = "add_dao_success"
 
 
 class BaseThread:
@@ -226,6 +230,7 @@ class BaseThread:
             msg, metadata = await self.step.current.send(message, self.user_id)
         except ThreadTerminatingException as e:
             await message.channel.send(str(e))
+            await self.cache.delete(self.user_id)
             raise e
 
         if not metadata:
