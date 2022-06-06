@@ -334,6 +334,9 @@ class CheckForGovrnProfile(BaseStep):
 
     name = StepKeys.CHECK_FOR_GOVRN_PROFILE.value
 
+    def __init__(self, guild_id):
+        self.guild_id = guild_id
+
     async def send(self, message, user_id):
         return None, None
 
@@ -342,7 +345,10 @@ class CheckForGovrnProfile(BaseStep):
         # the StepKey for prompting to reuse the Govrn profile
         # if they do, and the user display prompt if not
         current_profile = await get_user_record(user_id, constants.Bot.govrn_guild_id)
-        if current_profile is not None:
+        if (
+            current_profile is not None
+            and int(constants.Bot.govrn_guild_id) != self.guild_id
+        ):
             return StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD_PROMPT.value
         return StepKeys.USER_DISPLAY_CONFIRM.value
 
@@ -357,8 +363,7 @@ class ReuseGovrnProfileForGuildPrompt(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        # Get past guild and add the name
-        record = await get_guild_by_guild_id(self.guild_id)
+        record = await get_guild_by_guild_id(constants.Bot.govrn_guild_id)
         fields = record.get("fields")
 
         sent_message = await channel.send(
@@ -437,7 +442,11 @@ async def copy_user_profile_to_guild(user_id, from_guild_id, to_guild_id):
     await update_user(record_id, "display_name", fields.get("display_name"))
     await update_user(record_id, "twitter", fields.get("twitter"))
     await update_user(record_id, "wallet", fields.get("wallet"))
-    await update_user(record_id, "discourse", fields.get("discourse"))
+    user_record = await update_user(record_id, "discourse", fields.get("discourse"))
+
+    # Need to update the name field in the member table also
+    member_id = user_record.get("fields").get("Members")[0]
+    await update_member(member_id, "Name", fields.get("display_name"))
 
     return fields
 
@@ -519,7 +528,7 @@ class Onboarding(BaseThread):
         govrn_reuse_steps = self._govrn_profile_reuse_steps()
         non_govrn_reuse_steps = self._non_govrn_profile_reuse_steps()
 
-        steps = Step(current=CheckForGovrnProfile()).fork(
+        steps = Step(current=CheckForGovrnProfile(self.guild_id)).fork(
             [govrn_reuse_steps, non_govrn_reuse_steps]
         )
         return steps.build()
