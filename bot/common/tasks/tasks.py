@@ -2,7 +2,7 @@ from linecache import cache
 import threading
 import time
 import datetime
-import logging 
+import logging
 import asyncio
 
 from datetime import timedelta, datetime
@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 TASK_LOOP_INTERVAL_MINUTES = 10
 REPORT_LAST_SENT_DATETIME_CACHE_KEY = "contribution_report_last_sent"
 
-class Task():
+
+class Task:
     def __init__(self, fn, check_run, cadence):
         self.fn = fn
         self.check_run = check_run
@@ -27,7 +28,7 @@ class Task():
 
 # defines a single grouping of tasks which runs in a separate thread
 # for periodic execution
-class Tasks():
+class Tasks:
     def __init__(self):
         self.ticker = threading.Event()
         self.tasks = []
@@ -50,27 +51,30 @@ class Tasks():
             asyncio.run(self._batch_run_tasks)
 
 
-# Defines a group of commonly used predicates for determining if the task should 
+# Defines a group of commonly used predicates for determining if the task should
 # run at the supplied datetime
-class Cadences():
+class Cadences:
     cache = RedisCache()
 
     # Requires cache to determine if report has already been sent
     async def once_weekly(weekday: int) -> bool:
         last_sent = await Cadences.cache.get(REPORT_LAST_SENT_DATETIME_CACHE_KEY)
-        # check that today is the same weekday as the cadence and that 
+        # check that today is the same weekday as the cadence and that
         # the last update was sent 1 week ago
         now = datetime.now()
-        td: timedelta = None if last_sent is None else now - datetime.strptime(last_sent)
+        td: timedelta = (
+            None if last_sent is None else now - datetime.strptime(last_sent)
+        )
         if td.days >= 7 and now.date().weekday() == weekday:
             await Cadences.cache.set(
-                REPORT_LAST_SENT_DATETIME_CACHE_KEY, now.strftime("%m/%d/%Y, %H:%M:%S"))
+                REPORT_LAST_SENT_DATETIME_CACHE_KEY, now.strftime("%m/%d/%Y, %H:%M:%S")
+            )
             return True
         return False
-        
+
 
 # conforms with date.weekday()
-class Days():
+class Days:
     MONDAY = 0
     TUESDAY = 1
     WEDNESDAY = 2
@@ -78,6 +82,7 @@ class Days():
     FRIDAY = 4
     SATURDAY = 5
     SUNDAY = 6
+
 
 tasks = Tasks()
 
@@ -94,3 +99,4 @@ tasks = Tasks()
 
 @tasks.task(Cadences.once_weekly, Days.FRIDAY)
 def weekly_report():
+    pass
