@@ -137,6 +137,17 @@ async def find_guild(guild_id):
     return await loop.run_in_executor(None, _find_guild)
 
 
+def get_guild_id_by_guild_name(guild_name):
+    
+    """Returns the community's guild ID (str) given the guild name (str)."""
+
+    table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+    records = table.all(formula=match({"guild_name": guild_name}))
+    guild_id = records[0].get("fields").get("guild_id")
+
+    return guild_id
+
+
 async def get_guild_by_guild_id(guild_id):
 
     """Return airtable record number in guild table given guild_id."""
@@ -170,6 +181,47 @@ async def get_guild(record_id):
         return record
 
     return await loop.run_in_executor(None, _find_guild)
+
+
+def get_activity_name(airtable_record):
+    
+    """Given the airtable record for an entry in the `ActivityType`
+    table, returns `activity_name_only` field."""
+
+    table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Activity Types")
+    record = table.get(airtable_record)
+    activity = record.get("fields").get("activity_name_only")
+
+    return activity
+
+
+ def get_member_name(airtable_record):
+
+    """Given the airtable record for an entry in the `Members` table, 
+    return the `Name` field."""
+
+    table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
+    record = table.get(airtable_record)
+    name = record.get("fields").get("Name")
+
+    return name
+
+
+def get_discord_id_from_user_record(airtable_record):
+    
+    """Given the airtable record for an entry in the `Users` table,
+    return their `discord_id` field from a linked record in the `global` table"""
+
+    user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
+    linked_record = user_table.get(airtable_record).get("fields").get("discord_id")
+
+    global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "global")
+    discord_record = global_table.get(linked_record[0])
+
+    discord_id = discord_record.get("fields").get("discord_id")
+    discord_id = int(discord_id)
+
+    return discord_id
 
 
 async def get_contribution_count(user_id):
