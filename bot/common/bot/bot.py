@@ -1,4 +1,4 @@
 import discord
 
 intents = discord.Intents.all()
-bot = discord.Bot(intents=intents)
+bot: discord.Bot = discord.Bot(intents=intents)
