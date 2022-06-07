@@ -11,6 +11,7 @@ from bot.common.airtable import (
     get_guild_by_guild_id,
     create_guild,
     create_user,
+    get_user_record,
     update_guild,
 )
 from bot.common.threads.thread_builder import (
@@ -56,12 +57,18 @@ class AddDaoPromptId(BaseStep):
 
         guild = await get_guild_by_guild_id(dao_id)
         if guild:
-            message = (
-                f"It looks like guild {dao_id} has already been onboarded as "
-                f"{guild.get('fields').get('guild_name')}! You can report your "
-                " contributions with /report!"
-            )
-            raise ThreadTerminatingException(message)
+            # Check if user is a member
+            user = get_user_record(user_id, dao_id)
+
+            if user:
+                message = (
+                    f"It looks like guild {dao_id} has already been onboarded as "
+                    f"{guild.get('fields').get('guild_name')}! You can report your "
+                    " contributions with /report!"
+                )
+                raise ThreadTerminatingException(message)
+            
+            # direct user to join flow
 
         # add validated dao_id to metadata cache for lookup on next step
         await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
