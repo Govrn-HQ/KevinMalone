@@ -266,6 +266,7 @@ async def points(
     )
     await thread.send(None)
 
+
 if bool(strtobool(constants.Bot.is_dev)):
 
     @bot.slash_command(
@@ -296,7 +297,9 @@ if bool(strtobool(constants.Bot.is_dev)):
             discord_bot=bot,
             context=ctx,
         )
-        cache_value = build_cache_value(ThreadKeys.ADD_DAO.value, thread.steps.hash_, "")
+        cache_value = build_cache_value(
+            ThreadKeys.ADD_DAO.value, thread.steps.hash_, ""
+        )
 
         logger.info(f"Key: {cache_value}")
         await Redis.set(ctx.author.id, cache_value)
