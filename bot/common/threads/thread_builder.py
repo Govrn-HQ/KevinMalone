@@ -98,6 +98,7 @@ class StepKeys(Enum):
     POINTS_CSV_PROMPT_EMOJI = "points_csv_prompt_emoji"
     POINTS_CSV_PROMPT_ACCEPT = "points_csv_prompt_accept"
     ADD_DAO_PROMPT_ID = "add_dao_prompt_id"
+    ADD_DAO_CHECK_EXISTS = "add_dao_check_exists"
     ADD_DAO_PROMPT_NAME = "add_dao_prompt_name"
     ADD_DAO_SUCCESS = "add_dao_success"
 

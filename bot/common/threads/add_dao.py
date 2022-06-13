@@ -1,5 +1,7 @@
 import logging
 
+from bot.common.threads.onboarding import Onboarding
+
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -42,7 +44,17 @@ class AddDaoPromptId(BaseStep):
         )
         return sent_message, None
 
-    async def save(self, message, guild_id, user_id):
+
+class CheckDaoExists(BaseStep):
+    """Step that 1. checks if the user supplied DAO ID already exists on the backend
+    2. Creates the dao record 3. Directs user to the /join flow after."""
+    name = StepKeys.ADD_DAO_CHECK_EXISTS
+
+    def __init__(self, parent_thread, cache):
+        self.parent_thread = parent_thread
+        self.cache = cache
+
+    async def send(self, message, user_id):
         message_content = message.content.strip()
         dao_id = None
 
@@ -53,8 +65,13 @@ class AddDaoPromptId(BaseStep):
             dao_id = str(int(message_content))
         except ValueError:
             message = f"{message_content} is not a valid discord id!"
-            raise ThreadTerminatingException(message)
+            raise ThreadTerminatingException()
 
+        return None, {"guild_id": dao_id}
+
+    async def control_hook(self, message, user_id):
+        dao_id = str(int(message.content.strip()))
+        self.parent_thread.guild_id = dao_id
         guild = await get_guild_by_guild_id(dao_id)
         if guild:
             # Check if user is a member
@@ -62,19 +79,20 @@ class AddDaoPromptId(BaseStep):
 
             if user:
                 message = (
-                    f"It looks like guild {dao_id} has already been onboarded as "
-                    f"{guild.get('fields').get('guild_name')}! You can report your "
-                    " contributions with /report!"
+                    f"It looks like guild {dao_id} has already been added as "
+                    f"{guild.get('fields').get('guild_name')}, and it looks like "
+                    "you're already a member! You can report your contributions "
+                    "with /report!"
                 )
                 raise ThreadTerminatingException(message)
-            
-            # direct user to join flow
 
-        # add validated dao_id to metadata cache for lookup on next step
-        await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
-
-        await create_guild(dao_id)
-        await create_user(user_id, dao_id)
+            # guild exists, user does not, drop into /join flow
+            # TODO: How to run /join thread immediately?
+            # return StepKeys.CHECK_FOR_GOVRN_PROFILE
+        else:
+            await create_guild(dao_id)
+            # Prompt for guild name
+            return StepKeys.ADD_DAO_PROMPT_NAME
 
 
 class AddDaoPromptName(BaseStep):
