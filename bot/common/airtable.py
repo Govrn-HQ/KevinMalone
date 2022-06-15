@@ -221,9 +221,7 @@ async def get_contributions(global_id, date):
             f"{{DateOfSubmission}}>='{formatted_date}',"
             f"{{reportedToGuild}}={guild_id})"  # noqa: E501
         )
-        records = table.all(
-            formula=formula
-        )
+        records = table.all(formula=formula)
         return records
 
     return await loop.run_in_executor(None, _contributions)
