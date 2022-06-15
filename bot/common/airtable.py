@@ -218,12 +218,10 @@ async def get_contributions(global_id, date):
         guild_id = global_id.split("_")[0]
         formula = (
             f"AND({{member}}='{user_display_name}',"
-            f"{{DateOfSubmission}}>='{formatted_date},"
-            f"{{reportedToGuild}}={guild_id}')"  # noqa: E501
+            f"{{DateOfSubmission}}>='{formatted_date}',"
+            f"{{reportedToGuild}}={guild_id})"  # noqa: E501
         )
-        records = table.all(
-            formula=formula
-        )
+        records = table.all(formula=formula)
         return records
 
     return await loop.run_in_executor(None, _contributions)
