@@ -214,8 +214,15 @@ async def get_contributions(global_id, date):
             date = datetime.now()
         formatted_date = date.strftime("%Y-%m-%dT%H:%M::%S.%fZ")
 
+        # Easy fix until we switch to postgres
+        guild_id = global_id.split("_")[0]
+        formula = (
+            f"AND({{member}}='{user_display_name}',"
+            f"{{DateOfSubmission}}>='{formatted_date},"
+            f"{{ReportedToGuild}}={guild_id}')"  # noqa: E501
+        )
         records = table.all(
-            formula=f"AND({{member}}='{user_display_name}',{{DateOfSubmission}}>='{formatted_date}')"  # noqa: E501
+            formula=formula
         )
         return records
 
