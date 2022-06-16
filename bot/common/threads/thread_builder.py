@@ -5,6 +5,7 @@ import logging
 
 from bot.common.bot.bot import bot
 from bot.common.cache import RedisCache
+from bot.exceptions import ThreadTerminatingException
 from enum import Enum
 from typing import Dict, Optional
 
@@ -25,6 +26,31 @@ def build_cache_value(thread, step, guild_id, message_id="", **kwargs):
     )
 
 
+async def write_cache_metadata(user_id, cache, key, value):
+    cache_entry = await cache.get(user_id)
+    cache_values = json.loads(cache_entry)
+    metadata = cache_values.get("metadata")
+
+    if metadata is None:
+        metadata = {}
+
+    metadata[key] = value
+    cache_values["metadata"] = metadata
+    await cache.set(user_id, build_cache_value(**cache_values))
+
+
+async def get_cache_metadata(user_id, cache):
+    cache_entry = await cache.get(user_id)
+    cache_values = json.loads(cache_entry)
+    metadata = cache_values.get("metadata")
+    return metadata
+
+
+async def get_cache_metadata_key(user_id, cache, key):
+    metadata = await get_cache_metadata(user_id, cache)
+    return metadata.get(key)
+
+
 class ThreadKeys(Enum):
     ONBOARDING = "onboarding"
     UPDATE_PROFILE = "update_profile"
@@ -32,6 +58,7 @@ class ThreadKeys(Enum):
     GUILD_SELECT = "guild_select"
     REPORT = "report"
     POINTS = "points"
+    ADD_DAO = "add_dao"
 
 
 class StepKeys(Enum):
@@ -51,9 +78,13 @@ class StepKeys(Enum):
     GOVRN_PROFILE_PROMPT = "govrn_profile_prompt"
     GOVRN_PROFILE_PROMPT_EMOJI = "govrn_profile_prompt_emoji"
     GOVRN_PROFILE_PROMPT_REJECT = "govrn_profile_prompt_reject"
-    GOVRN_PROFILE_PROMPT_ACCEPT = "govrn_profile_prompt_accept"
-    GOVRN_PROFILE_PROMPT_ACCEPT_EMOJI = "govrn_profile_prompt_accept_emoji"
-    GOVRN_PROFILE_REUSE = "govrn_profile_reuse"
+    CHECK_FOR_GOVRN_PROFILE = "check_for_govrn_profile"
+    REUSE_GOVRN_PROFILE_FOR_GUILD_PROMPT = "reuse_govrn_profile_for_guild_prompt"
+    REUSE_GOVRN_PROFILE_FOR_GUILD_EMOJI = "reuse_govrn_profile_for_guild_emoji"
+    REUSE_GOVRN_PROFILE_FOR_GUILD = "reuse_govrn_profile_for_guild"
+    REUSE_GUILD_PROFILE_FOR_GOVRN_PROMPT = "govrn_profile_prompt_accept"
+    REUSE_GUILD_PROFILE_FOR_GOVRN_EMOJI = "govrn_profile_prompt_accept_emoji"
+    REUSE_GUILD_PROFILE_FOR_GOVRN = "govrn_profile_reuse"
     END = "end"
     SEND_CONTRIBUTION_INSTRUCTION = "send_contribution_instruction"
     INITIAL_CONTRIBUTION_CONFIRM_EMOJI = "initial_contribution_confirm_emoji"
@@ -66,6 +97,9 @@ class StepKeys(Enum):
     POINTS_CSV_PROMPT = "points_csv_prompt"
     POINTS_CSV_PROMPT_EMOJI = "points_csv_prompt_emoji"
     POINTS_CSV_PROMPT_ACCEPT = "points_csv_prompt_accept"
+    ADD_DAO_PROMPT_ID = "add_dao_prompt_id"
+    ADD_DAO_PROMPT_NAME = "add_dao_prompt_name"
+    ADD_DAO_SUCCESS = "add_dao_success"
 
 
 class BaseThread:
@@ -186,9 +220,18 @@ class BaseThread:
                 "Please react with one of the above emojis to continue!"
             )
             return
-        if self._should_save_previous_step():
-            await self._save_previous_step(message)
-        msg, metadata = await self.step.current.send(message, self.user_id)
+
+        msg = None
+        metadata = None
+
+        try:
+            if self._should_save_previous_step():
+                await self._save_previous_step(message)
+            msg, metadata = await self.step.current.send(message, self.user_id)
+        except ThreadTerminatingException as e:
+            await message.channel.send(str(e))
+            await self.cache.delete(self.user_id)
+            raise e
 
         if not metadata:
             u = await self.cache.get(self.user_id)
@@ -285,6 +328,8 @@ class BaseThread:
                         await self._save_previous_step(message)
                     return await self.cache.delete(self.user_id)
                 step_name = list(self.step.next_steps.values())[0].current.name
+            if step_name == StepKeys.END.value:
+                return await self.cache.delete(self.user_id)
             next_step = self.step.get_next_step(step_name)
         if not next_step:
             return await self.cache.delete(self.user_id)

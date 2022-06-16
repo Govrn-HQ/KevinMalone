@@ -214,9 +214,14 @@ async def get_contributions(global_id, date):
             date = datetime.now()
         formatted_date = date.strftime("%Y-%m-%dT%H:%M::%S.%fZ")
 
-        records = table.all(
-            formula=f"AND({{member}}='{user_display_name}',{{DateOfSubmission}}>='{formatted_date}')"  # noqa: E501
+        # Easy fix until we switch to postgres
+        guild_id = global_id.split("_")[0]
+        formula = (
+            f"AND({{member}}='{user_display_name}',"
+            f"{{DateOfSubmission}}>='{formatted_date}',"
+            f"{{reportedToGuild}}={guild_id})"  # noqa: E501
         )
+        records = table.all(formula=formula)
         return records
 
     return await loop.run_in_executor(None, _contributions)
@@ -231,7 +236,7 @@ async def update_user(record_id, id_field, id_val):
 
     def _update_user():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
-        table.update(record_id, {id_field: id_val})
+        return table.update(record_id, {id_field: id_val})
 
     return await loop.run_in_executor(None, _update_user)
 
@@ -245,9 +250,23 @@ async def update_member(record_id, id_field, id_val):
 
     def _update_member():
         table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
-        table.update(record_id, {id_field: id_val})
+        return table.update(record_id, {id_field: id_val})
 
     return await loop.run_in_executor(None, _update_member)
+
+
+async def update_guild(guild_id, id_field, id_val):
+
+    """Add or update guild ID given a field and value."""
+
+    loop = asyncio.get_running_loop()
+    guild_record = await get_guild_by_guild_id(guild_id)
+
+    def _update_guild():
+        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+        table.update(guild_record.get("id"), {id_field: id_val})
+
+    return await loop.run_in_executor(None, _update_guild)
 
 
 async def add_user_to_contribution(guild_id, user_id, order):
@@ -286,8 +305,26 @@ async def add_user_to_contribution(guild_id, user_id, order):
     return await loop.run_in_executor(None, _update_user)
 
 
-async def create_user(user_id, guild_id):
+async def create_guild(guild_id):
+    """Return new airtable record in guild table given the guild id.
+    Return existing record if it already exists"""
 
+    loop = asyncio.get_running_loop()
+
+    guild_record = await find_guild(guild_id)
+
+    if guild_record != "":
+        return guild_record
+
+    def _create_guild():
+        guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+        guild_record = guild_table.create({"guild_id": guild_id, "Status": "inputted"})
+        return guild_record.get("id")
+
+    return await loop.run_in_executor(None, _create_guild)
+
+
+async def create_user(user_id, guild_id):
     """Return new airtable record # in users table given user_id & guild_id.
     If user table record for combo already exist, return existing record_id."""
 
@@ -326,6 +363,6 @@ async def create_user(user_id, guild_id):
             )
             i.update({"Members": (member_id)})
 
-            return record_id
+            return i.get("id")
 
     return await loop.run_in_executor(None, _create_user)
