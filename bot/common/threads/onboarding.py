@@ -45,7 +45,7 @@ class UserDisplayConfirmationStep(BaseStep):
     async def send(self, message, user_id):
         user = await self.bot.fetch_user(user_id)
         channel = message.channel
-        sent_message = await channel.send(f"{self.msg} `{user.display_name}`")
+        sent_message = await channel.send(f"{self.msg} `{user.get('display_name')}`")
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
         return sent_message, None
@@ -76,10 +76,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     async def save(self, message, guild_id, user_id):
         user = await self.bot.fetch_user(user_id)
         record_id = await find_user(user_id, guild_id)
-        await update_user(record_id, "display_name", user.name)
-        user_record = await get_user_record(user_id, guild_id)
-        member_id = user_record.get("fields").get("Members")[0]
-        await update_member(member_id, "Name", user.name)
+        await update_user(record_id, "display_name", user.get("name"))
 
 
 class UserDisplaySubmitStep(BaseStep):
@@ -98,9 +95,6 @@ class UserDisplaySubmitStep(BaseStep):
         record_id = await find_user(user_id, guild_id)
         val = message.content.strip()
         await update_user(record_id, "display_name", val)
-        user_record = await get_user_record(user_id, guild_id)
-        member_id = user_record.get("fields").get("Members")[0]
-        await update_member(member_id, "Name", val)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
@@ -344,7 +338,7 @@ class CheckForGovrnProfile(BaseStep):
         # Check if the user has a Govrn profile, returning
         # the StepKey for prompting to reuse the Govrn profile
         # if they do, and the user display prompt if not
-        current_profile = await get_user_record(user_id, constants.Bot.govrn_guild_id)
+        current_profile = await get_user_record(user_id)
         if (
             current_profile is not None
             and int(constants.Bot.govrn_guild_id) != self.guild_id
@@ -434,19 +428,14 @@ def get_profile_embed_from_profile_fields(guild_name, fields):
 
 # This assumes that a user already has an entry in both from_guild and to_guild
 async def copy_user_profile_to_guild(user_id, from_guild_id, to_guild_id):
-    current_profile = await get_user_record(user_id, from_guild_id)
-    fields = current_profile.get("fields")
+    current_profile = await get_user_record(user_id)
 
-    new_profile = await get_user_record(user_id, to_guild_id)
+    new_profile = await get_user_record(user_id)
     record_id = new_profile.get("id")
     await update_user(record_id, "display_name", fields.get("display_name"))
     await update_user(record_id, "twitter", fields.get("twitter"))
     await update_user(record_id, "wallet", fields.get("wallet"))
     user_record = await update_user(record_id, "discourse", fields.get("discourse"))
-
-    # Need to update the name field in the member table also
-    member_id = user_record.get("fields").get("Members")[0]
-    await update_member(member_id, "Name", fields.get("display_name"))
 
     return fields
 

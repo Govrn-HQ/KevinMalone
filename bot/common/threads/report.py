@@ -54,8 +54,7 @@ class ReportStep(BaseStep):
             # get count of uses
             record = await get_user_record(user_id, self.guild_id)
             fields = record.get("fields")
-            user_dao_id = fields.get("user_dao_id")
-            count = await get_contribution_count(user_dao_id)
+            count = await get_contribution_count(fields.get("id"))
             if count > 0:
                 await channel.send(
                     f"Congrats {user.display_name} for reporting {count} "

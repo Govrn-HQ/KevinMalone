@@ -4,46 +4,49 @@ from datetime import datetime
 from pyairtable import Table
 from pyairtable.formulas import match
 from bot.config import AIRTABLE_BASE, AIRTABLE_KEY
+from bot.common.graphql import fetch_user, create_guild_user, create_user as cu
 
 
-async def find_user(user_id, guild_id):
+async def find_user(user_id):
 
-    """Return airtable record number in users table given user_id and guild_id."""
+    # """Return airtable record number in users table given user_id and guild_id."""
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
-    def _find_user():
-        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
-        records = table.all(
-            formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
-        )
-        if len(records) == 1:
-            record_id = records[0].get("id")
-        else:
-            record_id = ""
-        return record_id
+    # def _find_user():
+    #     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
+    #     records = table.all(
+    #         formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
+    #     )
+    #     if len(records) == 1:
+    #         record_id = records[0].get("id")
+    #     else:
+    #         record_id = ""
+    #     return record_id
 
-    return await loop.run_in_executor(None, _find_user)
+    # return await loop.run_in_executor(None, _find_user)
+    return await fetch_user(user_id)
 
 
 async def get_user_record(user_id, guild_id):
 
     """Return airtable record number in users table given user_id and guild_id."""
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
-    def _find_user():
-        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
-        records = table.all(
-            formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
-        )
-        if len(records) == 1:
-            record_id = records[0]
-        else:
-            record_id = None
-        return record_id
+    # def _find_user():
+    #     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
+    #     records = table.all(
+    #         formula=match({"discord_id": str(user_id), "guild_id": str(guild_id)})
+    #     )
+    #     if len(records) == 1:
+    #         record_id = records[0]
+    #     else:
+    #         record_id = None
+    #     return record_id
 
-    return await loop.run_in_executor(None, _find_user)
+    # return await loop.run_in_executor(None, _find_user)
+    return await fetch_user(user_id)
 
 
 async def get_contribution_records(guild_id):
@@ -324,45 +327,47 @@ async def create_guild(guild_id):
     return await loop.run_in_executor(None, _create_guild)
 
 
-async def create_user(user_id, guild_id):
+async def create_user(discord_id, guild_id, wallet):
     """Return new airtable record # in users table given user_id & guild_id.
     If user table record for combo already exist, return existing record_id."""
+    user = await cu(discord_id, wallet)
+    await create_guild_user(user.get("id"), guild_id)
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
-    record_id = await find_user(user_id, guild_id)
-    guild_record = await find_guild(guild_id)
+    # record_id = await find_user(user_id, guild_id)
+    # guild_record = await find_guild(guild_id)
 
-    def _create_user():
-        global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "global")
-        user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
-        guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-        member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
+    # def _create_user():
+    #     global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "global")
+    #     user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
+    #     guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+    #     member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
 
-        # check if user, guild combo already exists
-        if record_id != "":  # existing combo
-            return record_id
-        else:  # new combo
-            # add discord id to global table if user completely new
-            discord_record = find_discord(user_id)
-            if discord_record == "":
-                global_table.create({"discord_id": str(user_id)})
-                discord_record = find_discord(user_id)
-            user_dao_id = (
-                guild_table.get(guild_record).get("fields").get("total_members") + 1
-            )
-            i = user_table.create(
-                {
-                    "discord_id": [discord_record],
-                    "guild_id": [guild_record],
-                    "user_dao_id": str(user_dao_id),
-                }
-            )
-            member_id = member_table.create(
-                {"global_id": [i.get("id")], "Name": i.get("fields").get("Name")}
-            )
-            i.update({"Members": (member_id)})
+    #     # check if user, guild combo already exists
+    #     if record_id != "":  # existing combo
+    #         return record_id
+    #     else:  # new combo
+    #         # add discord id to global table if user completely new
+    #         discord_record = find_discord(user_id)
+    #         if discord_record == "":
+    #             global_table.create({"discord_id": str(user_id)})
+    #             discord_record = find_discord(user_id)
+    #         user_dao_id = (
+    #             guild_table.get(guild_record).get("fields").get("total_members") + 1
+    #         )
+    #         i = user_table.create(
+    #             {
+    #                 "discord_id": [discord_record],
+    #                 "guild_id": [guild_record],
+    #                 "user_dao_id": str(user_dao_id),
+    #             }
+    #         )
+    #         member_id = member_table.create(
+    #             {"global_id": [i.get("id")], "Name": i.get("fields").get("Name")}
+    #         )
+    #         i.update({"Members": (member_id)})
 
-            return i.get("id")
+    #         return i.get("id")
 
-    return await loop.run_in_executor(None, _create_user)
+    # return await loop.run_in_executor(None, _create_user)

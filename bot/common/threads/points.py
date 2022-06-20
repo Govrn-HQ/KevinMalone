@@ -99,7 +99,7 @@ class DisplayPointsStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        record = await get_user_record(user_id, self.guild_id)
+        record = await get_user_record(user_id)
         logger.info(
             "user_id "
             + str(user_id)
@@ -134,7 +134,7 @@ class DisplayPointsStep(BaseStep):
         else:
             await self.context.response.send_message(embed=embed, ephemeral=True)
 
-        fields = record.get("fields")
+        fields = record
         global_id = fields.get("global_id")
         cache_entry = await self.cache.get(user_id)
         cache_values = json.loads(cache_entry)

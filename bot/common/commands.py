@@ -1,4 +1,5 @@
 from bot import constants
+from discord import option
 from discord.commands import Option
 from distutils.util import strtobool
 import logging
@@ -8,6 +9,7 @@ import discord
 
 from bot.common.airtable import (
     find_user,
+    fetch_user,
     create_user,
     get_discord_record,
     get_guild,
@@ -90,12 +92,13 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-async def join(ctx):
+@option("wallet", description="Enter your ethereum wallet address", required=True)
+async def join(ctx, wallet):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
 
-    is_user = await find_user(ctx.author.id, ctx.guild.id)
+    is_user = await find_user(ctx.author.id)
     if is_user:
         # Send welcome message and
         # And ask what journey they are
@@ -140,7 +143,13 @@ async def join(ctx):
         )
         return
 
-    await create_user(ctx.author.id, ctx.guild.id)
+    # Check if user exists
+    #
+    # If user does not exist ask for wallet address
+    # then create
+    user = await fetch_user(ctx.author.id)
+    if not user:
+        await create_user(ctx.author.id, ctx.guild.id, wallet)
     onboarding = await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),

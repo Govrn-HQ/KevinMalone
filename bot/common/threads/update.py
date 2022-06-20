@@ -51,8 +51,7 @@ class UserUpdateFieldSelectStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        fields = await get_user_record(user_id, self.cls.guild_id)
-        user = fields.get("fields")
+        user = await get_user_record(user_id, self.cls.guild_id)
         if not user:
             raise Exception("No user for updating field")
         embed = discord.Embed(
