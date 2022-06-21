@@ -4,7 +4,14 @@ from datetime import datetime
 from pyairtable import Table
 from pyairtable.formulas import match
 from bot.config import AIRTABLE_BASE, AIRTABLE_KEY
-from bot.common.graphql import fetch_user, create_guild_user, create_user as cu
+from bot.common.graphql import (
+    fetch_user,
+    create_guild_user,
+    create_user as cu,
+    get_guild as gg,
+    update_user_display_name,
+    update_user_twitter_handle,
+)
 
 
 async def find_user(user_id):
@@ -28,7 +35,7 @@ async def find_user(user_id):
     return await fetch_user(user_id)
 
 
-async def get_user_record(user_id, guild_id):
+async def get_user_record(user_id):
 
     """Return airtable record number in users table given user_id and guild_id."""
 
@@ -144,18 +151,19 @@ async def get_guild_by_guild_id(guild_id):
 
     """Return airtable record number in guild table given guild_id."""
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
-    def _find_guild():
-        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "guilds")
-        records = table.all(formula=match({"guild_id": guild_id}))
-        if len(records) == 1:
-            record_id = records[0]
-        else:
-            record_id = ""
-        return record_id
+    # def _find_guild():
+    #     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "guilds")
+    #     records = table.all(formula=match({"guild_id": guild_id}))
+    #     if len(records) == 1:
+    #         record_id = records[0]
+    #     else:
+    #         record_id = ""
+    #     return record_id
 
-    return await loop.run_in_executor(None, _find_guild)
+    # return await loop.run_in_executor(None, _find_guild)
+    return await gg(guild_id)
 
 
 async def get_guild(record_id):
@@ -235,13 +243,18 @@ async def update_user(record_id, id_field, id_val):
     """Add or update user ID info given ID field, value,
     and user table airtable record number."""
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
-    def _update_user():
-        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
-        return table.update(record_id, {id_field: id_val})
+    # def _update_user():
+    #     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
+    #     return table.update(record_id, {id_field: id_val})
 
-    return await loop.run_in_executor(None, _update_user)
+    # return await loop.run_in_executor(None, _update_user)
+    if id_field == "display_name":
+        return await update_user_display_name(id_val, record_id)
+    elif id_field == "twitter":
+        return await update_user_twitter_handle(id_val, record_id)
+    return await update_graph_user(record_id, id_field, id_val)
 
 
 async def update_member(record_id, id_field, id_val):

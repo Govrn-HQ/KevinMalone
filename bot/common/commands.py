@@ -114,6 +114,7 @@ async def join(ctx, wallet):
                 embed.add_field(
                     name=f"/ {cmd.name}", value=cmd.description, inline=False
                 )
+        print(embed)
         await ctx.response.send_message(embed=embed, ephemeral=True)
         ctx.response.is_done()
         return
@@ -148,6 +149,7 @@ async def join(ctx, wallet):
     # If user does not exist ask for wallet address
     # then create
     user = await fetch_user(ctx.author.id)
+    print(user)
     if not user:
         await create_user(ctx.author.id, ctx.guild.id, wallet)
     onboarding = await Onboarding(
