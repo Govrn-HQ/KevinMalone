@@ -32,7 +32,8 @@ class UpdateProfile(BaseThread):
 
     async def get_steps(self):
         steps = (
-            Step(UserUpdateFieldSelectStep(cls=self))
+            Step(current=SelectGuildEmojiStep(cls=self))
+            .add_next_step(UserUpdateFieldSelectStep(cls=self))
             .add_next_step(UpdateProfileFieldEmojiStep(cls=self))
             .add_next_step(UpdateFieldStep())
             .add_next_step(CongratsFieldUpdateStep())
@@ -57,13 +58,17 @@ class UserUpdateFieldSelectStep(BaseStep):
             colour=INFO_EMBED_COLOR,
             description="Please select one of the following fields to update via emoji",
         )
-        emojis = get_list_of_emojis(4)
+        emojis = get_list_of_emojis(3)
+        twitter = user.get("twitter_user", {"username": ""}) or {"username": ""}
         embed.add_field(
             name=f"Display Name {emojis[0]}", value=user.get("display_name")
         )
-        embed.add_field(name=f"Twitter Handle {emojis[1]}", value=user.get("twitter"))
         embed.add_field(
-            name=f"Ethereum Wallet Address {emojis[2]}", value=user.get("wallet")
+            name=f"Twitter Handle {emojis[1]}",
+            value=twitter.get("username"),
+        )
+        embed.add_field(
+            name=f"Ethereum Wallet Address {emojis[2]}", value=user.get("address")
         )
         # embed.add_field(
         #     name=f"Discourse Handle {emojis[3]}", value=user.get("discourse")
@@ -127,7 +132,7 @@ class UpdateFieldStep(BaseStep):
         field = metadata.get("field")
         if not field:
             raise Exception("No field present to update")
-        record_id = await find_user(user_id, guild_id)
+        record_id = await find_user(user_id)
         await update_user(record_id, field, message.content.strip())
 
 

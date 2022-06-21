@@ -48,6 +48,10 @@ fragment UserFragment on User {
     id
     guild_id
   }
+  twitter_user {
+    id
+    username
+  }
 }
 
 query getUser($where: UserWhereInput!,) {
