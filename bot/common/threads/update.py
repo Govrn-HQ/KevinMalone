@@ -59,7 +59,8 @@ class UserUpdateFieldSelectStep(BaseStep):
             description="Please select one of the following fields to update via emoji",
         )
         emojis = get_list_of_emojis(3)
-        twitter = user.get("twitter_user", {"username": ""}) or {"username": ""}
+        twitter = user.get("twitter_user", {"username": ""}) or {"username": None}
+        print(twitter)
         embed.add_field(
             name=f"Display Name {emojis[0]}", value=user.get("display_name")
         )
@@ -132,8 +133,8 @@ class UpdateFieldStep(BaseStep):
         field = metadata.get("field")
         if not field:
             raise Exception("No field present to update")
-        record_id = await find_user(user_id)
-        await update_user(record_id, field, message.content.strip())
+        record = await find_user(user_id)
+        await update_user(record.get("id"), field, message.content.strip())
 
 
 class CongratsFieldUpdateStep(BaseStep):

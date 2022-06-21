@@ -24,7 +24,7 @@ async def execute_query(query, values):
             resp = await session.execute(query, variable_values=values)
             return resp
     except Exception:
-        logger.exception(f"Failed to execute query {query}")
+        logger.exception(f"Failed to execute query {query} {values}")
         return None
 
 
@@ -268,7 +268,6 @@ fragment UserFragment on User {
   guild_users {
     id
     guild_id
-    name
   }
 }
 
@@ -290,7 +289,7 @@ mutation updateUser($data: UserUpdateInput!, $where: UserWhereUniqueInput!) {
 
 
 async def update_user_display_name(display_name, id):
-    return await update_user({"display_name": display_name}, {"id": id})
+    return await update_user({"display_name": {"set": display_name}}, {"id": id})
 
 
 async def update_user_twitter_handle(twitter_handle, id):
@@ -300,4 +299,4 @@ async def update_user_twitter_handle(twitter_handle, id):
 
 
 async def update_user_wallet(wallet, id):
-    return await update_user({"address": wallet}, {"id": id})
+    return await update_user({"address": {"set": wallet}}, {"id": id})
