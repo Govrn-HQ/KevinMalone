@@ -9,7 +9,9 @@ from bot.common.graphql import (
     create_guild_user,
     create_user as cu,
     get_guild as gg,
+    get_guild_by_id as ggbi,
     update_user_display_name,
+    update_user_wallet,
     update_user_twitter_handle,
 )
 
@@ -170,17 +172,18 @@ async def get_guild(record_id):
 
     """Return airtable record number in guild table given guild_id."""
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
-    def _find_guild():
-        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "guilds")
-        records = table.get(str(record_id))
-        record = {}
-        if records:
-            record = records.get("fields")
-        return record
+    # def _find_guild():
+    #     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "guilds")
+    #     records = table.get(str(record_id))
+    #     record = {}
+    #     if records:
+    #         record = records.get("fields")
+    #     return record
 
-    return await loop.run_in_executor(None, _find_guild)
+    # return await loop.run_in_executor(None, _find_guild)
+    return await ggbi(record_id)
 
 
 async def get_contribution_count(user_id):
@@ -254,7 +257,9 @@ async def update_user(record_id, id_field, id_val):
         return await update_user_display_name(id_val, record_id)
     elif id_field == "twitter":
         return await update_user_twitter_handle(id_val, record_id)
-    return await update_graph_user(record_id, id_field, id_val)
+    elif id_field == "wallet":
+        return await update_user_wallet(id_val, record_id)
+    raise Exception(f"Unsupported field update {id_field}")
 
 
 async def update_member(record_id, id_field, id_val):

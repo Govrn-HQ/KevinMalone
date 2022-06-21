@@ -32,8 +32,7 @@ class UpdateProfile(BaseThread):
 
     async def get_steps(self):
         steps = (
-            Step(current=SelectGuildEmojiStep(cls=self))
-            .add_next_step(UserUpdateFieldSelectStep(cls=self))
+            Step(UserUpdateFieldSelectStep(cls=self))
             .add_next_step(UpdateProfileFieldEmojiStep(cls=self))
             .add_next_step(UpdateFieldStep())
             .add_next_step(CongratsFieldUpdateStep())
@@ -51,7 +50,7 @@ class UserUpdateFieldSelectStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        user = await get_user_record(user_id, self.cls.guild_id)
+        user = await get_user_record(user_id)
         if not user:
             raise Exception("No user for updating field")
         embed = discord.Embed(
@@ -66,9 +65,9 @@ class UserUpdateFieldSelectStep(BaseStep):
         embed.add_field(
             name=f"Ethereum Wallet Address {emojis[2]}", value=user.get("wallet")
         )
-        embed.add_field(
-            name=f"Discourse Handle {emojis[3]}", value=user.get("discourse")
-        )
+        # embed.add_field(
+        #     name=f"Discourse Handle {emojis[3]}", value=user.get("discourse")
+        # )
 
         channel = message.channel
         sent_message = await channel.send(embed=embed)
@@ -80,7 +79,7 @@ class UserUpdateFieldSelectStep(BaseStep):
                 emojis[0]: "display_name",
                 emojis[1]: "twitter",
                 emojis[2]: "wallet",
-                emojis[3]: "discourse",
+                # emojis[3]: "discourse",
             },
         )
 

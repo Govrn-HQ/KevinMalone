@@ -365,8 +365,8 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 
 async def select_guild(ctx, response_embed, error_embed):
-    discord_rec = await get_discord_record(ctx.author.id)
-    airtable_guild_ids = discord_rec.get("fields").get("guild_ids")
+    discord_rec = await find_user(ctx.author.id)
+    airtable_guild_ids = discord_rec.get("guild_users")
     if not airtable_guild_ids:
         await ctx.response.send_message(embed=error_embed)
         ctx.response.is_done()
@@ -375,9 +375,9 @@ async def select_guild(ctx, response_embed, error_embed):
     await ctx.response.defer()
     guild_metadata = []
     for record_id in airtable_guild_ids:
-        g = await get_guild(record_id)
-        guild_id = g.get("guild_id")
-        guild_name = g.get("guild_name")
+        g = await get_guild(record_id.get("guild_id"))
+        guild_id = g.get("id")
+        guild_name = g.get("name")
         if guild_id:
             guild_metadata.append([guild_id, guild_name])
     embed = response_embed

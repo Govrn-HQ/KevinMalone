@@ -158,6 +158,34 @@ query getGuild($where: GuildWhereUniqueInput!) {
     return result
 
 
+async def get_guild_by_id(id):
+    query = """
+fragment GuildFragment on Guild {
+  congrats_channel
+  createdAt
+  discord_id
+  id
+  logo
+  name
+  updatedAt
+}
+
+query getGuild($where: GuildWhereUniqueInput!) {
+    result: guild(
+        where: $where,
+    ) {
+      ...GuildFragment
+    }
+}
+    """
+    result = await execute_query(query, {"where": {"id": id}})
+    print("Get guild")
+    print(result)
+    if result:
+        return result.get("result")
+    return result
+
+
 async def create_guild_user(user_id, guild_id):
     query = """
 mutation createGuildUser($data: GuildUserCreateInput!) {
@@ -171,13 +199,13 @@ mutation createGuildUser($data: GuildUserCreateInput!) {
         query,
         {
             "data": {
-                "guild": {"connect": guild_id},
+                "guild": {"connect": {"discord_id": str(guild_id)}},
                 "user": {"connect": {"id": user_id}},
             }
         },
     )
     if result:
-        return result.createGuildUser
+        return result.get("createGuildUser")
     return result
 
 
@@ -236,6 +264,7 @@ fragment UserFragment on User {
   guild_users {
     id
     guild_id
+    name
   }
 }
 
@@ -264,3 +293,7 @@ async def update_user_twitter_handle(twitter_handle, id):
     return await update_user(
         {"twitter_user": {"create": {"username": twitter_handle}}}, {"id": id}
     )
+
+
+async def update_user_wallet(wallet, id):
+    return await update_user({"address": wallet}, {"id": id})
