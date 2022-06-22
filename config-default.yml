@@ -8,6 +8,8 @@ bot:
   airtable_base: !ENV "AIRTABLE_BASE"
   is_dev: !ENV "IS_DEV"
   govrn_guild_id: !ENV "GOVRN_GUILD_ID"
+  protocol_url: !ENV "PROTOCOL_URL"
+  protocol_token: !ENV "PROTOCOL_TOKEN"
 
 style:
   colors:

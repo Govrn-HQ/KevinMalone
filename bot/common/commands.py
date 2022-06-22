@@ -1,4 +1,5 @@
 from bot import constants
+from discord import option
 from discord.commands import Option
 from distutils.util import strtobool
 import logging
@@ -8,6 +9,7 @@ import discord
 
 from bot.common.airtable import (
     find_user,
+    fetch_user,
     create_user,
     get_discord_record,
     get_guild,
@@ -21,6 +23,7 @@ from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep
 from bot.common.threads.points import Points
 from bot.common.threads.update import UpdateProfile
+from bot.common.threads.add_dao import AddDao
 from bot.config import (
     REPORTING_FORM_FMT,
     GUILD_IDS,
@@ -89,12 +92,13 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-async def join(ctx):
+@option("wallet", description="Enter your ethereum wallet address", required=True)
+async def join(ctx, wallet):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
 
-    is_user = await find_user(ctx.author.id, ctx.guild.id)
+    is_user = await find_user(ctx.author.id)
     if is_user:
         # Send welcome message and
         # And ask what journey they are
@@ -110,6 +114,7 @@ async def join(ctx):
                 embed.add_field(
                     name=f"/ {cmd.name}", value=cmd.description, inline=False
                 )
+        print(embed)
         await ctx.response.send_message(embed=embed, ephemeral=True)
         ctx.response.is_done()
         return
@@ -139,7 +144,14 @@ async def join(ctx):
         )
         return
 
-    await create_user(ctx.author.id, ctx.guild.id)
+    # Check if user exists
+    #
+    # If user does not exist ask for wallet address
+    # then create
+    user = await fetch_user(ctx.author.id)
+    print(user)
+    if not user:
+        await create_user(ctx.author.id, ctx.guild.id, wallet)
     onboarding = await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
@@ -269,75 +281,116 @@ async def points(
 if bool(strtobool(constants.Bot.is_dev)):
 
     @bot.slash_command(
-        guild_id=GUILD_IDS, description="Add first contributions to the guild"
+        guild_id=GUILD_IDS, description="Add a new guild to report contributions"
     )
-    async def add_onboarding_contributions(ctx):
+    async def add_dao(ctx):
         is_guild = bool(ctx.guild)
+
+        # Requiring DMs for now to keep things simple
         if is_guild:
             await ctx.respond("Please run this command in a DM channel", ephemeral=True)
             return
-        else:
-            embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                title="Contributions",
-                description="Which community would you like to add your "
-                "initial contributions to?",
-            )
-            error_embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                description="I cannot add any contributions because you "
-                "have not been onboarded for any communities. Run /join in the "
-                "discord you want to join!",
-            )
-            message, metadata = await select_guild(ctx, embed, error_embed)
-            if not metadata:
-                return
-            thread = await GuildSelect(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
-            )
-            await Redis.set(
-                ctx.author.id,
-                build_cache_value(
-                    ThreadKeys.GUILD_SELECT.value,
-                    thread.steps.hash_,
-                    "",
-                    message.id,
-                    metadata={
-                        **metadata,
-                        "thread_name": ThreadKeys.INITIAL_CONTRIBUTIONS.value,
-                    },
-                ),
-            )
+
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title="Add DAO",
+            description="Add a new guild so that you can report your contributions,"
+            " even if Kevin Malone hasn't been added to the server",
+        )
+        sent_message = await ctx.response.send_message(embed=embed)
+
+        thread = await AddDao(
+            ctx.author.id,
+            hashlib.sha256("".encode()).hexdigest(),
+            sent_message.id,
+            None,
+            cache=Redis,
+            discord_bot=bot,
+            context=ctx,
+        )
+        cache_value = build_cache_value(
+            ThreadKeys.ADD_DAO.value, thread.steps.hash_, ""
+        )
+
+        logger.info(f"Key: {cache_value}")
+        await Redis.set(ctx.author.id, cache_value)
+        await thread.send(sent_message)
+
+
+# if bool(strtobool(constants.Bot.is_dev)):
+
+#    @bot.slash_command(
+#        guild_id=GUILD_IDS, description="Add first contributions to the guild"
+#    )
+#    async def add_onboarding_contributions(ctx):
+#        is_guild = bool(ctx.guild)
+#        if is_guild:
+#            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+#            return
+#        else:
+#            embed = discord.Embed(
+#                colour=INFO_EMBED_COLOR,
+#                title="Contributions",
+#                description="Which community would you like to add your "
+#                "initial contributions to?",
+#            )
+#            error_embed = discord.Embed(
+#                colour=INFO_EMBED_COLOR,
+#                description="I cannot add any contributions because you "
+#                "have not been onboarded for any communities. Run /join in the "
+#                "discord you want to join!",
+#            )
+#            message, metadata = await select_guild(ctx, embed, error_embed)
+#            if not metadata:
+#                return
+#            thread = await GuildSelect(
+#                ctx.author.id,
+#                hashlib.sha256("".encode()).hexdigest(),
+#                message.id,
+#                "",
+#            )
+#            await Redis.set(
+#                ctx.author.id,
+#                build_cache_value(
+#                    ThreadKeys.GUILD_SELECT.value,
+#                    thread.steps.hash_,
+#                    "",
+#                    message.id,
+#                    metadata={
+#                        **metadata,
+#                        "thread_name": ThreadKeys.INITIAL_CONTRIBUTIONS.value,
+#                    },
+#                ),
+#            )
+#
 
 
 async def select_guild(ctx, response_embed, error_embed):
-    discord_rec = await get_discord_record(ctx.author.id)
-    airtable_guild_ids = discord_rec.get("fields").get("guild_ids")
+    discord_rec = await find_user(ctx.author.id)
+    airtable_guild_ids = discord_rec.get("guild_users")
     if not airtable_guild_ids:
         await ctx.response.send_message(embed=error_embed)
         ctx.response.is_done()
         return None, None
 
     await ctx.response.defer()
-    guild_ids = []
+    guild_metadata = []
     for record_id in airtable_guild_ids:
-        g = await get_guild(record_id)
-        guild_id = g.get("guild_id")
+        g = await get_guild(record_id.get("guild_id"))
+        guild_id = g.get("id")
+        guild_name = g.get("name")
         if guild_id:
-            guild_ids.append(guild_id)
+            guild_metadata.append([guild_id, guild_name])
     embed = response_embed
-    emojis = get_list_of_emojis(len(guild_ids))
+    emojis = get_list_of_emojis(len(guild_metadata))
     daos = {}
-    for idx, guild_id in enumerate(guild_ids):
-        guild = await bot.fetch_guild(guild_id)
-        if not guild:
-            continue
+    for idx, guild_data in enumerate(guild_metadata):
+        # omitting this call, which fails with 403 if Kevin
+        # hasn't yet been added to the guild_id in question
+        # guild = await bot.fetch_guild(guild_id)
         emoji = emojis[idx]
-        daos[emoji] = guild.id
-        embed.add_field(name=guild.name, value=emoji)
+        daos[emoji] = guild_data[0]
+        embed.add_field(name=guild_data[1], value=emoji)
     message = await ctx.followup.send(embed=embed)
     for emoji in emojis:
         await message.add_reaction(emoji)

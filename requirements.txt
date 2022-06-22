@@ -4,5 +4,6 @@ boto3 >= 1.20.5
 aioredis==2.0.0
 pyairtable==1.0.0.post1
 texttable==1.6.4
+gql==3.3.0
 pyyaml
 -e git+https://github.com/Pycord-Development/pycord.git@44eb9a0c92c406c38ac06d46583391c76c611bf6#egg=py-cord
