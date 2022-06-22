@@ -10,9 +10,10 @@ from bot.common.threads.thread_builder import (
 from bot.common.airtable import (
     get_guild_by_guild_id,
     create_guild,
-    create_user,
     update_guild,
+    find_user,
 )
+from bot.common.graphql import create_guild_user
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key,
@@ -58,7 +59,7 @@ class AddDaoPromptId(BaseStep):
         if guild:
             message = (
                 f"It looks like guild {dao_id} has already been onboarded as "
-                f"{guild.get('fields').get('guild_name')}! You can report your "
+                f"{guild.get('name')}! You can report your "
                 " contributions with /report!"
             )
             raise ThreadTerminatingException(message)
@@ -66,8 +67,10 @@ class AddDaoPromptId(BaseStep):
         # add validated dao_id to metadata cache for lookup on next step
         await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
 
-        await create_guild(dao_id)
-        await create_user(user_id, dao_id)
+        user = await find_user(user_id)
+        id = await create_guild(user.get("id"), dao_id)
+        # Create guild user
+        await create_guild_user(user.get("id"), id.get("id"))
 
 
 class AddDaoPromptName(BaseStep):
