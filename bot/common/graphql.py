@@ -167,7 +167,7 @@ query listContributions($where: ContributionWhereInput! = {}, $skip: Int! = 0, $
         },
     )
     if result:
-        return result.results.get("result")
+        return result.get("result")
     return result
 
 
