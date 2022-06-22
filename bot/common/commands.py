@@ -317,51 +317,52 @@ if bool(strtobool(constants.Bot.is_dev)):
         await thread.send(sent_message)
 
 
-if bool(strtobool(constants.Bot.is_dev)):
+# if bool(strtobool(constants.Bot.is_dev)):
 
-    @bot.slash_command(
-        guild_id=GUILD_IDS, description="Add first contributions to the guild"
-    )
-    async def add_onboarding_contributions(ctx):
-        is_guild = bool(ctx.guild)
-        if is_guild:
-            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
-            return
-        else:
-            embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                title="Contributions",
-                description="Which community would you like to add your "
-                "initial contributions to?",
-            )
-            error_embed = discord.Embed(
-                colour=INFO_EMBED_COLOR,
-                description="I cannot add any contributions because you "
-                "have not been onboarded for any communities. Run /join in the "
-                "discord you want to join!",
-            )
-            message, metadata = await select_guild(ctx, embed, error_embed)
-            if not metadata:
-                return
-            thread = await GuildSelect(
-                ctx.author.id,
-                hashlib.sha256("".encode()).hexdigest(),
-                message.id,
-                "",
-            )
-            await Redis.set(
-                ctx.author.id,
-                build_cache_value(
-                    ThreadKeys.GUILD_SELECT.value,
-                    thread.steps.hash_,
-                    "",
-                    message.id,
-                    metadata={
-                        **metadata,
-                        "thread_name": ThreadKeys.INITIAL_CONTRIBUTIONS.value,
-                    },
-                ),
-            )
+#    @bot.slash_command(
+#        guild_id=GUILD_IDS, description="Add first contributions to the guild"
+#    )
+#    async def add_onboarding_contributions(ctx):
+#        is_guild = bool(ctx.guild)
+#        if is_guild:
+#            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+#            return
+#        else:
+#            embed = discord.Embed(
+#                colour=INFO_EMBED_COLOR,
+#                title="Contributions",
+#                description="Which community would you like to add your "
+#                "initial contributions to?",
+#            )
+#            error_embed = discord.Embed(
+#                colour=INFO_EMBED_COLOR,
+#                description="I cannot add any contributions because you "
+#                "have not been onboarded for any communities. Run /join in the "
+#                "discord you want to join!",
+#            )
+#            message, metadata = await select_guild(ctx, embed, error_embed)
+#            if not metadata:
+#                return
+#            thread = await GuildSelect(
+#                ctx.author.id,
+#                hashlib.sha256("".encode()).hexdigest(),
+#                message.id,
+#                "",
+#            )
+#            await Redis.set(
+#                ctx.author.id,
+#                build_cache_value(
+#                    ThreadKeys.GUILD_SELECT.value,
+#                    thread.steps.hash_,
+#                    "",
+#                    message.id,
+#                    metadata={
+#                        **metadata,
+#                        "thread_name": ThreadKeys.INITIAL_CONTRIBUTIONS.value,
+#                    },
+#                ),
+#            )
+#
 
 
 async def select_guild(ctx, response_embed, error_embed):
