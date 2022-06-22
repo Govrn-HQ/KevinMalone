@@ -3,7 +3,6 @@ import hashlib
 from bot.common.airtable import (
     add_user_to_contribution,
     get_contribution_records,
-    get_user_record,
 )
 from bot.common.threads.thread_builder import (
     BaseThread,
