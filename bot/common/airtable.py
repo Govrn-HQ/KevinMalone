@@ -13,6 +13,8 @@ from bot.common.graphql import (
     update_user_display_name,
     update_user_wallet,
     update_user_twitter_handle,
+    create_guild as cg,
+    update_guild as ug,
 )
 
 
@@ -280,14 +282,18 @@ async def update_guild(guild_id, id_field, id_val):
 
     """Add or update guild ID given a field and value."""
 
-    loop = asyncio.get_running_loop()
-    guild_record = await get_guild_by_guild_id(guild_id)
+    # loop = asyncio.get_running_loop()
+    # guild_record = await get_guild_by_guild_id(guild_id)
 
-    def _update_guild():
-        table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-        table.update(guild_record.get("id"), {id_field: id_val})
+    # def _update_guild():
+    #     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+    #     table.update(guild_record.get("id"), {id_field: id_val})
 
-    return await loop.run_in_executor(None, _update_guild)
+    # return await loop.run_in_executor(None, _update_guild)
+
+    if id_field == "guild_name":
+        return await ug(guild_id, id_val)
+    raise Exception("Unsupported field")
 
 
 async def add_user_to_contribution(guild_id, user_id, order):
@@ -326,23 +332,24 @@ async def add_user_to_contribution(guild_id, user_id, order):
     return await loop.run_in_executor(None, _update_user)
 
 
-async def create_guild(guild_id):
+async def create_guild(user_id, dao_id):
     """Return new airtable record in guild table given the guild id.
     Return existing record if it already exists"""
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
-    guild_record = await find_guild(guild_id)
+    # guild_record = await find_guild(guild_id)
 
-    if guild_record != "":
-        return guild_record
+    # if guild_record != "":
+    #     return guild_record
 
-    def _create_guild():
-        guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-        guild_record = guild_table.create({"guild_id": guild_id, "Status": "inputted"})
-        return guild_record.get("id")
+    # def _create_guild():
+    #     guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+    #     guild_record = guild_table.create({"guild_id": guild_id, "Status": "inputted"})
+    #     return guild_record.get("id")
 
-    return await loop.run_in_executor(None, _create_guild)
+    # return await loop.run_in_executor(None, _create_guild)
+    return await cg(user_id, dao_id)
 
 
 async def create_user(discord_id, guild_id, wallet):

@@ -203,13 +203,35 @@ mutation createGuildUser($data: GuildUserCreateInput!) {
         query,
         {
             "data": {
-                "guild": {"connect": {"discord_id": str(guild_id)}},
+                "guild": {"connect": {"id": guild_id}},
                 "user": {"connect": {"id": user_id}},
             }
         },
     )
     if result:
         return result.get("createGuildUser")
+    return result
+
+
+async def create_guild(user_id, guild_id):
+    query = """
+mutation createGuild($data: GuildCreateInput!) {
+  createGuild(data: $data) {
+    id
+    discord_id
+  }
+}
+    """
+    result = await execute_query(
+        query,
+        {
+            "data": {
+                "discord_id": str(guild_id),
+            }
+        },
+    )
+    if result:
+        return result.get("createGuild")
     return result
 
 
@@ -300,3 +322,21 @@ async def update_user_twitter_handle(twitter_handle, id):
 
 async def update_user_wallet(wallet, id):
     return await update_user({"address": {"set": wallet}}, {"id": id})
+
+
+async def update_guild(id, val):
+    query = """
+mutation updateUser($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
+  updateGuild(data: $data, where: $where) {
+    id
+  }
+}
+"""
+    result = await execute_query(
+        query,
+        {"data": {"name": {"set": str(val)}}, "where": {"discord_id": str(id)}},
+    )
+    if result:
+        print(result)
+        return result.get("updateGuild")
+    return result
