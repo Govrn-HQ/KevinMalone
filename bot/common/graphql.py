@@ -77,7 +77,7 @@ query getUser($where: UserWhereInput!,) {
     return result
 
 
-async def list_contributions(id):
+async def list_user_contributions_for_guild(user_discord_id, guild_id, after_date):
     query = """
 fragment ContributionFragment on Contribution {
   activity_type {
@@ -90,6 +90,13 @@ fragment ContributionFragment on Contribution {
   date_of_engagement
   date_of_submission
   details
+  guilds {
+    guild_id
+    guild {
+        discord_id
+    }
+    id
+  }
   id
   name
   proof
@@ -104,6 +111,9 @@ fragment ContributionFragment on Contribution {
     address
     createdAt
     display_name
+    discord_users {
+        discord_id
+    }
     full_name
     id
     name
@@ -127,7 +137,34 @@ query listContributions($where: ContributionWhereInput! = {}, $skip: Int! = 0, $
 
     """
     result = await execute_query(
-        query, {"where": {"guilds": {"some": {"guild_id": id}}}}
+        query,
+        {
+            "where": {
+                "AND": [
+                    {
+                        "guilds": {
+                            "some": {
+                                "guild": {
+                                    "is": {"discord_id": {"equals": f"{guild_id}"}}
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "user": {
+                            "is": {
+                                "discord_users": {
+                                    "some": {
+                                        "discord_id": {"equals": f"{user_discord_id}"}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {"date_of_submission": {"gt": after_date}},
+                ]
+            }
+        },
     )
     if result:
         return result.results.get("result")
