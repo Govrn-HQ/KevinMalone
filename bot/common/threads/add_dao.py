@@ -10,7 +10,6 @@ from bot.common.threads.thread_builder import (
 from bot.common.airtable import (
     get_guild_by_guild_id,
     create_guild,
-    create_user,
     update_guild,
     find_user,
 )

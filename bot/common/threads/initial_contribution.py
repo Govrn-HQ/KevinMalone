@@ -2,7 +2,6 @@ import discord
 import hashlib
 from bot.common.airtable import (
     add_user_to_contribution,
-    get_highest_contribution_records,
     get_contribution_records,
     get_user_record,
 )
@@ -38,7 +37,7 @@ class SendContributionInstructions(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        user_record = await get_user_record(user_id, self.guild_id)
+        # user_record = await get_user_record(user_id, self.guild_id)
 
         # record = await get_highest_contribution_records(
         #     self.guild_id,

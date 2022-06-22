@@ -1,5 +1,4 @@
 import logging
-import time
 
 from bot import constants
 from gql import Client, gql
@@ -124,7 +123,10 @@ fragment ContributionFragment on Contribution {
   }
 }
 
-query listContributions($where: ContributionWhereInput! = {}, $skip: Int! = 0, $first: Int! = 10, $orderBy: [ContributionOrderByWithRelationInput!]) {
+query listContributions($where: ContributionWhereInput! = {},
+                        $skip: Int! = 0,
+                        $first: Int! = 10,
+                        $orderBy: [ContributionOrderByWithRelationInput!]) {
     result: contributions(
         where: $where,
         skip: $skip,

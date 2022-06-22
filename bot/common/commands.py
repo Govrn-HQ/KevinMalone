@@ -11,7 +11,6 @@ from bot.common.airtable import (
     find_user,
     fetch_user,
     create_user,
-    get_discord_record,
     get_guild,
 )
 from bot.common.bot.bot import bot
@@ -325,7 +324,7 @@ if bool(strtobool(constants.Bot.is_dev)):
 #    async def add_onboarding_contributions(ctx):
 #        is_guild = bool(ctx.guild)
 #        if is_guild:
-#            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+#           await ctx.respond("Please run this command in a DM channel", ephemeral=True)
 #            return
 #        else:
 #            embed = discord.Embed(

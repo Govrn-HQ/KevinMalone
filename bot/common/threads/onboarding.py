@@ -1,12 +1,7 @@
-from bot import constants
 import discord
 from bot.common.airtable import (
     find_user,
-    update_member,
     update_user,
-    get_guild_by_guild_id,
-    get_user_record,
-    create_user,
 )
 from bot.config import (
     YES_EMOJI,
@@ -140,7 +135,7 @@ class AddUserTwitterStep(BaseStep):
 #     async def send(self, message, user_id):
 #         channel = message.channel
 #         sent_message = await channel.send(
-#             "What Ethereum wallet address would you like to associate with this guild!"
+#           "What Ethereum wallet address would you like to associate with this guild!"
 #         )
 #         return sent_message, None
 #
