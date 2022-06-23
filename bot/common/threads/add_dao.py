@@ -1,7 +1,5 @@
 import logging
 
-from bot.common.threads.onboarding import Onboarding
-
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -13,13 +11,15 @@ from bot.common.graphql import (
     create_guild_user,
     fetch_user,
     get_guild,
-    create_guild
+    create_guild,
+    update_guild
 )
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key,
 )
 from bot.exceptions import ThreadTerminatingException
+from bot.common.guild_select import set_thread_and_send
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class AddDaoPromptId(BaseStep):
         return sent_message, None
 
 
-class CheckDaoExists(BaseStep):
+class AddDaoCreate(BaseStep):
     """Step that 1. checks if the user supplied DAO ID already exists on the backend
     2. Creates the dao record 3. Directs user to the /join flow after."""
     name = StepKeys.ADD_DAO_CHECK_EXISTS
@@ -75,31 +75,29 @@ class CheckDaoExists(BaseStep):
         if guild:
             # Check if user is a member
             user = await fetch_user(user_id)
-            # user = get_user_record(user_id, dao_id)
+            guild_name = guild.get('fields').get('guild_name')
 
             if user:
                 message = (
                     f"It looks like guild {dao_id} has already been added as "
-                    f"{guild.get('fields').get('guild_name')}, and it looks like "
-                    "you're already a member! You can report your contributions "
-                    "with /report!"
+                    f"{guild_name}, and it looks like you're already a member! "
+                    " You can report your contributions with /report!"
                 )
                 raise ThreadTerminatingException(message)
 
             # guild exists, user does not, drop into /join flow
-            # TODO: How to run /join thread immediately?
-            return StepKeys.CHECK_FOR_GOVRN_PROFILE
-        else:
-            await create_guild(dao_id)
-            # Prompt for guild name
-            return StepKeys.ADD_DAO_PROMPT_NAME
-            
-        # add validated dao_id to metadata cache for lookup on next step
-        await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
+            await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
+            await write_cache_metadata(user_id, self.cache, "guild_name", guild_name)
+            return StepKeys.ADD_DAO_JOIN
 
         id = await create_guild(user.get("id"), dao_id)
-        # Create guild user
+
+        # add validated dao_id to metadata cache for lookup on next step
+        await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
         await create_guild_user(user.get("id"), id.get("id"))
+
+        # Prompt for guild name
+        return StepKeys.ADD_DAO_PROMPT_NAME
 
 
 class AddDaoPromptName(BaseStep):
@@ -119,11 +117,29 @@ class AddDaoPromptName(BaseStep):
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        # retrieve dao_id from cache
         guild_name = message.content.strip()
+        # retrieve dao_id from cache
         dao_id = await get_cache_metadata_key(user_id, self.cache, "guild_id")
         await update_guild(dao_id, "guild_name", guild_name)
         await write_cache_metadata(user_id, self.cache, "guild_name", guild_name)
+
+
+class AddDaoPreviouslyAddedPrompt(BaseStep):
+    """Prompts that a particular DAO has already been added"""
+
+    name = StepKeys.ADD_DAO_PREVIOUSLY_ADDED_PROMPT
+
+    async def send(self, message, user_id):
+        guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
+        guild_id = await get_cache_metadata_key(user_id, self.cache, "guild_id")
+
+        return (
+            await message.channel.send(
+                f"It looks like guild {guild_id} has already been added as "
+                f"{guild_name}, but you're not yet a member. Let's get that set up!"
+            ),
+            None
+        )
 
 
 class AddDaoSuccess(BaseStep):
@@ -146,14 +162,38 @@ class AddDaoSuccess(BaseStep):
         )
 
 
+class AddDaoJoinFlowOverride(BaseStep):
+    """Overrides the Add_Dao flow and drops user into join flow"""
+
+    name = StepKeys.ADD_DAO_JOIN
+
+    def __init__(self, cache):
+        super().__init__()
+        self.cache = cache
+
+    # TODO: check reqs for join flow re: cache/populated fields
+    async def send(self, message, user_id):
+        guild_id = await get_cache_metadata_key(user_id, self.cache, "guild_id")
+        return await set_thread_and_send(
+            self.parent_thread, ThreadKeys.ONBOARDING, guild_id)
+
+
 class AddDao(BaseThread):
     name = ThreadKeys.ADD_DAO.value
 
     async def get_steps(self):
+        dao_not_added_steps = (
+            Step(current=AddDaoPromptName(self.cache))
+            .add_next_step(AddDaoSuccess(self.cache))
+            .add_next_step(AddDaoJoinFlowOverride(self.cache))
+        ).build()
+        dao_previously_added_steps = (
+            Step(current=AddDaoPreviouslyAddedPrompt())
+            .add_next_step(AddDaoJoinFlowOverride(self.cache))
+        ).build()
         steps = (
             Step(current=AddDaoPromptId(self.cache))
-            .add_next_step(AddDaoPromptName(self.cache))
-            .add_next_step(AddDaoSuccess(self.cache))
+            .fork(dao_not_added_steps, dao_previously_added_steps)
         )
 
         return steps.build()

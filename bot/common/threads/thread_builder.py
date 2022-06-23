@@ -101,6 +101,7 @@ class StepKeys(Enum):
     ADD_DAO_CHECK_EXISTS = "add_dao_check_exists"
     ADD_DAO_PROMPT_NAME = "add_dao_prompt_name"
     ADD_DAO_SUCCESS = "add_dao_success"
+    ADD_DAO_JOIN = "add_dao_join"
 
 
 class BaseThread:

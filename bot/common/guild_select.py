@@ -19,6 +19,19 @@ from bot.common.threads.points import Points
 from bot.config import Redis
 
 
+# TODO: extend to support other thread attributes other than just the guild id
+async def set_thread_and_send(current_thread, next_thread_key, guild_id):
+    current_thread.guild_id = guild_id
+    # this will be the name of the overriding thread's key
+    current_thread.command_name = next_thread_key
+
+    step = OverrideThreadStep(current_thread)
+
+    # overwrites thread's current and next steps, and executes
+    # that step
+    return await step.send()
+
+
 async def get_thread(user_id, key, cache=None):
     val = json.loads(key)
     thread = val.get("thread")
@@ -54,26 +67,24 @@ class OverrideThreadStep(BaseStep):
     name = StepKeys.OVERRIDE_THREAD.value
 
     def __init__(self, cls):
-        self.cls = cls
+        self.parent_thread = cls
 
     async def send(self, message, user_id):
         thread = await get_thread(
             user_id,
             build_cache_value(
-                self.cls.command_name,
+                self.parent_thread.command_name,
                 hashlib.sha256("".encode()).hexdigest(),
-                self.cls.guild_id,
+                self.parent_thread.guild_id,
                 message.id,
             ),
-            self.cls.cache,
+            self.parent_thread.cache,
         )
         # this is dangerous
-        self.cls.get_steps = thread.get_steps
-        self.cls.step = thread.step
-        self.cls.name = thread.name
-        message, metadata = await thread.step.current.send(message, user_id)
-
-        return message, metadata
+        self.parent_thread.get_steps = thread.get_steps
+        self.parent_thread.step = thread.step
+        self.parent_thread.name = thread.name
+        return await thread.step.current.send(message, user_id)
 
 
 class GuildSelect(BaseThread):
