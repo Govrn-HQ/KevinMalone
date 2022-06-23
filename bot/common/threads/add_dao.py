@@ -9,12 +9,11 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
 )
-from bot.common.airtable import (
-    get_guild_by_guild_id,
-    create_guild,
-    create_user,
-    get_user_record,
-    update_guild,
+from bot.common.graphql import (
+    create_guild_user,
+    fetch_user,
+    get_guild,
+    create_guild
 )
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
@@ -72,10 +71,11 @@ class CheckDaoExists(BaseStep):
     async def control_hook(self, message, user_id):
         dao_id = str(int(message.content.strip()))
         self.parent_thread.guild_id = dao_id
-        guild = await get_guild_by_guild_id(dao_id)
+        guild = await get_guild(dao_id)
         if guild:
             # Check if user is a member
-            user = get_user_record(user_id, dao_id)
+            user = await fetch_user(user_id)
+            # user = get_user_record(user_id, dao_id)
 
             if user:
                 message = (
@@ -88,11 +88,18 @@ class CheckDaoExists(BaseStep):
 
             # guild exists, user does not, drop into /join flow
             # TODO: How to run /join thread immediately?
-            # return StepKeys.CHECK_FOR_GOVRN_PROFILE
+            return StepKeys.CHECK_FOR_GOVRN_PROFILE
         else:
             await create_guild(dao_id)
             # Prompt for guild name
             return StepKeys.ADD_DAO_PROMPT_NAME
+            
+        # add validated dao_id to metadata cache for lookup on next step
+        await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
+
+        id = await create_guild(user.get("id"), dao_id)
+        # Create guild user
+        await create_guild_user(user.get("id"), id.get("id"))
 
 
 class AddDaoPromptName(BaseStep):
