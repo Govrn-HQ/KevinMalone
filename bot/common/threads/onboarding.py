@@ -197,8 +197,8 @@ class CongratsStep(BaseStep):
             channel = await self.bot.fetch_channel(raw_reaction.channel_id)
             guild = await self.bot.fetch_guild(self.guild_id)
             await channel.send(
-               f"Nice job!  That's it for now!"
-              f"Welcome and congratulations on onboarding to {guild.name}"
+                f"Nice job!  That's it for now!"
+                f"Welcome and congratulations on onboarding to {guild.name}"
             )
             govrn_profile = await find_user(self.user_id)
             if govrn_profile:
