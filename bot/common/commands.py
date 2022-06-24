@@ -32,6 +32,7 @@ from bot.config import (
 )
 from bot.exceptions import NotGuildException, ErrorHandler
 from bot.common.guild_select import get_thread, GuildSelect
+from web3 import Web3
 
 
 logger = logging.getLogger(__name__)
@@ -91,11 +92,17 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-@option("wallet", description="Enter your ethereum wallet address", required=True)
+@option(
+    "wallet", description="Enter your ethereum wallet address (No ENS)", required=True
+)
 async def join(ctx, wallet):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
+    if not web3.isAddress(wallet):
+        await ctx.response.send_message("Not a valid wallet address", ephemeral=True)
+        ctx.response.is_done()
+        return
 
     is_user = await find_user(ctx.author.id)
     if is_user:
