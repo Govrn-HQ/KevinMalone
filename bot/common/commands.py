@@ -32,7 +32,8 @@ from bot.config import (
     get_list_of_emojis,
 )
 from bot.exceptions import NotGuildException, ErrorHandler
-from bot.common.guild_select import get_thread, GuildSelect
+from bot.common.threads.guild_select import GuildSelect
+from bot.common.threads.utils import get_thread
 
 
 logger = logging.getLogger(__name__)
