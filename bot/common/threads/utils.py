@@ -4,7 +4,6 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
     build_cache_value
 )
-from bot.common.threads.guild_select import GuildSelect
 from bot.common.threads.onboarding import Onboarding  # noqa: E402
 from bot.common.threads.update import UpdateProfile  # noqa: E402
 from bot.common.threads.initial_contribution import InitialContributions
@@ -65,3 +64,6 @@ async def get_thread(user_id, key, cache=None):
     elif thread == ThreadKeys.ADD_DAO.value:
         return await AddDao(user_id, step, message_id, guild_id, cache)
     raise Exception("Unknown Thread!")
+
+
+from bot.common.threads.guild_select import GuildSelect  # noqa:E402

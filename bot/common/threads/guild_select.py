@@ -6,8 +6,8 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
     Step,
 )
+# from bot.common.threads.utils import get_jump_thread
 from bot.common.threads.shared_steps import SelectGuildEmojiStep
-from bot.common.threads.utils import get_jump_thread
 from bot.config import Redis
 
 
@@ -58,3 +58,7 @@ class GuildSelect(BaseThread):
             OverrideThreadStep(self)
         )
         return steps.build()
+
+
+# avoid circular dependency
+from bot.common.threads.utils import get_jump_thread  # noqa: E402
