@@ -99,7 +99,7 @@ async def join(ctx, wallet):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
-    if not web3.isAddress(wallet):
+    if not Web3.isAddress(wallet):
         await ctx.response.send_message("Not a valid wallet address", ephemeral=True)
         ctx.response.is_done()
         return
