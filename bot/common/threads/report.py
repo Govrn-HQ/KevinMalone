@@ -45,7 +45,7 @@ class ReportStep(BaseStep):
             await channel.send(msg)
         if not await self.cache.get(build_congrats_key(user_id)):
             fields = await get_guild_by_guild_id(self.guild_id)
-            congrats_channel_id = fields.get("fields").get("congrats_channel_id")
+            congrats_channel_id = fields.get("congrats_channel_id")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
                 return None, {"msg": msg}
