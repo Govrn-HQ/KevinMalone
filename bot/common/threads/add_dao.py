@@ -19,7 +19,6 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata_key,
 )
 from bot.exceptions import ThreadTerminatingException
-from bot.common.guild_select import set_thread_and_send
 
 
 logger = logging.getLogger(__name__)
@@ -44,10 +43,12 @@ class AddDaoPromptId(BaseStep):
         return sent_message, None
 
 
-class AddDaoCreate(BaseStep):
-    """Step that 1. checks if the user supplied DAO ID already exists on the backend
-    2. Creates the dao record 3. Directs user to the /join flow after."""
-    name = StepKeys.ADD_DAO_CHECK_EXISTS
+class AddDaoGetOrCreate(BaseStep):
+    """This step checks if the supplied DAO ID already exists, and controls
+    the flow accordingly to either create the DAO + user, or direct the
+    user down the join flow."""
+
+    name = StepKeys.ADD_DAO_GET_OR_CREATE
 
     def __init__(self, parent_thread, cache):
         self.parent_thread = parent_thread
@@ -175,7 +176,7 @@ class AddDaoJoinFlowOverride(BaseStep):
     async def send(self, message, user_id):
         guild_id = await get_cache_metadata_key(user_id, self.cache, "guild_id")
         return await set_thread_and_send(
-            self.parent_thread, ThreadKeys.ONBOARDING, guild_id)
+            self.parent_thread, ThreadKeys.ONBOARDING, guild_id, user_id, message)
 
 
 class AddDao(BaseThread):
@@ -193,6 +194,7 @@ class AddDao(BaseThread):
         ).build()
         steps = (
             Step(current=AddDaoPromptId(self.cache))
+            .add_next_step(AddDaoGetOrCreate(self, self.cache))
             .fork(dao_not_added_steps, dao_previously_added_steps)
         )
 
