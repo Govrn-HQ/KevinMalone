@@ -45,7 +45,7 @@ class ReportStep(BaseStep):
             await channel.send(msg)
         if not await self.cache.get(build_congrats_key(user_id)):
             fields = await get_guild_by_guild_id(self.guild_id)
-            congrats_channel_id = fields.get("fields").get("congrats_channel_id")
+            congrats_channel_id = fields.get("congrats_channel_id")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
                 return None, {"msg": msg}
@@ -54,8 +54,7 @@ class ReportStep(BaseStep):
             # get count of uses
             record = await get_user_record(user_id, self.guild_id)
             fields = record.get("fields")
-            user_dao_id = fields.get("user_dao_id")
-            count = await get_contribution_count(user_dao_id)
+            count = await get_contribution_count(fields.get("id"))
             if count > 0:
                 await channel.send(
                     f"Congrats {user.display_name} for reporting {count} "
