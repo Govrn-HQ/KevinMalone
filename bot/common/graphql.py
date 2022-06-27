@@ -143,15 +143,7 @@ query listContributions($where: ContributionWhereInput! = {},
         {
             "where": {
                 "AND": [
-                    {
-                        "guilds": {
-                            "some": {
-                                "guild": {
-                                    "is": {"discord_id": {"equals": f"{guild_id}"}}
-                                }
-                            }
-                        }
-                    },
+                    {"guilds": {"some": {"id": {"equals": guild_id}}}},
                     {
                         "user": {
                             "is": {
