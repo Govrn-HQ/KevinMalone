@@ -25,7 +25,7 @@ async def execute_query(query, values):
             return resp
     except Exception:
         logger.exception(f"Failed to execute query {query} {values}")
-        return None
+        raise
 
 
 async def fetch_user(id):
@@ -250,7 +250,7 @@ mutation createGuildUser($data: GuildUserCreateInput!) {
     return result
 
 
-async def create_guild(user_id, guild_id):
+async def create_guild(guild_id):
     query = """
 mutation createGuild($data: GuildCreateInput!) {
   createGuild(data: $data) {
@@ -361,9 +361,9 @@ async def update_user_wallet(wallet, id):
     return await update_user({"address": {"set": wallet}}, {"id": id})
 
 
-async def update_guild(id, val):
+async def update_guild_name(guild_discord_id, guild_name):
     query = """
-mutation updateUser($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
+mutation updateGuild($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
   updateGuild(data: $data, where: $where) {
     id
   }
@@ -371,7 +371,7 @@ mutation updateUser($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
 """
     result = await execute_query(
         query,
-        {"data": {"name": {"set": str(val)}}, "where": {"discord_id": str(id)}},
+        {"data": {"name": {"set": str(guild_name)}}, "where": {"discord_id": str(guild_discord_id)}},
     )
     if result:
         print(result)

@@ -14,7 +14,7 @@ from bot.common.graphql import (
     update_user_wallet,
     update_user_twitter_handle,
     create_guild as cg,
-    update_guild as ug,
+    update_guild_name as ug,
 )
 
 
