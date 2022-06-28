@@ -203,7 +203,11 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=CreateUserWithWalletAddressStep(guild_id=self.guild_id))
+            Step(
+                current=CreateUserWithWalletAddressStep(
+                    cache=self.cache, guild_id=self.guild_id
+                )
+            )
             .add_next_step(AddUserTwitterStep(guild_id=self.guild_id))
             .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
         )
@@ -212,14 +216,16 @@ class Onboarding(BaseThread):
         data_retrival_steps = self._data_retrival_steps().build()
 
         custom_user_name_steps = (
-            Step(current=UserDisplaySubmitStep())
+            Step(current=UserDisplaySubmitStep(cache=self.cache))
             .add_next_step(data_retrival_steps)
             .build()
         )
 
         profile_setup_steps = (
             Step(current=UserDisplayConfirmationStep(bot=self.bot))
-            .add_next_step(UserDisplayConfirmationEmojiStep(bot=self.bot))
+            .add_next_step(
+                UserDisplayConfirmationEmojiStep(cache=self.cache, bot=self.bot)
+            )
             .fork((custom_user_name_steps, data_retrival_steps))
         )
 
