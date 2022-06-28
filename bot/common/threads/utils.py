@@ -1,9 +1,6 @@
 import json
 import hashlib
-from bot.common.threads.thread_builder import (
-    ThreadKeys,
-    build_cache_value
-)
+from bot.common.threads.thread_builder import ThreadKeys, build_cache_value
 from bot.common.threads.onboarding import Onboarding  # noqa: E402
 from bot.common.threads.update import UpdateProfile  # noqa: E402
 from bot.common.threads.initial_contribution import InitialContributions
@@ -31,7 +28,9 @@ async def get_jump_thread(parent_thread, message, user_id):
 
 
 # TODO: extend to support other thread attributes other than just the guild id
-async def set_thread_and_send(current_thread, next_thread_key, message, user_id, guild_id):
+async def set_thread_and_send(
+    current_thread, next_thread_key, message, user_id, guild_id
+):
     current_thread.guild_id = guild_id
     # this will be the name of the overriding thread's key
     current_thread.command_name = next_thread_key

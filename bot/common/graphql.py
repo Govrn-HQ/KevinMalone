@@ -365,7 +365,10 @@ mutation updateGuild($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
 """
     result = await execute_query(
         query,
-        {"data": {"name": {"set": str(guild_name)}}, "where": {"discord_id": str(guild_discord_id)}},
+        {
+            "data": {"name": {"set": str(guild_name)}},
+            "where": {"discord_id": str(guild_discord_id)},
+        },
     )
     if result:
         print(result)

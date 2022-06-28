@@ -7,17 +7,13 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
 )
-from bot.common.graphql import (
-    fetch_user,
-    get_guild,
-    create_guild,
-    update_guild_name
-)
+from bot.common.graphql import fetch_user, get_guild, create_guild, update_guild_name
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key,
 )
 from bot.exceptions import ThreadTerminatingException
+
 # from bot.common.threads.utils import (  # noqa: E402
 # set_thread_and_send
 # )
@@ -77,9 +73,12 @@ class AddDaoGetOrCreate(BaseStep):
         if guild:
             # Check if user is a member
             user = await fetch_user(user_id)
-            guild_name = guild.get('name')
+            guild_name = guild.get("name")
 
-            if any(guild_user.get('guild_id') == guild.get('id') for guild_user in user.get('guild_users')):
+            if any(
+                guild_user.get("guild_id") == guild.get("id")
+                for guild_user in user.get("guild_users")
+            ):
                 message = (
                     f"It looks like guild {dao_id} has already been added as "
                     f"{guild_name}, and it looks like you're already a member! "
@@ -144,7 +143,7 @@ class AddDaoPreviouslyAddedPrompt(BaseStep):
                 f"It looks like guild {guild_id} has already been added as "
                 f"{guild_name}, but you're not yet a member. Let's get that set up!"
             ),
-            None
+            None,
         )
 
 
@@ -188,7 +187,8 @@ class AddDaoJoinFlowOverride(BaseStep):
             next_thread_key=ThreadKeys.ONBOARDING.value,
             message=message,
             user_id=user_id,
-            guild_id=guild_id)
+            guild_id=guild_id,
+        )
 
 
 class AddDao(BaseThread):
@@ -201,8 +201,9 @@ class AddDao(BaseThread):
             .add_next_step(AddDaoJoinFlowOverride(cache=self.cache, parent_thread=self))
         ).build()
         dao_previously_added_steps = (
-            Step(current=AddDaoPreviouslyAddedPrompt(self.cache))
-            .add_next_step(AddDaoJoinFlowOverride(cache=self.cache, parent_thread=self))
+            Step(current=AddDaoPreviouslyAddedPrompt(self.cache)).add_next_step(
+                AddDaoJoinFlowOverride(cache=self.cache, parent_thread=self)
+            )
         ).build()
         steps = (
             Step(current=AddDaoPromptId(self.cache))
@@ -213,6 +214,4 @@ class AddDao(BaseThread):
         return steps.build()
 
 
-from bot.common.threads.utils import (  # noqa: E402
-    set_thread_and_send
-)
+from bot.common.threads.utils import set_thread_and_send  # noqa: E402

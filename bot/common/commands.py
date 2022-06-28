@@ -155,8 +155,8 @@ async def join(ctx):
             thread=ThreadKeys.POINTS.value,
             step=thread.steps.hash_,
             guild_id=ctx.guild.id,
-            message_id=message.id
-        )
+            message_id=message.id,
+        ),
     )
 
 
