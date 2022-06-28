@@ -55,21 +55,18 @@ def get_contribution_rows(contributions):
         "Status",
         "Date of Submission",
         "Date of Engagement",
-        "Points",
     ]
     rows = []
     time_fmt = "%Y-%m-%d"
     for contribution in contributions:
-        fields = contribution.get("fields")
-        submit_date = parser.parse(fields.get("DateofSubmission"))
-        engage_date = parser.parse(fields.get("DateOfEngagement"))
+        submit_date = parser.parse(contribution.get("date_of_submission"))
+        engage_date = parser.parse(contribution.get("date_of_engagement"))
         rows.append(
             [
-                fields.get("Activity"),
-                fields.get("status"),
+                contribution.get("name"),
+                contribution.get("status").get("name"),
                 submit_date.strftime(time_fmt),
                 engage_date.strftime(time_fmt),
-                fields.get("Score"),
             ]
         )
     return [header, rows]
