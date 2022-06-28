@@ -187,8 +187,8 @@ class AddDaoJoinFlowOverride(BaseStep):
         return await set_thread_and_send(
             current_thread=self.parent_thread,
             next_thread_key=ThreadKeys.ONBOARDING.value,
-            user_id=user_id,
             message=message,
+            user_id=user_id,
             guild_id=guild_id)
 
 

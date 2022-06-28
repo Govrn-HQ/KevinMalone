@@ -12,7 +12,7 @@ from bot.common.threads.points import Points
 from bot.common.threads.add_dao import AddDao
 
 
-async def get_jump_thread(parent_thread, user_id, message):
+async def get_jump_thread(parent_thread, message, user_id):
     thread = await get_thread(
         user_id,
         build_cache_value(
@@ -31,16 +31,16 @@ async def get_jump_thread(parent_thread, user_id, message):
 
 
 # TODO: extend to support other thread attributes other than just the guild id
-async def set_thread_and_send(current_thread, next_thread_key, user_id, message, guild_id):
+async def set_thread_and_send(current_thread, next_thread_key, message, user_id, guild_id):
     current_thread.guild_id = guild_id
     # this will be the name of the overriding thread's key
     current_thread.command_name = next_thread_key
 
-    jump_thread = await get_jump_thread(current_thread, user_id, message)
+    jump_thread = await get_jump_thread(current_thread, message, user_id)
 
     # overwrites thread's current and next steps, and executes
     # that step
-    return await jump_thread.step.current.send(user_id, message)
+    return await jump_thread.step.current.send(message, user_id)
 
 
 async def get_thread(user_id, key, cache=None):
