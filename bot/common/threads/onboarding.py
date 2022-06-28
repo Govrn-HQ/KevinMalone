@@ -212,7 +212,7 @@ class Onboarding(BaseThread):
             .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
         )
 
-    def _non_govrn_profile_reuse_steps(self):
+    def get_profile_setup_steps(self):
         data_retrival_steps = self._data_retrival_steps().build()
 
         custom_user_name_steps = (
@@ -232,8 +232,4 @@ class Onboarding(BaseThread):
         return profile_setup_steps.build()
 
     async def get_steps(self):
-        non_govrn_reuse_steps = self._non_govrn_profile_reuse_steps()
-
-        steps = non_govrn_reuse_steps
-
-        return steps.build()
+        return self.get_profile_setup_steps().build()
