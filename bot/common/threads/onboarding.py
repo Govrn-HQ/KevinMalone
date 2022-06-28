@@ -123,28 +123,28 @@ class AddUserTwitterStep(BaseStep):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
-# class AddUserWalletAddressStep(BaseStep):
-#     """Step to submit wallet address for the govrn profile"""
-#
-#     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
-#
-#     def __init__(self, guild_id):
-#         super().__init__()
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#         sent_message = await channel.send(
-#           "What Ethereum wallet address would you like to associate with this guild!"
-#         )
-#         return sent_message, None
-#
-#     async def save(self, message, guild_id, user_id):
-#         record_id = await find_user(message.author.id)
-#         await update_user(record_id, "wallet", message.content.strip())
-#
-#     async def handle_emoji(self, raw_reaction):
-#         return _handle_skip_emoji(raw_reaction, self.guild_id)
+class AddUserWalletAddressStep(BaseStep):
+    """Step to submit wallet address for the govrn profile"""
+
+    name = StepKeys.ADD_USER_WALLET_ADDRESS.value
+
+    def __init__(self, guild_id):
+        super().__init__()
+        self.guild_id = guild_id
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+          "What Ethereum wallet address would you like to associate with this guild!"
+        )
+        return sent_message, None
+
+    async def save(self, message, guild_id, user_id):
+        record_id = await find_user(message.author.id)
+        await update_user(record_id, "wallet", message.content.strip())
+
+    async def handle_emoji(self, raw_reaction):
+        return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
 # class AddDiscourseStep(BaseStep):

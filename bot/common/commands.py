@@ -1,5 +1,4 @@
 from bot import constants
-from discord import option
 from discord.commands import Option
 from distutils.util import strtobool
 import logging
@@ -23,6 +22,8 @@ from bot.common.threads.report import ReportStep
 from bot.common.threads.points import Points
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
+from bot.common.threads.guild_select import GuildSelect
+from bot.common.threads.utils import get_thread
 from bot.config import (
     REPORTING_FORM_FMT,
     GUILD_IDS,
@@ -31,9 +32,6 @@ from bot.config import (
     get_list_of_emojis,
 )
 from bot.exceptions import NotGuildException, ErrorHandler
-from bot.common.threads.guild_select import GuildSelect
-from bot.common.threads.utils import get_thread
-from web3 import Web3
 
 
 logger = logging.getLogger(__name__)
@@ -93,17 +91,10 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-@option(
-    "wallet", description="Enter your ethereum wallet address (No ENS)", required=True
-)
 async def join(ctx, wallet):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
-    if not Web3.isAddress(wallet):
-        await ctx.response.send_message("Not a valid wallet address", ephemeral=True)
-        ctx.response.is_done()
-        return
 
     is_user = await find_user(ctx.author.id)
     if is_user:
