@@ -19,6 +19,7 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
     BaseThread,
     get_cache_metadata_key,
+    write_cache_metadata,
 )
 from exceptions import ThreadTerminatingException
 
@@ -60,7 +61,8 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM_EMOJI.value
     emoji = True
 
-    def __init__(self, bot):
+    def __init__(self, cache, bot):
+        self.cache = cache
         self.bot = bot
 
     @property
@@ -76,15 +78,18 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
 
     async def save(self, message, guild_id, user_id):
         user = await self.bot.fetch_user(user_id)
-        print(user_id)
-        record = await find_user(user_id)
-        await update_user(record.get("id"), "display_name", user.display_name)
+        await write_cache_metadata(
+            user_id, self.cache, "display_name", user.display_name
+        )
 
 
 class UserDisplaySubmitStep(BaseStep):
     """Submit new display name to be saved"""
 
     name = StepKeys.USER_DISPLAY_SUBMIT.value
+
+    def __init__(self, cache):
+        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
@@ -94,12 +99,44 @@ class UserDisplaySubmitStep(BaseStep):
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        record_id = await find_user(user_id)
-        val = message.content.strip()
-        await update_user(record_id, "display_name", val)
+        display_name = message.content.strip()
+        # Save display name to cache for record creation when
+        # the user supplies their wallet address
+        await write_cache_metadata(user_id, self.cache, "display_name", display_name)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
+
+
+class CreateUserWithWalletAddressStep(BaseStep):
+    """Step to submit wallet address for the govrn profile"""
+
+    name = StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value
+
+    def __init__(self, cache, guild_id):
+        super().__init__()
+        self.cache = cache
+        self.guild_id = guild_id
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            "What Ethereum wallet address would you like to associate with this guild?"
+        )
+        return sent_message, None
+
+    async def save(self, message, guild_id, user_id):
+        wallet = message.content.strip()
+
+        if not Web3.isAddress(wallet):
+            raise ThreadTerminatingException(f"{wallet} is not a valid wallet address")
+
+        display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
+
+        # user creation is performed when supplying wallet address since this
+        # is a mandatory field for the user record
+        await create_user(user_id, guild_id, wallet)
+        await update_user(user_id, "display_name", display_name)
 
 
 class AddUserTwitterStep(BaseStep):
@@ -128,33 +165,6 @@ class AddUserTwitterStep(BaseStep):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
-class CreateUserWithWalletAddressStep(BaseStep):
-    """Step to submit wallet address for the govrn profile"""
-
-    name = StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value
-
-    def __init__(self, guild_id):
-        super().__init__()
-        self.guild_id = guild_id
-
-    async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(
-            "What Ethereum wallet address would you like to associate with this guild?"
-        )
-        return sent_message, None
-
-    async def save(self, message, guild_id, user_id):
-        wallet = message.content.strip()
-
-        if not Web3.isAddress(wallet):
-            raise ThreadTerminatingException(f"{wallet} is not a valid wallet address")
-
-        # user creation is performed when supplying wallet address since this
-        # is a mandatory field for the user record
-        await create_user(user_id, guild_id, wallet)
-
-
 class CongratsStep(BaseStep):
     """Send congratulations for completing the profile"""
 
@@ -175,27 +185,6 @@ class CongratsStep(BaseStep):
         )
         return sent_message, None
 
-    async def handle_emoji(self, raw_reaction):
-        if SKIP_EMOJI in raw_reaction.emoji.name:
-            next_step = None
-            channel = await self.bot.fetch_channel(raw_reaction.channel_id)
-            guild = await self.bot.fetch_guild(self.guild_id)
-            await channel.send(
-                f"Nice job!  That's it for now!"
-                f"Welcome and congratulations on onboarding to {guild.name}"
-            )
-            govrn_profile = await find_user(self.user_id)
-            if govrn_profile:
-                next_step = StepKeys.END.value
-            return next_step, False
-        raise Exception("Reacted with the wrong emoji")
-
-    async def control_hook(self, message, user_id):
-        govrn_profile = await find_user(user_id)
-        if not govrn_profile:
-            return StepKeys.GOVRN_PROFILE_PROMPT.value
-        return StepKeys.END.value
-
 
 def get_profile_embed_from_profile_fields(guild_name, fields):
     embed = discord.Embed(
@@ -211,7 +200,7 @@ def get_profile_embed_from_profile_fields(guild_name, fields):
 
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
-    
+
     def _data_retrival_steps(self):
         return (
             Step(current=CreateUserWithWalletAddressStep(guild_id=self.guild_id))
