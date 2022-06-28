@@ -269,27 +269,8 @@ def get_profile_embed_from_profile_fields(guild_name, fields):
     embed.add_field(name="Display Name", value=fields.get("display_name"))
     embed.add_field(name="Twitter", value=fields.get("twitter"))
     embed.add_field(name="Ethereum Wallet Address", value=fields.get("wallet"))
-    # embed.add_field(name="Discourse Handle", value=fields.get("discourse"))
 
     return embed
-
-
-# This assumes that a user already has an entry in both from_guild and to_guild
-# async def copy_user_profile_to_guild(user_id, from_guild_id, to_guild_id):
-#     current_profile = await get_user_record(user_id)
-#
-#     new_profile = await get_user_record(user_id)
-#     record_id = new_profile.get("id")
-#     await update_user_display_name(
-#         record_id, "display_name", new_profile.get("display_name")
-#     )
-#     # await update_user(record_id, "twitter", new_profile.get("twitter"))
-#     user_record = await update_user(record_id, "discourse", fields.get("discourse"))
-#
-#     return fields
-
-
-# Threads #
 
 
 class Onboarding(BaseThread):
