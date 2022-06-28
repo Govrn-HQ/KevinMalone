@@ -62,13 +62,12 @@ class ThreadKeys(Enum):
 
 
 class StepKeys(Enum):
-    CHECK_AND_CREATE_USER = "check_and_create_user"
     USER_DISPLAY_CONFIRM = "user_display_confirm"
     USER_DISPLAY_CONFIRM_EMOJI = "user_display_confirm_emoji"
     USER_DISPLAY_SUBMIT = "user_display_submit"
     ADD_USER_TWITTER = "add_user_twitter"
     ONBOARDING_CONGRATS = "onboarding_congrats"
-    ADD_USER_WALLET_ADDRESS = "add_user_wallet_address"
+    CREATE_USER_WITH_WALLET_ADDRESS = "create_user_with_wallet_address"
     ADD_USER_DISCOURSE = "add_user_discourse"
     SELECT_GUILD_EMOJI = "select_guild_emoji"
     USER_UPDATE_FIELD_SELECT = "user_update_select"

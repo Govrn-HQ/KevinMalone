@@ -29,26 +29,6 @@ def _handle_skip_emoji(raw_reaction, guild_id):
     raise Exception("Reacted with the wrong emoji")
 
 
-class CheckAndCreateUserStep(BaseStep):
-    """Check if a user's profile exists and create it if not.
-    Can be called from both regular onboarding flow and from the add_dao join flow.
-    """
-
-    name = StepKeys.CHECK_AND_CREATE_USER
-    trigger = True
-
-    def __init__(self, parent_thread):
-        self.parent_thread = parent_thread
-
-    async def send(self, message, user_id):
-        guild_id = self.parent_thread.guild_id
-        wallet = get_cache_metadata_key(user_id, self.cache, "wallet")
-        user = await fetch_user(user_id)
-        print(user)
-        if not user:
-            await create_user(user_id, guild_id, wallet)
-
-
 class UserDisplayConfirmationStep(BaseStep):
     """Confirm display name fetched from discord"""
 
@@ -148,10 +128,10 @@ class AddUserTwitterStep(BaseStep):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
-class AddUserWalletAddressStep(BaseStep):
+class CreateUserWithWalletAddressStep(BaseStep):
     """Step to submit wallet address for the govrn profile"""
 
-    name = StepKeys.ADD_USER_WALLET_ADDRESS.value
+    name = StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value
 
     def __init__(self, guild_id):
         super().__init__()
@@ -165,13 +145,14 @@ class AddUserWalletAddressStep(BaseStep):
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        record_id = await find_user(user_id)
         wallet = message.content.strip()
 
         if not Web3.isAddress(wallet):
             raise ThreadTerminatingException(f"{wallet} is not a valid wallet address")
 
-        await update_user(record_id, "wallet", wallet)
+        # user creation is performed when supplying wallet address since this
+        # is a mandatory field for the user record
+        await create_user(user_id, guild_id, wallet)
 
 
 class CongratsStep(BaseStep):
