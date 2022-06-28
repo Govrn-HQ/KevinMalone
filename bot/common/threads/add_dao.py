@@ -135,7 +135,6 @@ class AddDaoPreviouslyAddedPrompt(BaseStep):
         super().__init__()
         self.cache = cache
 
-
     async def send(self, message, user_id):
         guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
         guild_id = await get_cache_metadata_key(user_id, self.cache, "guild_id")
