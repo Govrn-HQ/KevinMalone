@@ -8,8 +8,6 @@ import discord
 
 from bot.common.airtable import (
     find_user,
-    fetch_user,
-    create_user,
     get_guild,
 )
 from bot.common.bot.bot import bot
@@ -91,7 +89,7 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-async def join(ctx, wallet):
+async def join(ctx):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
@@ -133,8 +131,8 @@ async def join(ctx, wallet):
     logger.info(
         f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"
     )
-    try:
 
+    try:
         message = await ctx.author.send(embed=embed)
     except discord.Forbidden:
         message = await ctx.followup.send(
@@ -142,22 +140,24 @@ async def join(ctx, wallet):
         )
         return
 
-    # Check if user exists
-    #
-    # If user does not exist ask for wallet address
-    # then create
-    user = await fetch_user(ctx.author.id)
-    print(user)
-    if not user:
-        await create_user(ctx.author.id, ctx.guild.id, wallet)
-    onboarding = await Onboarding(
+    await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
+
+    thread = await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         message.id,
         ctx.guild.id,
     )
-    await onboarding.send(message)
-    await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
+    await thread.send(message)
+    await Redis.set(
+        ctx.author.id,
+        build_cache_value(
+            thread=ThreadKeys.POINTS.value,
+            step=thread.steps.hash_,
+            guild_id=ctx.guild.id,
+            message_id=message.id
+        )
+    )
 
 
 @bot.slash_command(
