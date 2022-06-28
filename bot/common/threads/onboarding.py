@@ -1,6 +1,9 @@
 import discord
+from web3 import Web3
 from bot.common.airtable import (
     find_user,
+    fetch_user,
+    create_user,
     update_user,
 )
 from bot.config import (
@@ -15,13 +18,35 @@ from bot.common.threads.thread_builder import (
     Step,
     ThreadKeys,
     BaseThread,
+    get_cache_metadata_key,
 )
+from exceptions import ThreadTerminatingException
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
     if SKIP_EMOJI in raw_reaction.emoji.name:
         return None, True
     raise Exception("Reacted with the wrong emoji")
+
+
+class CheckAndCreateUserStep(BaseStep):
+    """Check if a user's profile exists and create it if not.
+    Can be called from both regular onboarding flow and from the add_dao join flow.
+    """
+
+    name = StepKeys.CHECK_AND_CREATE_USER
+    trigger = True
+
+    def __init__(self, parent_thread):
+        self.parent_thread = parent_thread
+
+    async def send(self, message, user_id):
+        guild_id = self.parent_thread.guild_id
+        wallet = get_cache_metadata_key(user_id, self.cache, "wallet")
+        user = await fetch_user(user_id)
+        print(user)
+        if not user:
+            await create_user(user_id, guild_id, wallet)
 
 
 class UserDisplayConfirmationStep(BaseStep):
@@ -135,40 +160,18 @@ class AddUserWalletAddressStep(BaseStep):
     async def send(self, message, user_id):
         channel = message.channel
         sent_message = await channel.send(
-          "What Ethereum wallet address would you like to associate with this guild!"
+            "What Ethereum wallet address would you like to associate with this guild?"
         )
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        record_id = await find_user(message.author.id)
-        await update_user(record_id, "wallet", message.content.strip())
+        record_id = await find_user(user_id)
+        wallet = message.content.strip()
 
-    async def handle_emoji(self, raw_reaction):
-        return _handle_skip_emoji(raw_reaction, self.guild_id)
+        if not Web3.isAddress(wallet):
+            raise ThreadTerminatingException(f"{wallet} is not a valid wallet address")
 
-
-# class AddDiscourseStep(BaseStep):
-#     """Step to submit discourse username for the govrn profile"""
-#
-#     name = StepKeys.ADD_USER_DISCOURSE.value
-#
-#     def __init__(self, guild_id):
-#         super().__init__()
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#         sent_message = await channel.send(
-#             "What discourse handle would you like to associate with this guild!"
-#         )
-#         return sent_message, None
-#
-#     async def save(self, message, guild_id, user_id):
-#         record_id = await find_user(message.author.id)
-#         await update_user(record_id, "discourse", message.content.strip())
-#
-#     async def handle_emoji(self, raw_reaction):
-#         return _handle_skip_emoji(raw_reaction, self.guild_id)
+        await update_user(record_id, "wallet", wallet)
 
 
 class CongratsStep(BaseStep):
