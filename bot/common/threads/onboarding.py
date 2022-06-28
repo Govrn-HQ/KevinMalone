@@ -197,51 +197,6 @@ class CongratsStep(BaseStep):
         return StepKeys.END.value
 
 
-class GovrnProfilePrompt(BaseStep):
-    """Ask whether user wants to join the Govrn guild"""
-
-    name = StepKeys.GOVRN_PROFILE_PROMPT.value
-
-    async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(
-            "Would you like to be onboarded to the govrn guild as well?"
-        )
-        await sent_message.add_reaction(YES_EMOJI)
-        await sent_message.add_reaction(NO_EMOJI)
-        return sent_message, None
-
-
-class GovrnProfilePromptEmoji(BaseStep):
-    """Accept user emoji reaction to whether they want to join Govrn"""
-
-    name = StepKeys.GOVRN_PROFILE_PROMPT_EMOJI.value
-
-    @property
-    def emojis(self):
-        return [YES_EMOJI, NO_EMOJI]
-
-    async def handle_emoji(self, raw_reaction):
-        if raw_reaction.emoji.name in self.emojis:
-            if raw_reaction.emoji.name == NO_EMOJI:
-                return StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value, None
-            return StepKeys.REUSE_GUILD_PROFILE_FOR_GOVRN_PROMPT.value, None
-        raise Exception("Reacted with the wrong emoji")
-
-
-class GovrnProfilePromptReject(BaseStep):
-    """Handle situation where does not want to join the govrn guild"""
-
-    name = StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value
-
-    async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(
-            "No problem! You are free to join at any time."
-        )
-        return sent_message, None
-
-
 def get_profile_embed_from_profile_fields(guild_name, fields):
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
@@ -256,50 +211,11 @@ def get_profile_embed_from_profile_fields(guild_name, fields):
 
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
-
-    # def _govrn_oboard_steps(self):
-    #     success = (
-    #         Step(current=ReuseGuildProfileForGovrnPrompt(guild_id=self.guild_id))
-    #         .add_next_step(ReuseGuildProfileForGovrnEmoji(parent=self))
-    #         .fork(
-    #             [
-    #                 Step(current=ReuseGuildProfileForGovrnStep(guild_id=self.guild_id)),
-    #                 Step(current=UserDisplaySubmitStep())
-    #                 .add_next_step(self._data_retrival_steps().build())
-    #                 .build(),
-    #             ]
-    #         )
-    #         .build()
-    #     )
-    #     reject = Step(current=GovrnProfilePromptReject())
-    #     steps = (
-    #         Step(current=GovrnProfilePrompt())
-    #         .add_next_step(GovrnProfilePromptEmoji())
-    #         .fork([success, reject])
-    #     )
-    #     return steps
-
-    # def _govrn_profile_reuse_steps(self):
-    #     reuse_govrn_profile_steps = (
-    #         Step(current=ReuseGovrnProfileForGuild(self.guild_id))
-    #         .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
-    #         .build()
-    #     )
-    #     create_new_govrn_profile_steps = self._non_govrn_profile_reuse_steps()
-
-    #     reuse_govrn_profile_choice = (
-    #         Step(current=ReuseGovrnProfileForGuildPrompt(self.guild_id))
-    #         .add_next_step(ReuseGovrnProfileForGuildEmoji(self))
-    #         .fork([reuse_govrn_profile_steps, create_new_govrn_profile_steps])
-    #     )
-
-    #     return reuse_govrn_profile_choice.build()
-
+    
     def _data_retrival_steps(self):
         return (
-            Step(current=AddUserTwitterStep(guild_id=self.guild_id))
-            # .add_next_step(AddUserWalletAddressStep(guild_id=self.guild_id))
-            # .add_next_step(AddDiscourseStep(self.guild_id))
+            Step(current=CreateUserWithWalletAddressStep(guild_id=self.guild_id))
+            .add_next_step(AddUserTwitterStep(guild_id=self.guild_id))
             .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
         )
 
@@ -312,16 +228,15 @@ class Onboarding(BaseThread):
             .build()
         )
 
-        non_govrn_profile_reuse_steps = (
+        profile_setup_steps = (
             Step(current=UserDisplayConfirmationStep(bot=self.bot))
             .add_next_step(UserDisplayConfirmationEmojiStep(bot=self.bot))
             .fork((custom_user_name_steps, data_retrival_steps))
         )
 
-        return non_govrn_profile_reuse_steps.build()
+        return profile_setup_steps.build()
 
     async def get_steps(self):
-        # govrn_reuse_steps = self._govrn_profile_reuse_steps()
         non_govrn_reuse_steps = self._non_govrn_profile_reuse_steps()
 
         steps = non_govrn_reuse_steps
