@@ -156,6 +156,7 @@ async def join(ctx):
             step=thread.steps.hash_,
             guild_id=ctx.guild.id,
             message_id=message.id,
+            metadata={"guild_name": ctx.guild.name},
         ),
     )
 

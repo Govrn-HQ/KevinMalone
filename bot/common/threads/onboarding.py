@@ -170,18 +170,18 @@ class CongratsStep(BaseStep):
 
     name = StepKeys.ONBOARDING_CONGRATS.value
 
-    def __init__(self, user_id, guild_id, bot):
+    def __init__(self, user_id, guild_id, cache):
         super().__init__()
         self.user_id = user_id
         self.guild_id = guild_id
-        self.bot = bot
+        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
-        guild = await self.bot.fetch_guild(self.guild_id)
+        guild_name = get_cache_metadata_key(user_id, self.cache, "guild_name")
         sent_message = await channel.send(
             f"Nice job!  That's it for now!"
-            f"Welcome and congratulations on onboarding to {guild.name}"
+            f"Welcome and congratulations on onboarding to {guild_name}"
         )
         return sent_message, None
 
@@ -209,7 +209,7 @@ class Onboarding(BaseThread):
                 )
             )
             .add_next_step(AddUserTwitterStep(guild_id=self.guild_id))
-            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
+            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.cache))
         )
 
     def get_profile_setup_steps(self):
