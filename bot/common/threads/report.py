@@ -23,23 +23,28 @@ class ReportStep(BaseStep):
 
     name = StepKeys.USER_DISPLAY_CONFIRM.value
 
-    def __init__(self, guild_id, cache, bot, channel=None):
+    def __init__(self, guild_id, cache, bot, channel=None, reporting_link=None):
         self.guild_id = guild_id
         self.cache = cache
         self.bot = bot
         self.channel = channel
+        self.reporting_link = reporting_link
 
     async def send(self, message, user_id):
         channel = self.channel
         if message:
             channel = message.channel
 
-        airtableLink = REPORTING_FORM_FMT % self.guild_id
+        link = (
+            REPORTING_FORM_FMT % self.guild_id
+            if self.reporting_link is None
+            else self.reporting_link
+        )
 
         msg = (
             f"Woohoo! Nice job! Community contributions are what keeps"
             " your community thriving 🌞. "
-            f"Report your contributions via the form 👉 {airtableLink}"
+            f"Report your contributions via the form 👉 {link}"
         )
         if message:
             await channel.send(msg)
@@ -74,3 +79,9 @@ class Report(BaseThread):
         return Step(
             current=ReportStep(guild_id=self.guild_id, cache=self.cache, bot=self.bot)
         ).build()
+
+
+async def get_reporting_link(guild_discord_id):
+    guild = await get_guild_by_discord_id(guild_discord_id)
+    guild_id = guild.get("id")
+    return REPORTING_FORM_FMT % guild_id
