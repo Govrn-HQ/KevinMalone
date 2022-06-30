@@ -1,10 +1,11 @@
 import discord
 from web3 import Web3
 from bot.common.airtable import (
-    find_user,
-    fetch_user,
     create_user,
     update_user,
+)
+from bot.common.graphql import (
+    get_guild_by_discord_id,
 )
 from bot.config import (
     YES_EMOJI,
@@ -73,7 +74,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
-            return StepKeys.ADD_USER_TWITTER.value, None
+            return StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value, None
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
@@ -100,8 +101,6 @@ class UserDisplaySubmitStep(BaseStep):
 
     async def save(self, message, guild_id, user_id):
         display_name = message.content.strip()
-        # Save display name to cache for record creation when
-        # the user supplies their wallet address
         await write_cache_metadata(user_id, self.cache, "display_name", display_name)
 
     async def handle_emoji(self, raw_reaction):
@@ -132,11 +131,15 @@ class CreateUserWithWalletAddressStep(BaseStep):
             raise ThreadTerminatingException(f"{wallet} is not a valid wallet address")
 
         display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
+        guild = await get_guild_by_discord_id(guild_id)
 
         # user creation is performed when supplying wallet address since this
         # is a mandatory field for the user record
-        await create_user(user_id, guild_id, wallet)
-        await update_user(user_id, "display_name", display_name)
+        # TODO: wrap into a single CRUD
+        user = await create_user(user_id, guild.get("id"), wallet)
+        user_db_id = user.get("id")
+        await update_user(user_db_id, "display_name", display_name)
+        await write_cache_metadata(user_id, self.cache, "user_db_id", user_db_id)
 
 
 class AddUserTwitterStep(BaseStep):
@@ -144,9 +147,10 @@ class AddUserTwitterStep(BaseStep):
 
     name = StepKeys.ADD_USER_TWITTER.value
 
-    def __init__(self, guild_id):
+    def __init__(self, guild_id, cache):
         super().__init__()
         self.guild_id = guild_id
+        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
@@ -156,10 +160,9 @@ class AddUserTwitterStep(BaseStep):
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        record_id = await find_user(message.author.id)
-        await update_user(
-            record_id, "twitter", message.content.strip().replace("@", "")
-        )
+        twitter_handle = message.content.strip().replace("@", "")
+        user_db_id = await get_cache_metadata_key(user_id, self.cache, "user_db_id")
+        await update_user(user_db_id, "twitter", twitter_handle)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
@@ -178,9 +181,9 @@ class CongratsStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        guild_name = get_cache_metadata_key(user_id, self.cache, "guild_name")
+        guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
         sent_message = await channel.send(
-            f"Nice job!  That's it for now!"
+            f"Nice job! That's it for now! "
             f"Welcome and congratulations on onboarding to {guild_name}"
         )
         return sent_message, None
@@ -203,12 +206,10 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(
-                current=CreateUserWithWalletAddressStep(
-                    cache=self.cache, guild_id=self.guild_id
-                )
-            )
-            .add_next_step(AddUserTwitterStep(guild_id=self.guild_id))
+            Step(current=CreateUserWithWalletAddressStep(
+                cache=self.cache, guild_id=self.guild_id
+            ))
+            .add_next_step(AddUserTwitterStep(guild_id=self.guild_id, cache=self.cache))
             .add_next_step(CongratsStep(self.user_id, self.guild_id, self.cache))
         )
 

@@ -3,6 +3,9 @@ import logging
 from bot import constants
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.exceptions import TransportQueryError
+
+from exceptions import UserWithAddressAlreadyExists, UserWithTwitterHandleAlreadyExists
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +30,7 @@ async def execute_query(query, values):
         raise
 
 
-async def fetch_user(id):
+async def fetch_user_by_discord_id(discord_id):
     query = """
 fragment UserFragment on User {
   address
@@ -63,16 +66,16 @@ query getUser($where: UserWhereInput!,) {
     """
     result = await execute_query(
         query,
-        {"where": {"discord_users": {"some": {"discord_id": {"equals": str(id)}}}}},
+        {"where": {"discord_users": {"some": {"discord_id": {"equals": str(discord_id)}}}}},
     )
     if result:
         res = result.get("result")
         print("Fetch")
         print(result)
-        print(id)
+        print(discord_id)
         if len(res):
             return res[0]
-        return res
+        return None
     return result
 
 
@@ -165,7 +168,7 @@ query listContributions($where: ContributionWhereInput! = {},
     return result
 
 
-async def get_guild(id):
+async def get_guild_by_discord_id(id):
     query = """
 fragment GuildFragment on Guild {
   congrats_channel
@@ -221,7 +224,7 @@ query getGuild($where: GuildWhereUniqueInput!) {
     return result
 
 
-async def create_guild_user(user_id, guild_id):
+async def create_guild_user(user_id, guild_db_id):
     query = """
 mutation createGuildUser($data: GuildUserCreateInput!) {
   createGuildUser(data: $data) {
@@ -234,7 +237,7 @@ mutation createGuildUser($data: GuildUserCreateInput!) {
         query,
         {
             "data": {
-                "guild": {"connect": {"id": guild_id}},
+                "guild": {"connect": {"id": guild_db_id}},
                 "user": {"connect": {"id": user_id}},
             }
         },
@@ -274,23 +277,35 @@ mutation createUser($data: UserCreateInput!) {
   }
 }
     """
-    result = await execute_query(
-        query,
-        {
-            "data": {
-                "address": wallet,
-                "chain_type": {"connect": {"name": "ETH"}},
-                "discord_users": {
-                    "connectOrCreate": [
-                        {
-                            "create": {"discord_id": str(discord_id)},
-                            "where": {"discord_id": str(discord_id)},
-                        }
-                    ]
-                },
-            }
-        },
-    )
+    data = {
+        "data": {
+            "address": wallet,
+            "chain_type": {"connect": {"name": "ETH"}},
+            "discord_users": {
+                "connectOrCreate": [
+                    {
+                        "create": {"discord_id": str(discord_id)},
+                        "where": {"discord_id": str(discord_id)},
+                    }
+                ]
+            },
+        }
+    }
+    result = None
+    try:
+        result = await execute_query(
+            query,
+            data,
+        )
+    except TransportQueryError as e:
+        if is_unique_constraint_failure(e):
+            err = (
+                f"A user with wallet address {wallet} already exists! "
+                "Please use a different wallet address to setup your "
+                "profile."
+            )
+            raise UserWithAddressAlreadyExists(err)
+
     if result:
         print(result)
         return result.get("createUser")
@@ -346,9 +361,17 @@ async def update_user_display_name(display_name, id):
 
 
 async def update_user_twitter_handle(twitter_handle, id):
-    return await update_user(
-        {"twitter_user": {"create": {"username": twitter_handle}}}, {"id": id}
-    )
+    try:
+        return await update_user(
+            {"twitter_user": {"create": {"username": twitter_handle}}}, {"id": id}
+        )
+    except TransportQueryError as e:
+        if is_unique_constraint_failure(e):
+            err = (
+                f"A user with twitter username {twitter_handle} already exists! "
+                "Please use a different twitter account to setup your profile."
+            )
+            raise UserWithTwitterHandleAlreadyExists(err)
 
 
 async def update_user_wallet(wallet, id):
@@ -374,3 +397,7 @@ mutation updateGuild($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
         print(result)
         return result.get("updateGuild")
     return result
+
+
+def is_unique_constraint_failure(err: TransportQueryError):
+    return "Unique constraint failed" in err.errors[0]['message']

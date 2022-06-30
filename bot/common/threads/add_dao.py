@@ -7,12 +7,12 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
 )
-from bot.common.graphql import fetch_user, get_guild, create_guild, update_guild_name
+from bot.common.graphql import fetch_user_by_discord_id, get_guild_by_discord_id, create_guild, update_guild_name
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key,
 )
-from bot.exceptions import ThreadTerminatingException
+from exceptions import ThreadTerminatingException
 
 # from bot.common.threads.utils import (  # noqa: E402
 # set_thread_and_send
@@ -69,13 +69,13 @@ class AddDaoGetOrCreate(BaseStep):
     async def control_hook(self, message, user_id):
         dao_id = str(int(message.content.strip()))
         self.parent_thread.guild_id = dao_id
-        guild = await get_guild(dao_id)
+        guild = await get_guild_by_discord_id(dao_id)
         if guild:
             # Check if user is a member
-            user = await fetch_user(user_id)
+            user = await fetch_user_by_discord_id(user_id)
             guild_name = guild.get("name")
 
-            if any(
+            if user is not None and any(
                 guild_user.get("guild_id") == guild.get("id")
                 for guild_user in user.get("guild_users")
             ):

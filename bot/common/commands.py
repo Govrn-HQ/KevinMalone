@@ -148,17 +148,18 @@ async def join(ctx):
         message.id,
         ctx.guild.id,
     )
-    await thread.send(message)
+    # Need to set the metadata here to provide the guild id
     await Redis.set(
         ctx.author.id,
         build_cache_value(
-            thread=ThreadKeys.POINTS.value,
+            thread=ThreadKeys.ONBOARDING.value,
             step=thread.steps.hash_,
             guild_id=ctx.guild.id,
             message_id=message.id,
             metadata={"guild_name": ctx.guild.name},
         ),
     )
+    await thread.send(message)
 
 
 @bot.slash_command(

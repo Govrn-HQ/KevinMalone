@@ -5,7 +5,7 @@ import logging
 
 from bot.common.bot.bot import bot
 from bot.common.cache import RedisCache
-from bot.exceptions import ThreadTerminatingException
+from exceptions import ThreadTerminatingException
 from enum import Enum
 from typing import Dict, Optional
 
@@ -243,7 +243,15 @@ class BaseThread:
         if not self.step.next_steps:
             return await self.cache.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
-        override_step = await self.step.current.control_hook(message, self.user_id)
+
+        override_step = None
+        try:
+            override_step = await self.step.current.control_hook(message, self.user_id)
+        except ThreadTerminatingException as e:
+            await message.channel.send(str(e))
+            await self.cache.delete(self.user_id)
+            raise e
+
         if override_step == StepKeys.END.value:
             return await self.cache.delete(self.user_id)
         if override_step:

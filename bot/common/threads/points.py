@@ -15,7 +15,7 @@ from bot.common.threads.thread_builder import (
     Step,
     build_cache_value,
 )
-from bot.common.graphql import fetch_user, list_user_contributions_for_guild
+from bot.common.graphql import fetch_user_by_discord_id, list_user_contributions_for_guild
 from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
@@ -93,7 +93,7 @@ class DisplayPointsStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        record = await fetch_user(user_id)
+        record = await fetch_user_by_discord_id(user_id)
         logger.info(
             "user_id "
             + str(user_id)
