@@ -15,7 +15,7 @@ from bot.common.threads.thread_builder import (
     Step,
     build_cache_value,
 )
-from bot.common.graphql import fetch_user, list_user_contributions_for_guild
+from bot.common.graphql import fetch_user, get_guild, list_user_contributions_for_guild
 from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
@@ -116,38 +116,37 @@ class DisplayHistoryStep(BaseStep):
                     None,
                 )
 
-        embed = discord.Embed(
+        cache_entry = await self.cache.get(user_id)
+        cache_values = json.loads(cache_entry)
+        metadata = None
+        if cache_entry:
+            metadata = cache_values.get("metadata")
+
+        contributions = await get_contributions(
+            metadata, user_id, self.guild_id, self.days)
+
+        if contributions is None:
+            self.end_flow = True
+            msg = (
+                "Looks like you don't have any contribution history. "
+                "You can start reporting your contributions with /report!"
+            )
+            if is_in_dms:
+                return await message.channel.send(msg), None
+            else:
+                return await self.context.response.send_message(
+                    msg,
+                    ephemeral=True), None
+
+        # [0] is headers, [1] is a list of rows
+        contribution_rows = get_contribution_rows(contributions)
+
+        history_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Your history!",
             description="Below is a table of  "
             "the history of your contributions! ",
         )
-
-        if is_in_dms:
-            await message.channel.send(embed=embed)
-        else:
-            await self.context.response.send_message(embed=embed, ephemeral=True)
-
-        cache_entry = await self.cache.get(user_id)
-        cache_values = json.loads(cache_entry)
-        metadata = cache_values.get("metadata")
-        print("history " + str(user_id))
-        days = self.days
-        if cache_entry:
-            days = metadata.get("days")
-        date = None
-        td = (
-            timedelta(weeks=52 * 20)
-            if days == "all"
-            else timedelta(days=int(days or "1"))
-        )
-        date = datetime.now() - td
-        date = date.isoformat()
-        contributions = await list_user_contributions_for_guild(
-            user_id, self.guild_id, date
-        )
-        # [0] is headers, [1] is a list of rows
-        contribution_rows = get_contribution_rows(contributions)
 
         table = build_table(
             contribution_rows[0], contribution_rows[1][:MAX_CONTRIBUTIONS_TO_DISPLAY]
@@ -157,11 +156,14 @@ class DisplayHistoryStep(BaseStep):
         metadata["msg"] = msg
 
         if is_in_dms:
+            await message.channel.send(embed=history_embed)
             sent_message = await message.channel.send(msg)
         else:
             csv_file = build_csv_file(
                 contribution_rows[0], contribution_rows[1], user_id
             )
+            await self.context.response.send_message(
+                embed=history_embed, ephemeral=True)
             followup = self.context.interaction.followup
             sent_message = await followup.send(
                 content=msg, ephemeral=True, file=csv_file
@@ -254,3 +256,22 @@ class History(BaseThread):
             .add_next_step(history_csv_accept)
             .build()
         )
+
+
+async def get_contributions(metadata, user_id, guild_id, days):
+    print("history " + str(user_id))
+    if metadata:
+        days = metadata.get("days")
+    date = None
+    td = (
+        timedelta(weeks=52 * 20)
+        if days == "all"
+        else timedelta(days=int(days or "1"))
+    )
+    date = datetime.now() - td
+    date = date.isoformat()
+    guild = await get_guild(guild_id)
+    contributions = await list_user_contributions_for_guild(
+        user_id, guild.get("id"), date
+    )
+    return contributions
