@@ -48,6 +48,8 @@ class ReportStep(BaseStep):
         )
         if message:
             await channel.send(msg)
+
+        # TODO: this will break because of self.guild_id and db changes
         if not await self.cache.get(build_congrats_key(user_id)):
             fields = await get_guild_by_guild_id(self.guild_id)
             congrats_channel_id = fields.get("congrats_channel_id")
@@ -82,6 +84,6 @@ class Report(BaseThread):
 
 
 async def get_reporting_link(guild_discord_id):
-    guild = await get_guild_by_discord_id(guild_discord_id)
+    guild = await get_guild_by_guild_id(guild_discord_id)
     guild_id = guild.get("id")
     return REPORTING_FORM_FMT % guild_id
