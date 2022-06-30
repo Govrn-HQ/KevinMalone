@@ -206,9 +206,11 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         return (
-            Step(current=CreateUserWithWalletAddressStep(
-                cache=self.cache, guild_id=self.guild_id
-            ))
+            Step(
+                current=CreateUserWithWalletAddressStep(
+                    cache=self.cache, guild_id=self.guild_id
+                )
+            )
             .add_next_step(AddUserTwitterStep(guild_id=self.guild_id, cache=self.cache))
             .add_next_step(CongratsStep(self.user_id, self.guild_id, self.cache))
         )

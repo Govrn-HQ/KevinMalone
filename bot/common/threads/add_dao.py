@@ -7,7 +7,12 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
 )
-from bot.common.graphql import fetch_user_by_discord_id, get_guild_by_discord_id, create_guild, update_guild_name
+from bot.common.graphql import (
+    fetch_user_by_discord_id,
+    get_guild_by_discord_id,
+    create_guild,
+    update_guild_name,
+)
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key,

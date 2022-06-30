@@ -66,7 +66,11 @@ query getUser($where: UserWhereInput!,) {
     """
     result = await execute_query(
         query,
-        {"where": {"discord_users": {"some": {"discord_id": {"equals": str(discord_id)}}}}},
+        {
+            "where": {
+                "discord_users": {"some": {"discord_id": {"equals": str(discord_id)}}}
+            }
+        },
     )
     if result:
         res = result.get("result")
@@ -400,4 +404,4 @@ mutation updateGuild($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
 
 
 def is_unique_constraint_failure(err: TransportQueryError):
-    return "Unique constraint failed" in err.errors[0]['message']
+    return "Unique constraint failed" in err.errors[0]["message"]
