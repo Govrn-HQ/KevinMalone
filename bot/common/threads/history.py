@@ -42,8 +42,8 @@ def build_csv_file(header, rows, user_id):
 
     csvFile = File(
         s,
-        str(user_id) + "_points.csv",
-        description="A csv file of your points from contributions",
+        str(user_id) + "_history.csv",
+        description="A csv file of your history of contributions",
         spoiler=False,
     )
     return csvFile
@@ -72,8 +72,8 @@ def get_contribution_rows(contributions):
     return [header, rows]
 
 
-class DisplayPointsStep(BaseStep):
-    """Displays points accrued by a given user"""
+class DisplayHistoryStep(BaseStep):
+    """Displays history of a given user"""
 
     name = StepKeys.DISPLAY_POINTS.value
     trigger = True
@@ -105,7 +105,7 @@ class DisplayPointsStep(BaseStep):
         if record is None:
             self.end_flow = True
             content = "Looks like you're not yet onboarded to the guild! "
-            "Complete the intial onboarding /join command before running `/points`"
+            "Complete the intial onboarding /join command before running `/history`"
             if is_in_dms:
                 return await message.channel.send(content), None
             else:
@@ -118,9 +118,9 @@ class DisplayPointsStep(BaseStep):
 
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
-            title="Your points!",
+            title="Your history!",
             description="Below is a table of  "
-            "the points you've accrued from your contributions! ",
+            "the history of your contributions! ",
         )
 
         if is_in_dms:
@@ -131,7 +131,7 @@ class DisplayPointsStep(BaseStep):
         cache_entry = await self.cache.get(user_id)
         cache_values = json.loads(cache_entry)
         metadata = cache_values.get("metadata")
-        print("points " + str(user_id))
+        print("history " + str(user_id))
         days = self.days
         if cache_entry:
             days = metadata.get("days")
@@ -180,7 +180,7 @@ class DisplayPointsStep(BaseStep):
 
 
 class GetContributionsCsvPropmt(BaseStep):
-    """Prompts user if they'd like a csv representation of their points"""
+    """Prompts user if they'd like a csv representation of their history"""
 
     name = StepKeys.POINTS_CSV_PROMPT.value
 
@@ -233,12 +233,12 @@ class GetContributionsCsvPropmtAccept(BaseStep):
         return msg, None
 
 
-class Points(BaseThread):
+class History(BaseThread):
     name = ThreadKeys.POINTS.value
 
     async def get_steps(self):
-        display_points_step = Step(
-            current=DisplayPointsStep(
+        display_history_step = Step(
+            current=DisplayHistoryStep(
                 guild_id=self.guild_id,
                 cache=self.cache,
                 bot=self.bot,
@@ -246,11 +246,11 @@ class Points(BaseThread):
             )
         )
 
-        points_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
+        history_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
 
         return (
-            display_points_step.add_next_step(GetContributionsCsvPropmt())
+            display_history_step.add_next_step(GetContributionsCsvPropmt())
             .add_next_step(GetContributionsCsvPropmtEmoji())
-            .add_next_step(points_csv_accept)
+            .add_next_step(history_csv_accept)
             .build()
         )
