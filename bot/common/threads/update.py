@@ -51,25 +51,29 @@ class UserUpdateFieldSelectStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        fields = await get_user_record(user_id, self.cls.guild_id)
-        user = fields.get("fields")
+        user = await get_user_record(user_id)
         if not user:
             raise Exception("No user for updating field")
         embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             description="Please select one of the following fields to update via emoji",
         )
-        emojis = get_list_of_emojis(4)
+        emojis = get_list_of_emojis(3)
+        twitter = user.get("twitter_user", {"username": ""}) or {"username": None}
+        print(twitter)
         embed.add_field(
             name=f"Display Name {emojis[0]}", value=user.get("display_name")
         )
-        embed.add_field(name=f"Twitter Handle {emojis[1]}", value=user.get("twitter"))
         embed.add_field(
-            name=f"Ethereum Wallet Address {emojis[2]}", value=user.get("wallet")
+            name=f"Twitter Handle {emojis[1]}",
+            value=twitter.get("username"),
         )
         embed.add_field(
-            name=f"Discourse Handle {emojis[3]}", value=user.get("discourse")
+            name=f"Ethereum Wallet Address {emojis[2]}", value=user.get("address")
         )
+        # embed.add_field(
+        #     name=f"Discourse Handle {emojis[3]}", value=user.get("discourse")
+        # )
 
         channel = message.channel
         sent_message = await channel.send(embed=embed)
@@ -81,7 +85,7 @@ class UserUpdateFieldSelectStep(BaseStep):
                 emojis[0]: "display_name",
                 emojis[1]: "twitter",
                 emojis[2]: "wallet",
-                emojis[3]: "discourse",
+                # emojis[3]: "discourse",
             },
         )
 
@@ -129,8 +133,8 @@ class UpdateFieldStep(BaseStep):
         field = metadata.get("field")
         if not field:
             raise Exception("No field present to update")
-        record_id = await find_user(user_id, guild_id)
-        await update_user(record_id, field, message.content.strip())
+        record = await find_user(user_id)
+        await update_user(record.get("id"), field, message.content.strip())
 
 
 class CongratsFieldUpdateStep(BaseStep):

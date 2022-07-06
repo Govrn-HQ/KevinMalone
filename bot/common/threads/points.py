@@ -15,10 +15,7 @@ from bot.common.threads.thread_builder import (
     Step,
     build_cache_value,
 )
-from bot.common.airtable import (
-    get_user_record,
-    get_contributions,
-)
+from bot.common.graphql import fetch_user, list_user_contributions_for_guild
 from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
@@ -58,21 +55,18 @@ def get_contribution_rows(contributions):
         "Status",
         "Date of Submission",
         "Date of Engagement",
-        "Points",
     ]
     rows = []
     time_fmt = "%Y-%m-%d"
     for contribution in contributions:
-        fields = contribution.get("fields")
-        submit_date = parser.parse(fields.get("DateofSubmission"))
-        engage_date = parser.parse(fields.get("DateOfEngagement"))
+        submit_date = parser.parse(contribution.get("date_of_submission"))
+        engage_date = parser.parse(contribution.get("date_of_engagement"))
         rows.append(
             [
-                fields.get("Activity"),
-                fields.get("status"),
+                contribution.get("name"),
+                contribution.get("status").get("name"),
                 submit_date.strftime(time_fmt),
                 engage_date.strftime(time_fmt),
-                fields.get("Score"),
             ]
         )
     return [header, rows]
@@ -99,7 +93,7 @@ class DisplayPointsStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        record = await get_user_record(user_id, self.guild_id)
+        record = await fetch_user(user_id)
         logger.info(
             "user_id "
             + str(user_id)
@@ -134,8 +128,6 @@ class DisplayPointsStep(BaseStep):
         else:
             await self.context.response.send_message(embed=embed, ephemeral=True)
 
-        fields = record.get("fields")
-        global_id = fields.get("global_id")
         cache_entry = await self.cache.get(user_id)
         cache_values = json.loads(cache_entry)
         metadata = cache_values.get("metadata")
@@ -150,7 +142,10 @@ class DisplayPointsStep(BaseStep):
             else timedelta(days=int(days or "1"))
         )
         date = datetime.now() - td
-        contributions = await get_contributions(global_id, date)
+        date = date.isoformat()
+        contributions = await list_user_contributions_for_guild(
+            user_id, self.guild_id, date
+        )
         # [0] is headers, [1] is a list of rows
         contribution_rows = get_contribution_rows(contributions)
 

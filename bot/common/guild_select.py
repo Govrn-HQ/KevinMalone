@@ -1,5 +1,6 @@
 import json
 import hashlib
+from bot.common.threads.add_dao import AddDao
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -36,6 +37,8 @@ async def get_thread(user_id, key, cache=None):
         return await Report(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.POINTS.value:
         return await Points(user_id, step, message_id, guild_id, cache)
+    elif thread == ThreadKeys.ADD_DAO.value:
+        return await AddDao(user_id, step, message_id, guild_id, cache)
     raise Exception("Unknown Thread!")
 
 
