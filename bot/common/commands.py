@@ -16,14 +16,13 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
 )
 from bot.common.threads.onboarding import Onboarding
-from bot.common.threads.report import ReportStep
+from bot.common.threads.report import ReportStep, get_reporting_link
 from bot.common.threads.points import Points
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
 from bot.common.threads.guild_select import GuildSelect
 from bot.common.threads.utils import get_thread
 from bot.config import (
-    REPORTING_FORM_FMT,
     GUILD_IDS,
     INFO_EMBED_COLOR,
     Redis,
@@ -73,19 +72,19 @@ async def report(ctx):
             ),
         )
 
-    airtableLink = REPORTING_FORM_FMT % ctx.guild.id
+    reporting_form_link = await get_reporting_link(ctx.guild.id)
 
-    if airtableLink:
+    if reporting_form_link:
         _, metadata = await ReportStep(
-            guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel
+            guild_id=ctx.guild.id,
+            cache=Redis,
+            bot=bot,
+            channel=ctx.channel,
+            reporting_link=reporting_form_link,
         ).send(None, ctx.author.id)
         # send message to congrats channel
 
         await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
-    else:
-        await ctx.response.send_message(
-            "No airtable link was provided for this Discord server", ephemeral=True
-        )
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
@@ -375,6 +374,10 @@ async def select_guild(ctx, response_embed, error_embed):
 
     await ctx.response.defer()
     guild_metadata = []
+    # TODO: this will set Thread.guild_id to the database id of the guild
+    # there are many places which still use guild_id to represent the discord
+    # id of the guild itself. We should standardize on guild_id vs guild_discord_id
+    # everywhere that's appropriate. Also with user_id vs user_discord_id
     for record_id in guild_ids:
         g = await get_guild(record_id.get("guild_id"))
         guild_id = g.get("id")
