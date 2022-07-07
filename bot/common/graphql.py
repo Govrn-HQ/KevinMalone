@@ -171,8 +171,10 @@ query listContributions($where: ContributionWhereInput! = {},
         },
     )
     if result:
-        return result.get("result")
-    return result
+        res = result.get("result")
+        if len(res):
+            return res
+    return None
 
 
 async def get_guild_by_discord_id(id):
