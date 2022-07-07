@@ -4,20 +4,20 @@ from typing import Dict
 import pandas as pd
 from datetime import datetime
 from discord import EmbedField, File, Embed
-from pyairtable import Table
-from pyairtable.formulas import match
 
 from bot.common.airtable import (
     get_guild_by_guild_id,
-    get_guild_id_by_guild_name,
     get_activity_name,
     get_member_name,
     get_discord_id_from_user_record,
 )
+from bot.common.graphql import (
+    get_contributions_for_guild,
+)
 
 from bot import constants
 from bot.common.bot.bot import bot
-from bot.config import AIRTABLE_BASE, AIRTABLE_KEY, INFO_EMBED_COLOR
+from bot.config import INFO_EMBED_COLOR
 
 logger = logging.getLogger(__name__)
 
@@ -70,17 +70,10 @@ def get_guilds_to_report():
     return active_guilds
 
 
-# TODO: asyncify
-def create_guild_dataframe(guild_name) -> pd.DataFrame:
+async def create_guild_dataframe(guild_id) -> pd.DataFrame:
     """Returns the community's weekly csv given the guild name."""
-
-    # translate guild name to guild id
-    guild_id = get_guild_id_by_guild_name(guild_name)
-
-    # filter Activity History Staging by guild id
-    table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Activity History Staging")
-    # records = table.all(formula=match({"Guild": guild_id}))
-    records = table.all(formula=match({"reportedToGuild": guild_id}))
+    records = await get_contributions_for_guild(
+        guild_id, user_discord_id=None, after_date=None)
 
     # convert records from json to df
     df_rows = []
