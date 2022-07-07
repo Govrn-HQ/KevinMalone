@@ -16,6 +16,7 @@ from bot.common.threads.thread_builder import (
     build_cache_value,
 )
 from bot.common.graphql import (
+    get_guild_by_discord_id,
     fetch_user_by_discord_id,
     list_user_contributions_for_guild,
 )
@@ -271,7 +272,7 @@ async def get_contributions(metadata, user_id, guild_id, days):
     td = timedelta(weeks=52 * 20) if days == "all" else timedelta(days=int(days or "1"))
     date = datetime.now() - td
     date = date.isoformat()
-    guild = await get_guild(guild_id)
+    guild = await get_guild_by_discord_id(guild_id)
     contributions = await list_user_contributions_for_guild(
         user_id, guild.get("id"), date
     )
