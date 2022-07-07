@@ -58,6 +58,9 @@ async def send_weekly_contribution_reports():
     )
 
     channel = bot.get_channel(report_channel_id)
+
+    channel.send(embed=embed)
+
     # print message for series of reports
     for guild, report in reports:
         await channel.send(content=guild, file=report)
