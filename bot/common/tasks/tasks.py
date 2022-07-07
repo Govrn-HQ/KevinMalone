@@ -1,13 +1,10 @@
-from linecache import cache
 import threading
-import time
-import datetime
 import logging
 import asyncio
 
-from datetime import timedelta, datetime
-
-from bot.common.cache import RedisCache
+from bot.common.cache import Cache, RedisCache
+from abc import ABC, abstractmethod
+from datetime import timedelta, datetime, time
 
 logger = logging.getLogger(__name__)
 
@@ -51,24 +48,53 @@ class Tasks:
             asyncio.run(self._batch_run_tasks)
 
 
-# Defines a group of commonly used predicates for determining if the task should
-# run at the supplied datetime
-class Cadences:
-    cache = RedisCache()
+class Cadence(ABC):
 
-    # Requires cache to determine if report has already been sent
-    async def once_weekly(weekday: int) -> bool:
-        last_sent = await Cadences.cache.get(REPORT_LAST_SENT_DATETIME_CACHE_KEY)
+    # Returns the number of seconds until the task can be run. Negative
+    # values reflect that the task is due to fire.
+    @abstractmethod
+    async def timedelta_until_run(self) -> timedelta:
+        pass
+
+    async def update_last_run_in_cache(self):
+        await self.cache.set(
+            REPORT_LAST_SENT_DATETIME_CACHE_KEY,
+            datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        )
+
+
+class Weekly(Cadence):
+    def __init__(self, cache: Cache, cache_key: str, day_to_run: int, time_to_run: time):
+        self.cache = cache
+        self.cache_key = cache_key
+        self.day_to_run = day_to_run
+        self.time_to_run = time_to_run
+
+    # last_sent should be used to make sure that the bot doesn't 
+    # always send something on a restart
+    async def timedelta_until_run(self) -> timedelta:
+        last_sent = await self.cache.get(self.cache_key)
         # check that today is the same weekday as the cadence and that
         # the last update was sent 1 week ago
-        now = datetime.now()
+        now: datetime = datetime.now()
+
+        # last_entry does not exist -> return delta to closest ocurrence of day to run, time
+        if last_sent is None:
+            if now.weekday() == self.day_to_run:
+                # run immediately
+                return timedelta(seconds=-1)
+            # return the timedelta for the next occurrence of the day and time to run
+
+        # case 1: last_entry exists -> return delta to next ocurrence of day to run, time to run
+        # do we need handling of last_entries on odd days?
+
+        # if there is no last_sent entry in the cache, then wait for the
+        # next ocurrence of the day + time to run
+
         td: timedelta = (
             None if last_sent is None else now - datetime.strptime(last_sent)
         )
-        if td.days >= 7 and now.date().weekday() == weekday:
-            await Cadences.cache.set(
-                REPORT_LAST_SENT_DATETIME_CACHE_KEY, now.strftime("%m/%d/%Y, %H:%M:%S")
-            )
+        if td.days >= 7 and now.date().weekday() == self.day_to_run:
             return True
         return False
 
@@ -97,6 +123,6 @@ tasks = Tasks()
 #   report yet, do so, and update the cache
 
 
-@tasks.task(Cadences.once_weekly, Days.FRIDAY)
+@tasks.task(Cadences.weekly, Days.FRIDAY)
 def weekly_report():
     pass
