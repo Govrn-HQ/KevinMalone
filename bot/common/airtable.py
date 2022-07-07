@@ -151,17 +151,6 @@ async def find_guild(guild_id):
     return await loop.run_in_executor(None, _find_guild)
 
 
-def get_guild_id_by_guild_name(guild_name):
-
-    """Returns the community's guild ID (str) given the guild name (str)."""
-
-    table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-    records = table.all(formula=match({"guild_name": guild_name}))
-    guild_id = records[0].get("fields").get("guild_id")
-
-    return guild_id
-
-
 async def get_guild_by_guild_id(guild_id):
 
     """Return airtable record number in guild table given guild_id."""
