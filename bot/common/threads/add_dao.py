@@ -67,7 +67,7 @@ class AddDaoGetOrCreate(BaseStep):
             dao_id = str(int(message_content))
         except ValueError:
             message = f"{message_content} is not a valid discord id!"
-            raise ThreadTerminatingException()
+            raise ThreadTerminatingException(message)
 
         return None, {"guild_id": dao_id}
 
