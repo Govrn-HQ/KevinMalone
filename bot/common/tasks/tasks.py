@@ -146,8 +146,3 @@ tasks = Tasks()
 
 # sol 2: check cache for last report. if it's past 5pm friday, and we haven't sent the
 #   report yet, do so, and update the cache
-
-
-@tasks.task(Cadences.weekly, Days.FRIDAY)
-def weekly_report():
-    pass
