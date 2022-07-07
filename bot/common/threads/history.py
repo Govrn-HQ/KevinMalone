@@ -15,7 +15,11 @@ from bot.common.threads.thread_builder import (
     Step,
     build_cache_value,
 )
-from bot.common.graphql import fetch_user, list_user_contributions_for_guild
+from bot.common.graphql import (
+    get_guild_by_discord_id,
+    fetch_user_by_discord_id,
+    list_user_contributions_for_guild,
+)
 from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
@@ -42,8 +46,8 @@ def build_csv_file(header, rows, user_id):
 
     csvFile = File(
         s,
-        str(user_id) + "_points.csv",
-        description="A csv file of your points from contributions",
+        str(user_id) + "_history.csv",
+        description="A csv file of your history of contributions",
         spoiler=False,
     )
     return csvFile
@@ -72,8 +76,8 @@ def get_contribution_rows(contributions):
     return [header, rows]
 
 
-class DisplayPointsStep(BaseStep):
-    """Displays points accrued by a given user"""
+class DisplayHistoryStep(BaseStep):
+    """Displays history of a given user"""
 
     name = StepKeys.DISPLAY_POINTS.value
     trigger = True
@@ -93,7 +97,7 @@ class DisplayPointsStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        record = await fetch_user(user_id)
+        record = await fetch_user_by_discord_id(user_id)
         logger.info(
             "user_id "
             + str(user_id)
@@ -105,7 +109,7 @@ class DisplayPointsStep(BaseStep):
         if record is None:
             self.end_flow = True
             content = "Looks like you're not yet onboarded to the guild! "
-            "Complete the intial onboarding /join command before running `/points`"
+            "Complete the intial onboarding /join command before running `/history`"
             if is_in_dms:
                 return await message.channel.send(content), None
             else:
@@ -116,38 +120,38 @@ class DisplayPointsStep(BaseStep):
                     None,
                 )
 
-        embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            title="Your points!",
-            description="Below is a table of  "
-            "the points you've accrued from your contributions! ",
-        )
-
-        if is_in_dms:
-            await message.channel.send(embed=embed)
-        else:
-            await self.context.response.send_message(embed=embed, ephemeral=True)
-
         cache_entry = await self.cache.get(user_id)
         cache_values = json.loads(cache_entry)
-        metadata = cache_values.get("metadata")
-        print("points " + str(user_id))
-        days = self.days
+        metadata = None
         if cache_entry:
-            days = metadata.get("days")
-        date = None
-        td = (
-            timedelta(weeks=52 * 20)
-            if days == "all"
-            else timedelta(days=int(days or "1"))
+            metadata = cache_values.get("metadata")
+
+        contributions = await get_contributions(
+            metadata, user_id, self.guild_id, self.days
         )
-        date = datetime.now() - td
-        date = date.isoformat()
-        contributions = await list_user_contributions_for_guild(
-            user_id, self.guild_id, date
-        )
+
+        if contributions is None:
+            self.end_flow = True
+            msg = (
+                "Looks like you don't have any contribution history. "
+                "You can start reporting your contributions with /report!"
+            )
+            if is_in_dms:
+                return await message.channel.send(msg), None
+            else:
+                return (
+                    await self.context.response.send_message(msg, ephemeral=True),
+                    None,
+                )
+
         # [0] is headers, [1] is a list of rows
         contribution_rows = get_contribution_rows(contributions)
+
+        history_embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title="Your history!",
+            description="Below is a table of  " "the history of your contributions! ",
+        )
 
         table = build_table(
             contribution_rows[0], contribution_rows[1][:MAX_CONTRIBUTIONS_TO_DISPLAY]
@@ -157,10 +161,14 @@ class DisplayPointsStep(BaseStep):
         metadata["msg"] = msg
 
         if is_in_dms:
+            await message.channel.send(embed=history_embed)
             sent_message = await message.channel.send(msg)
         else:
             csv_file = build_csv_file(
                 contribution_rows[0], contribution_rows[1], user_id
+            )
+            await self.context.response.send_message(
+                embed=history_embed, ephemeral=True
             )
             followup = self.context.interaction.followup
             sent_message = await followup.send(
@@ -180,7 +188,7 @@ class DisplayPointsStep(BaseStep):
 
 
 class GetContributionsCsvPropmt(BaseStep):
-    """Prompts user if they'd like a csv representation of their points"""
+    """Prompts user if they'd like a csv representation of their history"""
 
     name = StepKeys.POINTS_CSV_PROMPT.value
 
@@ -233,12 +241,12 @@ class GetContributionsCsvPropmtAccept(BaseStep):
         return msg, None
 
 
-class Points(BaseThread):
+class History(BaseThread):
     name = ThreadKeys.POINTS.value
 
     async def get_steps(self):
-        display_points_step = Step(
-            current=DisplayPointsStep(
+        display_history_step = Step(
+            current=DisplayHistoryStep(
                 guild_id=self.guild_id,
                 cache=self.cache,
                 bot=self.bot,
@@ -246,11 +254,26 @@ class Points(BaseThread):
             )
         )
 
-        points_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
+        history_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
 
         return (
-            display_points_step.add_next_step(GetContributionsCsvPropmt())
+            display_history_step.add_next_step(GetContributionsCsvPropmt())
             .add_next_step(GetContributionsCsvPropmtEmoji())
-            .add_next_step(points_csv_accept)
+            .add_next_step(history_csv_accept)
             .build()
         )
+
+
+async def get_contributions(metadata, user_id, guild_id, days):
+    print("history " + str(user_id))
+    if metadata:
+        days = metadata.get("days")
+    date = None
+    td = timedelta(weeks=52 * 20) if days == "all" else timedelta(days=int(days or "1"))
+    date = datetime.now() - td
+    date = date.isoformat()
+    guild = await get_guild_by_discord_id(guild_id)
+    contributions = await list_user_contributions_for_guild(
+        user_id, guild.get("id"), date
+    )
+    return contributions

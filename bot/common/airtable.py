@@ -5,16 +5,16 @@ from pyairtable import Table
 from pyairtable.formulas import match
 from bot.config import AIRTABLE_BASE, AIRTABLE_KEY
 from bot.common.graphql import (
-    fetch_user,
+    fetch_user_by_discord_id,
     create_guild_user,
     create_user as cu,
-    get_guild as gg,
+    get_guild_by_discord_id,
     get_guild_by_id as ggbi,
     update_user_display_name,
     update_user_wallet,
     update_user_twitter_handle,
     create_guild as cg,
-    update_guild as ug,
+    update_guild_name as ug,
 )
 
 
@@ -36,7 +36,7 @@ async def find_user(user_id):
     #     return record_id
 
     # return await loop.run_in_executor(None, _find_user)
-    return await fetch_user(user_id)
+    return await fetch_user_by_discord_id(user_id)
 
 
 async def get_user_record(user_id):
@@ -57,7 +57,7 @@ async def get_user_record(user_id):
     #     return record_id
 
     # return await loop.run_in_executor(None, _find_user)
-    return await fetch_user(user_id)
+    return await fetch_user_by_discord_id(user_id)
 
 
 async def get_contribution_records(guild_id):
@@ -178,7 +178,7 @@ async def get_guild_by_guild_id(guild_id):
     #     return record_id
 
     # return await loop.run_in_executor(None, _find_guild)
-    return await gg(guild_id)
+    return await get_guild_by_discord_id(guild_id)
 
 
 async def get_guild(record_id):
@@ -404,11 +404,12 @@ async def create_guild(user_id, dao_id):
     return await cg(user_id, dao_id)
 
 
-async def create_user(discord_id, guild_id, wallet):
+async def create_user(discord_id, guild_db_id, wallet):
     """Return new airtable record # in users table given user_id & guild_id.
     If user table record for combo already exist, return existing record_id."""
     user = await cu(discord_id, wallet)
-    await create_guild_user(user.get("id"), guild_id)
+    await create_guild_user(user.get("id"), guild_db_id)
+    return user
 
 
 # loop = asyncio.get_running_loop()
