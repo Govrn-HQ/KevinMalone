@@ -10,9 +10,9 @@ from pyairtable.formulas import match
 from bot.common.airtable import (
     get_guild_by_guild_id,
     get_guild_id_by_guild_name,
-    get_activity_name, 
+    get_activity_name,
     get_member_name,
-    get_discord_id_from_user_record
+    get_discord_id_from_user_record,
 )
 
 from bot import constants
@@ -42,8 +42,8 @@ async def send_weekly_contribution_reports():
     reports = generate_contribution_reports(guilds_to_report)
     formatted_date = get_formatted_date()
     guilds_to_report_field = EmbedField(
-        name="Reporting guilds",
-        value=', '.join(guilds_to_report))
+        name="Reporting guilds", value=", ".join(guilds_to_report)
+    )
 
     embed_description = (
         "Reporting on the contributions submitted for each active"
@@ -54,14 +54,14 @@ async def send_weekly_contribution_reports():
         colour=INFO_EMBED_COLOR,
         title=f"Weekly contribution report for {formatted_date}",
         description=embed_description,
-        fields=[guilds_to_report_field]
+        fields=[guilds_to_report_field],
     )
 
     channel = bot.get_channel(report_channel_id)
     # print message for series of reports
     for guild, report in reports:
         await channel.send(content=guild, file=report)
-        
+
 
 # helper functions
 
@@ -105,7 +105,9 @@ def create_guild_dataframe(guild_name) -> pd.DataFrame:
 
     # map linked records
     # TODO: These should be rewritten so the lambdas are async/nonblocking
-    df["ActivityType"] = df.apply(lambda x: get_activity_name(x["ActivityType"][0]), axis=1)
+    df["ActivityType"] = df.apply(
+        lambda x: get_activity_name(x["ActivityType"][0]), axis=1
+    )
     df["Member"] = df.apply(lambda x: get_member_name(x["Member"][0]), axis=1)
     df["member_globalID"] = df.apply(
         lambda x: get_discord_id_from_user_record(x["member_globalID"][0]), axis=1
@@ -161,9 +163,9 @@ def generate_contribution_reports(guilds_to_report) -> Dict[str, File]:
         csv_file = File(
             fp=s,
             filename=csv_name,
-            description=f"{date_reformat} weekly contribution report for {guild}"
+            description=f"{date_reformat} weekly contribution report for {guild}",
         )
 
         reports[csv_name] = csv_file
-    
+
     return reports
