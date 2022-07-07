@@ -123,7 +123,8 @@ class DisplayHistoryStep(BaseStep):
             metadata = cache_values.get("metadata")
 
         contributions = await get_contributions(
-            metadata, user_id, self.guild_id, self.days)
+            metadata, user_id, self.guild_id, self.days
+        )
 
         if contributions is None:
             self.end_flow = True
@@ -134,9 +135,10 @@ class DisplayHistoryStep(BaseStep):
             if is_in_dms:
                 return await message.channel.send(msg), None
             else:
-                return await self.context.response.send_message(
-                    msg,
-                    ephemeral=True), None
+                return (
+                    await self.context.response.send_message(msg, ephemeral=True),
+                    None,
+                )
 
         # [0] is headers, [1] is a list of rows
         contribution_rows = get_contribution_rows(contributions)
@@ -144,8 +146,7 @@ class DisplayHistoryStep(BaseStep):
         history_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             title="Your history!",
-            description="Below is a table of  "
-            "the history of your contributions! ",
+            description="Below is a table of  " "the history of your contributions! ",
         )
 
         table = build_table(
@@ -163,7 +164,8 @@ class DisplayHistoryStep(BaseStep):
                 contribution_rows[0], contribution_rows[1], user_id
             )
             await self.context.response.send_message(
-                embed=history_embed, ephemeral=True)
+                embed=history_embed, ephemeral=True
+            )
             followup = self.context.interaction.followup
             sent_message = await followup.send(
                 content=msg, ephemeral=True, file=csv_file
@@ -263,11 +265,7 @@ async def get_contributions(metadata, user_id, guild_id, days):
     if metadata:
         days = metadata.get("days")
     date = None
-    td = (
-        timedelta(weeks=52 * 20)
-        if days == "all"
-        else timedelta(days=int(days or "1"))
-    )
+    td = timedelta(weeks=52 * 20) if days == "all" else timedelta(days=int(days or "1"))
     date = datetime.now() - td
     date = date.isoformat()
     guild = await get_guild(guild_id)
