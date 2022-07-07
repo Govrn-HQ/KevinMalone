@@ -152,7 +152,7 @@ async def find_guild(guild_id):
 
 
 def get_guild_id_by_guild_name(guild_name):
-    
+
     """Returns the community's guild ID (str) given the guild name (str)."""
 
     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
@@ -200,7 +200,7 @@ async def get_guild(record_id):
 
 
 def get_activity_name(airtable_record):
-    
+
     """Given the airtable record for an entry in the `ActivityType`
     table, returns `activity_name_only` field."""
 
@@ -211,9 +211,9 @@ def get_activity_name(airtable_record):
     return activity
 
 
- def get_member_name(airtable_record):
+def get_member_name(airtable_record):
 
-    """Given the airtable record for an entry in the `Members` table, 
+    """Given the airtable record for an entry in the `Members` table,
     return the `Name` field."""
 
     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
@@ -224,7 +224,7 @@ def get_activity_name(airtable_record):
 
 
 def get_discord_id_from_user_record(airtable_record):
-    
+
     """Given the airtable record for an entry in the `Users` table,
     return their `discord_id` field from a linked record in the `global` table"""
 
