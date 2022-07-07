@@ -15,7 +15,7 @@ from bot.common.threads.onboarding import Onboarding  # noqa: E402
 from bot.common.threads.update import UpdateProfile  # noqa: E402
 from bot.common.threads.initial_contribution import InitialContributions
 from bot.common.threads.report import Report
-from bot.common.threads.history import History
+from bot.common.threads.points import Points
 from bot.config import Redis
 
 
@@ -36,7 +36,7 @@ async def get_thread(user_id, key, cache=None):
     elif thread == ThreadKeys.REPORT.value:
         return await Report(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.POINTS.value:
-        return await History(user_id, step, message_id, guild_id, cache)
+        return await Points(user_id, step, message_id, guild_id, cache)
     elif thread == ThreadKeys.ADD_DAO.value:
         return await AddDao(user_id, step, message_id, guild_id, cache)
     raise Exception("Unknown Thread!")
