@@ -67,7 +67,7 @@ class StepKeys(Enum):
     USER_DISPLAY_SUBMIT = "user_display_submit"
     ADD_USER_TWITTER = "add_user_twitter"
     ONBOARDING_CONGRATS = "onboarding_congrats"
-    ADD_USER_WALLET_ADDRESS = "add_user_wallet_address"
+    CREATE_USER_WITH_WALLET_ADDRESS = "create_user_with_wallet_address"
     ADD_USER_DISCOURSE = "add_user_discourse"
     SELECT_GUILD_EMOJI = "select_guild_emoji"
     USER_UPDATE_FIELD_SELECT = "user_update_select"
@@ -98,8 +98,11 @@ class StepKeys(Enum):
     POINTS_CSV_PROMPT_EMOJI = "history_csv_prompt_emoji"
     POINTS_CSV_PROMPT_ACCEPT = "history_csv_prompt_accept"
     ADD_DAO_PROMPT_ID = "add_dao_prompt_id"
+    ADD_DAO_PREVIOUSLY_ADDED_PROMPT = "add_dao_previously_added_prompt"
+    ADD_DAO_GET_OR_CREATE = "add_dao_check_exists"
     ADD_DAO_PROMPT_NAME = "add_dao_prompt_name"
     ADD_DAO_SUCCESS = "add_dao_success"
+    ADD_DAO_JOIN = "add_dao_join"
 
 
 class BaseThread:
@@ -240,7 +243,15 @@ class BaseThread:
         if not self.step.next_steps:
             return await self.cache.delete(self.user_id)
         step = list(self.step.next_steps.values())[0]
-        override_step = await self.step.current.control_hook(message, self.user_id)
+
+        override_step = None
+        try:
+            override_step = await self.step.current.control_hook(message, self.user_id)
+        except ThreadTerminatingException as e:
+            await message.channel.send(str(e))
+            await self.cache.delete(self.user_id)
+            raise e
+
         if override_step == StepKeys.END.value:
             return await self.cache.delete(self.user_id)
         if override_step:
