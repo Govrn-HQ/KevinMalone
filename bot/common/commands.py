@@ -20,7 +20,7 @@ from bot.common.threads.thread_builder import (
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep, get_reporting_link
-from bot.common.threads.history import History
+from bot.common.threads.points import Points
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
 from bot.config import (
@@ -211,9 +211,9 @@ async def update(ctx):
 
 @bot.slash_command(
     guild_id=GUILD_IDS,
-    description="Send user history for a given community",
+    description="Send user points for a given community",
 )
-async def history(
+async def points(
     ctx,
     days: Option(
         str,
@@ -231,7 +231,7 @@ async def history(
         error_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             description="You are not a part of any communities. "
-            "Please run the /history command in a guild you are in",
+            "Please run the /points command in a guild you are in",
         )
 
         message, metadata = await select_guild(ctx, embed, error_embed)
@@ -259,7 +259,7 @@ async def history(
             ),
         )
 
-    thread = await History(
+    thread = await Points(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         None,
