@@ -5,7 +5,10 @@ from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from gql.transport.exceptions import TransportQueryError
 
-from exceptions import UserWithAddressAlreadyExists, UserWithTwitterHandleAlreadyExists
+from bot.exceptions import (
+    UserWithAddressAlreadyExists,
+    UserWithTwitterHandleAlreadyExists,
+)
 
 logger = logging.getLogger(__name__)
 

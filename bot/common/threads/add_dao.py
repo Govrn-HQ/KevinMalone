@@ -17,7 +17,7 @@ from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key,
 )
-from exceptions import ThreadTerminatingException
+from bot.exceptions import ThreadTerminatingException
 
 # from bot.common.threads.utils import (  # noqa: E402
 # set_thread_and_send

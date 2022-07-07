@@ -5,7 +5,7 @@ import logging
 
 from bot.common.bot.bot import bot
 from bot.common.cache import RedisCache
-from exceptions import ThreadTerminatingException
+from bot.exceptions import ThreadTerminatingException
 from enum import Enum
 from typing import Dict, Optional
 

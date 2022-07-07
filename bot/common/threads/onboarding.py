@@ -22,7 +22,7 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata_key,
     write_cache_metadata,
 )
-from exceptions import ThreadTerminatingException
+from bot.exceptions import ThreadTerminatingException
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
