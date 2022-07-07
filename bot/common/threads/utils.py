@@ -5,7 +5,7 @@ from bot.common.threads.onboarding import Onboarding  # noqa: E402
 from bot.common.threads.update import UpdateProfile  # noqa: E402
 from bot.common.threads.initial_contribution import InitialContributions
 from bot.common.threads.report import Report
-from bot.common.threads.history import History 
+from bot.common.threads.history import History
 from bot.common.threads.add_dao import AddDao
 
 
