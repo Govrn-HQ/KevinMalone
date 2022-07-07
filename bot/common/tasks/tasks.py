@@ -4,7 +4,7 @@ import asyncio
 
 from bot.common.cache import Cache
 from abc import ABC, abstractmethod
-from datetime import timedelta, datetime, time, date
+from datetime import timedelta, datetime, time
 
 logger = logging.getLogger(__name__)
 
