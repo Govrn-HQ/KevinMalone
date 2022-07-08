@@ -1,4 +1,6 @@
+from datetime import timedelta, time, datetime
 from bot.common.cache import Cache
+from bot.common.tasks.tasks import Cadence
 
 
 # Add in memory implementation
@@ -15,3 +17,15 @@ class MockCache(Cache):
     async def delete(self, key):
         if self.internal.get(key):
             del self.internal[key]
+
+
+class MockCadence(Cadence):
+    def __init__(self, time_to_run: time):
+        self.time_to_run = time_to_run
+
+    async def get_timedelta_until_run(self) -> timedelta:
+        now = datetime.now()
+        return datetime.combine(now.date, self.time_to_run) - now
+
+    def set_time_to_run(self, time_to_run):
+        self.time_to_run = time_to_run
