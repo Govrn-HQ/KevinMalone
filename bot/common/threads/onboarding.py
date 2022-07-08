@@ -1,12 +1,11 @@
-from bot import constants
 import discord
+from web3 import Web3
 from bot.common.airtable import (
-    find_user,
-    update_member,
-    update_user,
-    get_guild_by_guild_id,
-    get_user_record,
     create_user,
+    update_user,
+)
+from bot.common.graphql import (
+    get_guild_by_discord_id,
 )
 from bot.config import (
     YES_EMOJI,
@@ -20,7 +19,10 @@ from bot.common.threads.thread_builder import (
     Step,
     ThreadKeys,
     BaseThread,
+    get_cache_metadata_key,
+    write_cache_metadata,
 )
+from bot.exceptions import ThreadTerminatingException
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
@@ -60,7 +62,8 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM_EMOJI.value
     emoji = True
 
-    def __init__(self, bot):
+    def __init__(self, cache, bot):
+        self.cache = cache
         self.bot = bot
 
     @property
@@ -71,20 +74,23 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         if raw_reaction.emoji.name in self.emojis:
             if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
-            return StepKeys.ADD_USER_TWITTER.value, None
+            return StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value, None
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
         user = await self.bot.fetch_user(user_id)
-        print(user_id)
-        record = await find_user(user_id)
-        await update_user(record.get("id"), "display_name", user.display_name)
+        await write_cache_metadata(
+            user_id, self.cache, "display_name", user.display_name
+        )
 
 
 class UserDisplaySubmitStep(BaseStep):
     """Submit new display name to be saved"""
 
     name = StepKeys.USER_DISPLAY_SUBMIT.value
+
+    def __init__(self, cache):
+        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
@@ -94,12 +100,46 @@ class UserDisplaySubmitStep(BaseStep):
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        record_id = await find_user(user_id)
-        val = message.content.strip()
-        await update_user(record_id, "display_name", val)
+        display_name = message.content.strip()
+        await write_cache_metadata(user_id, self.cache, "display_name", display_name)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
+
+
+class CreateUserWithWalletAddressStep(BaseStep):
+    """Step to submit wallet address for the govrn profile"""
+
+    name = StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value
+
+    def __init__(self, cache, guild_id):
+        super().__init__()
+        self.cache = cache
+        self.guild_id = guild_id
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(
+            "What Ethereum wallet address would you like to associate with this guild?"
+        )
+        return sent_message, None
+
+    async def save(self, message, guild_id, user_id):
+        wallet = message.content.strip()
+
+        if not Web3.isAddress(wallet):
+            raise ThreadTerminatingException(f"{wallet} is not a valid wallet address")
+
+        display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
+        guild = await get_guild_by_discord_id(guild_id)
+
+        # user creation is performed when supplying wallet address since this
+        # is a mandatory field for the user record
+        # TODO: wrap into a single CRUD
+        user = await create_user(user_id, guild.get("id"), wallet)
+        user_db_id = user.get("id")
+        await update_user(user_db_id, "display_name", display_name)
+        await write_cache_metadata(user_id, self.cache, "user_db_id", user_db_id)
 
 
 class AddUserTwitterStep(BaseStep):
@@ -107,9 +147,10 @@ class AddUserTwitterStep(BaseStep):
 
     name = StepKeys.ADD_USER_TWITTER.value
 
-    def __init__(self, guild_id):
+    def __init__(self, guild_id, cache):
         super().__init__()
         self.guild_id = guild_id
+        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
@@ -119,61 +160,12 @@ class AddUserTwitterStep(BaseStep):
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        record_id = await find_user(message.author.id)
-        await update_user(
-            record_id, "twitter", message.content.strip().replace("@", "")
-        )
+        twitter_handle = message.content.strip().replace("@", "")
+        user_db_id = await get_cache_metadata_key(user_id, self.cache, "user_db_id")
+        await update_user(user_db_id, "twitter", twitter_handle)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
-
-
-# class AddUserWalletAddressStep(BaseStep):
-#     """Step to submit wallet address for the govrn profile"""
-#
-#     name = StepKeys.ADD_USER_WALLET_ADDRESS.value
-#
-#     def __init__(self, guild_id):
-#         super().__init__()
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#         sent_message = await channel.send(
-#             "What Ethereum wallet address would you like to associate with this guild!"
-#         )
-#         return sent_message, None
-#
-#     async def save(self, message, guild_id, user_id):
-#         record_id = await find_user(message.author.id)
-#         await update_user(record_id, "wallet", message.content.strip())
-#
-#     async def handle_emoji(self, raw_reaction):
-#         return _handle_skip_emoji(raw_reaction, self.guild_id)
-
-
-# class AddDiscourseStep(BaseStep):
-#     """Step to submit discourse username for the govrn profile"""
-#
-#     name = StepKeys.ADD_USER_DISCOURSE.value
-#
-#     def __init__(self, guild_id):
-#         super().__init__()
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#         sent_message = await channel.send(
-#             "What discourse handle would you like to associate with this guild!"
-#         )
-#         return sent_message, None
-#
-#     async def save(self, message, guild_id, user_id):
-#         record_id = await find_user(message.author.id)
-#         await update_user(record_id, "discourse", message.content.strip())
-#
-#     async def handle_emoji(self, raw_reaction):
-#         return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
 class CongratsStep(BaseStep):
@@ -181,238 +173,20 @@ class CongratsStep(BaseStep):
 
     name = StepKeys.ONBOARDING_CONGRATS.value
 
-    def __init__(self, user_id, guild_id, bot):
+    def __init__(self, user_id, guild_id, cache):
         super().__init__()
         self.user_id = user_id
         self.guild_id = guild_id
-        self.bot = bot
+        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
-        guild = await self.bot.fetch_guild(self.guild_id)
+        guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
         sent_message = await channel.send(
-            f"Congratulations on completeing onboarding to {guild.name}"
+            f"Nice job! That's it for now! "
+            f"Welcome and congratulations on onboarding to {guild_name}"
         )
         return sent_message, None
-
-    async def handle_emoji(self, raw_reaction):
-        if SKIP_EMOJI in raw_reaction.emoji.name:
-            next_step = None
-            channel = await self.bot.fetch_channel(raw_reaction.channel_id)
-            guild = await self.bot.fetch_guild(self.guild_id)
-            await channel.send(
-                f"Congratulations on completeing onboarding to {guild.name}"
-            )
-            govrn_profile = await find_user(self.user_id)
-            if govrn_profile:
-                next_step = StepKeys.END.value
-            return next_step, False
-        raise Exception("Reacted with the wrong emoji")
-
-    async def control_hook(self, message, user_id):
-        govrn_profile = await find_user(user_id)
-        if not govrn_profile:
-            return StepKeys.GOVRN_PROFILE_PROMPT.value
-        return StepKeys.END.value
-
-
-class GovrnProfilePrompt(BaseStep):
-    """Ask whether user wants to join the Govrn guild"""
-
-    name = StepKeys.GOVRN_PROFILE_PROMPT.value
-
-    async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(
-            "Would you like to be onboarded to the govrn guild as well?"
-        )
-        await sent_message.add_reaction(YES_EMOJI)
-        await sent_message.add_reaction(NO_EMOJI)
-        return sent_message, None
-
-
-class GovrnProfilePromptEmoji(BaseStep):
-    """Accept user emoji reaction to whether they want to join Govrn"""
-
-    name = StepKeys.GOVRN_PROFILE_PROMPT_EMOJI.value
-
-    @property
-    def emojis(self):
-        return [YES_EMOJI, NO_EMOJI]
-
-    async def handle_emoji(self, raw_reaction):
-        if raw_reaction.emoji.name in self.emojis:
-            if raw_reaction.emoji.name == NO_EMOJI:
-                return StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value, None
-            return StepKeys.REUSE_GUILD_PROFILE_FOR_GOVRN_PROMPT.value, None
-        raise Exception("Reacted with the wrong emoji")
-
-
-class GovrnProfilePromptReject(BaseStep):
-    """Handle situation where does not want to join the govrn guild"""
-
-    name = StepKeys.GOVRN_PROFILE_PROMPT_REJECT.value
-
-    async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(
-            "No problem! You are free to join at any time."
-        )
-        return sent_message, None
-
-
-# class ReuseGuildProfileForGovrnPrompt(BaseStep):
-#     """Ask user whether they want to reuse their guild profile"""
-#
-#     name = StepKeys.REUSE_GUILD_PROFILE_FOR_GOVRN_PROMPT.value
-#
-#     def __init__(self, guild_id):
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#         # Get past guild and add the name
-#         record = await get_guild_by_guild_id(self.guild_id)
-#         fields = record
-#
-#         sent_message = await channel.send(
-#             "Would you like to reuse your profile data from "
-#             f"{fields.get('guild_name')} guild?"
-#         )
-#         await sent_message.add_reaction(YES_EMOJI)
-#         await sent_message.add_reaction(NO_EMOJI)
-#         return sent_message, None
-#
-#
-# class ReuseGuildProfileForGovrnEmoji(BaseStep):
-#     """Handle user reaction to whether they want to reuse their profile"""
-#
-#     name = StepKeys.REUSE_GUILD_PROFILE_FOR_GOVRN_EMOJI.value
-#
-#     def __init__(self, parent):
-#         self.parent = parent
-#
-#     @property
-#     def emojis(self):
-#         return [YES_EMOJI, NO_EMOJI]
-#
-#     async def handle_emoji(self, raw_reaction):
-#         if raw_reaction.emoji.name in self.emojis:
-#             await create_user(self.parent.user_id, constants.Bot.govrn_guild_id)
-#             if NO_EMOJI in raw_reaction.emoji.name:
-#                 self.parent.guild_id = constants.Bot.govrn_guild_id
-#                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
-#             return StepKeys.REUSE_GUILD_PROFILE_FOR_GOVRN.value, None
-#         raise Exception("Reacted with the wrong emoji")
-#
-#
-# class ReuseGuildProfileForGovrnStep(BaseStep):
-#     """Update the user's Govrn profile with information from the current profile"""
-#
-#     name = StepKeys.REUSE_GUILD_PROFILE_FOR_GOVRN.value
-#
-#     def __init__(self, guild_id):
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#
-#         fields = await copy_user_profile_to_guild(
-#             user_id, self.guild_id, constants.Bot.govrn_guild_id
-#         )
-#         embed = get_profile_embed_from_profile_fields("Govrn", fields)
-#         sent_message = await channel.send(embed=embed)
-#         return sent_message, None
-#
-#
-# class CheckForGovrnProfile(BaseStep):
-#     """Checks if a user_id already has a Govrn profile"""
-#
-#     name = StepKeys.CHECK_FOR_GOVRN_PROFILE.value
-#
-#     def __init__(self, guild_id):
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         return None, None
-#
-#     async def control_hook(self, message, user_id):
-#         # Check if the user has a Govrn profile, returning
-#         # the StepKey for prompting to reuse the Govrn profile
-#         # if they do, and the user display prompt if not
-#         current_profile = await get_user_record(user_id)
-#         if (
-#             current_profile is not None
-#             and int(constants.Bot.govrn_guild_id) != self.guild_id
-#         ):
-#             return StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD_PROMPT.value
-#         return StepKeys.USER_DISPLAY_CONFIRM.value
-#
-#
-# class ReuseGovrnProfileForGuildPrompt(BaseStep):
-#     """Ask user whether they want to reuse their Govrn profile for the guild"""
-#
-#     name = StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD_PROMPT.value
-#
-#     def __init__(self, guild_id):
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#         record = await get_guild_by_guild_id(constants.Bot.govrn_guild_id)
-#         fields = record
-#
-#         sent_message = await channel.send(
-#             "It looks like you've already completed onboarding to Govrn!"
-#             " Nice! Would you like to reuse your profile data"
-#             f" for {fields.get('guild_name')} guild?"
-#         )
-#         await sent_message.add_reaction(YES_EMOJI)
-#         await sent_message.add_reaction(NO_EMOJI)
-#         return sent_message, None
-#
-#
-# class ReuseGovrnProfileForGuildEmoji(BaseStep):
-#     """Handle user reaction to whether they want to reuse their Govrn profile"""
-#
-#     name = StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD_EMOJI.value
-#
-#     def __init__(self, parent):
-#         self.parent = parent
-#
-#     @property
-#     def emojis(self):
-#         return [YES_EMOJI, NO_EMOJI]
-#
-#     async def handle_emoji(self, raw_reaction):
-#         if raw_reaction.emoji.name in self.emojis:
-#             # await create_user(self.parent.user_id, self.parent.guild_id)
-#             if NO_EMOJI in raw_reaction.emoji.name:
-#                 self.parent.guild_id = constants.Bot.govrn_guild_id
-#                 return StepKeys.USER_DISPLAY_CONFIRM.value, None
-#             return StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD.value, None
-#         raise Exception("Reacted with the wrong emoji")
-#
-#
-# class ReuseGovrnProfileForGuild(BaseStep):
-#     name = StepKeys.REUSE_GOVRN_PROFILE_FOR_GUILD.value
-#
-#     def __init__(self, guild_id):
-#         self.guild_id = guild_id
-#
-#     async def send(self, message, user_id):
-#         channel = message.channel
-#         record = await get_guild_by_guild_id(self.guild_id)
-#         guild_fields = record
-#         guild_name = guild_fields.get("guild_name")
-#
-#         user_fields = await copy_user_profile_to_guild(
-#             user_id, constants.Bot.govrn_guild_id, self.guild_id
-#         )
-#         embed = get_profile_embed_from_profile_fields(guild_name, user_fields)
-#         sent_message = await channel.send(embed=embed)
-#
-#         return sent_message, None
 
 
 def get_profile_embed_from_profile_fields(guild_name, fields):
@@ -423,99 +197,42 @@ def get_profile_embed_from_profile_fields(guild_name, fields):
     embed.add_field(name="Display Name", value=fields.get("display_name"))
     embed.add_field(name="Twitter", value=fields.get("twitter"))
     embed.add_field(name="Ethereum Wallet Address", value=fields.get("wallet"))
-    # embed.add_field(name="Discourse Handle", value=fields.get("discourse"))
 
     return embed
-
-
-# This assumes that a user already has an entry in both from_guild and to_guild
-# async def copy_user_profile_to_guild(user_id, from_guild_id, to_guild_id):
-#     current_profile = await get_user_record(user_id)
-#
-#     new_profile = await get_user_record(user_id)
-#     record_id = new_profile.get("id")
-#     await update_user_display_name(
-#         record_id, "display_name", new_profile.get("display_name")
-#     )
-#     # await update_user(record_id, "twitter", new_profile.get("twitter"))
-#     user_record = await update_user(record_id, "discourse", fields.get("discourse"))
-#
-#     return fields
-
-
-# Threads #
 
 
 class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
-    # def _govrn_oboard_steps(self):
-    #     success = (
-    #         Step(current=ReuseGuildProfileForGovrnPrompt(guild_id=self.guild_id))
-    #         .add_next_step(ReuseGuildProfileForGovrnEmoji(parent=self))
-    #         .fork(
-    #             [
-    #                 Step(current=ReuseGuildProfileForGovrnStep(guild_id=self.guild_id)),
-    #                 Step(current=UserDisplaySubmitStep())
-    #                 .add_next_step(self._data_retrival_steps().build())
-    #                 .build(),
-    #             ]
-    #         )
-    #         .build()
-    #     )
-    #     reject = Step(current=GovrnProfilePromptReject())
-    #     steps = (
-    #         Step(current=GovrnProfilePrompt())
-    #         .add_next_step(GovrnProfilePromptEmoji())
-    #         .fork([success, reject])
-    #     )
-    #     return steps
-
-    # def _govrn_profile_reuse_steps(self):
-    #     reuse_govrn_profile_steps = (
-    #         Step(current=ReuseGovrnProfileForGuild(self.guild_id))
-    #         .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
-    #         .build()
-    #     )
-    #     create_new_govrn_profile_steps = self._non_govrn_profile_reuse_steps()
-
-    #     reuse_govrn_profile_choice = (
-    #         Step(current=ReuseGovrnProfileForGuildPrompt(self.guild_id))
-    #         .add_next_step(ReuseGovrnProfileForGuildEmoji(self))
-    #         .fork([reuse_govrn_profile_steps, create_new_govrn_profile_steps])
-    #     )
-
-    #     return reuse_govrn_profile_choice.build()
-
     def _data_retrival_steps(self):
         return (
-            Step(current=AddUserTwitterStep(guild_id=self.guild_id))
-            # .add_next_step(AddUserWalletAddressStep(guild_id=self.guild_id))
-            # .add_next_step(AddDiscourseStep(self.guild_id))
-            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.bot))
+            Step(
+                current=CreateUserWithWalletAddressStep(
+                    cache=self.cache, guild_id=self.guild_id
+                )
+            )
+            .add_next_step(AddUserTwitterStep(guild_id=self.guild_id, cache=self.cache))
+            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.cache))
         )
 
-    def _non_govrn_profile_reuse_steps(self):
+    def get_profile_setup_steps(self):
         data_retrival_steps = self._data_retrival_steps().build()
 
         custom_user_name_steps = (
-            Step(current=UserDisplaySubmitStep())
+            Step(current=UserDisplaySubmitStep(cache=self.cache))
             .add_next_step(data_retrival_steps)
             .build()
         )
 
-        non_govrn_profile_reuse_steps = (
+        profile_setup_steps = (
             Step(current=UserDisplayConfirmationStep(bot=self.bot))
-            .add_next_step(UserDisplayConfirmationEmojiStep(bot=self.bot))
+            .add_next_step(
+                UserDisplayConfirmationEmojiStep(cache=self.cache, bot=self.bot)
+            )
             .fork((custom_user_name_steps, data_retrival_steps))
         )
 
-        return non_govrn_profile_reuse_steps.build()
+        return profile_setup_steps.build()
 
     async def get_steps(self):
-        # govrn_reuse_steps = self._govrn_profile_reuse_steps()
-        non_govrn_reuse_steps = self._non_govrn_profile_reuse_steps()
-
-        steps = non_govrn_reuse_steps
-
-        return steps.build()
+        return self.get_profile_setup_steps().build()

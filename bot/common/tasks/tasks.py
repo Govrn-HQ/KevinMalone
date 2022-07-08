@@ -1,48 +1,71 @@
-from linecache import cache
 import threading
-import time
-import datetime
 import logging
 import asyncio
 
-from datetime import timedelta, datetime
+from abc import ABC, abstractmethod
+from datetime import timedelta, datetime, time
 
-from bot.common.cache import RedisCache
+from bot.common.tasks.weekly_contributions import send_weekly_contribution_reports
+from bot.common.cache import Cache, RedisCache
 
 logger = logging.getLogger(__name__)
 
 TASK_LOOP_INTERVAL_MINUTES = 10
 REPORT_LAST_SENT_DATETIME_CACHE_KEY = "contribution_report_last_sent"
+DATETIME_CACHE_FMT = "%m/%d/%Y, %H:%M:%S"
 
 
+class Cadence(ABC):
+    # Returns the number of seconds until the task can be run. Negative
+    # values reflect that the task is due to fire.
+    @abstractmethod
+    async def get_timedelta_until_run(self) -> timedelta:
+        pass
+
+
+# associates a callback with a particular Cadence
 class Task:
-    def __init__(self, fn, check_run, cadence):
-        self.fn = fn
-        self.check_run = check_run
+    def __init__(self, cache: Cache, cache_key: str, action, cadence: Cadence):
+        self.cache = cache
+        self.cache_key = cache_key
+        self.action = action
         self.cadence = cadence
 
-    async def run(self):
-        if await self.check_run(self.cadence):
-            await self.fn()
+    # if the associated cadence is due, run the task
+    # return the timedelta until next run
+    async def try_run(self) -> timedelta:
+        td_until_run = await self.cadence.get_timedelta_until_run()
+        if td_until_run < timedelta(0):
+            await self.action()
+            await self.update_last_run_in_cache()
+            td_until_run = await self.cadence.get_timedelta_until_run()
+        return td_until_run
+
+    async def update_last_run_in_cache(self):
+        await self.cache.set(
+            self.cache_key,
+            datetime.now().strftime(DATETIME_CACHE_FMT),
+        )
 
 
 # defines a single grouping of tasks which runs in a separate thread
 # for periodic execution
 class Tasks:
-    def __init__(self):
+    def __init__(self, cache: Cache):
+        self.cache = cache
         self.ticker = threading.Event()
         self.tasks = []
 
-    def _add_task(self, fn, check_run, cadence):
-        self.tasks.append(Task(fn, check_run, cadence))
+    def _add_task(self, fn, key: str, cadence: Cadence):
+        self.tasks.append(Task(self.cache, key, fn, cadence))
 
     async def _batch_run_tasks(self):
         for task in self.tasks:
             await task.run()
 
-    def task(self, check_run, cadence: int):
+    def task(self, key, cadence: Cadence):
         def decorator(f):
-            self._add_task(f, check_run, cadence)
+            self._add_task(f, key, cadence)
             return f
 
     def run(self):
@@ -51,26 +74,64 @@ class Tasks:
             asyncio.run(self._batch_run_tasks)
 
 
-# Defines a group of commonly used predicates for determining if the task should
-# run at the supplied datetime
-class Cadences:
-    cache = RedisCache()
+class Weekly(Cadence):
+    def __init__(
+        self, cache: Cache, cache_key: str, day_to_run: int, time_to_run: time
+    ):
+        self.cache = cache
+        self.cache_key = cache_key
+        self.day_to_run = day_to_run
+        self.time_to_run = time_to_run
 
-    # Requires cache to determine if report has already been sent
-    async def once_weekly(weekday: int) -> bool:
-        last_sent = await Cadences.cache.get(REPORT_LAST_SENT_DATETIME_CACHE_KEY)
+    # last_sent should be used to make sure that the bot doesn't
+    # always send something on a restart
+    async def get_timedelta_until_run(self) -> timedelta:
+        last_sent = await self.cache.get(self.cache_key)
         # check that today is the same weekday as the cadence and that
         # the last update was sent 1 week ago
-        now = datetime.now()
-        td: timedelta = (
-            None if last_sent is None else now - datetime.strptime(last_sent)
-        )
-        if td.days >= 7 and now.date().weekday() == weekday:
-            await Cadences.cache.set(
-                REPORT_LAST_SENT_DATETIME_CACHE_KEY, now.strftime("%m/%d/%Y, %H:%M:%S")
+        now: datetime = datetime.now()
+
+        # last_entry does not exist -> return delta to closest ocurrence of next run
+        if last_sent is None:
+            return self.get_timedelta(now)
+
+        last_sent: datetime = datetime.strptime(last_sent)
+
+        # if the last_sent is on a day that does not match specified weekday,
+        # the cadence may have been changed in code, or the task ran late
+        # for some reason. log appropriately, return timedelta for next ocurrence
+        if last_sent.weekday() != self.day_to_run:
+            logger.warning(
+                f"Weekly task {self.cache_key} was last run on a different day "
+                f"({last_sent.strftime(DATETIME_CACHE_FMT)}) than is specified on "
+                f"the task ({self.time_to_run.isoformat()} on {self.day_to_run}th "
+                "day of the week)"
             )
-            return True
-        return False
+            return self.get_timedelta(now)
+
+        return self.get_timedelta_with_last_sent(now, last_sent)
+
+    def get_timedelta(self, now: datetime) -> timedelta:
+        if now.weekday() == self.day_to_run:
+            if now.time >= self.time_to_run:
+                # run immediately
+                return timedelta(seconds=-1)
+        # wait until the next ocurrence of the specified date and time
+        return self.get_timedelta_for_next_occurrence(now)
+
+    def get_timedelta_for_next_occurrence(self, now: datetime) -> timedelta:
+        days_until = (self.day_to_run - now.weekday()) % 7
+        next_ocurrence = now + timedelta(days=days_until)
+        next_ocurrence = datetime.combine(next_ocurrence.date, self.time_to_run)
+        return next_ocurrence - now
+
+    def get_timedelta_with_last_sent(
+        self, now: datetime, last_sent: datetime
+    ) -> timedelta:
+        # If the last_sent datetime is today, wait until next ocurrence
+        if now.date == last_sent.date:
+            return self.get_timedelta_for_next_occurrence(now)
+        return self.get_timedelta(now)
 
 
 # conforms with date.weekday()
@@ -84,19 +145,6 @@ class Days:
     SUNDAY = 6
 
 
-tasks = Tasks()
+# TASKS
 
-
-# Want the report to be sent weekly, 5pm on fridays
-
-# sol 1: print report, sleep until next friday
-# downside: a report would be sent everyime the bot is upgraded
-# downside: reports would be skipped potentially if timing wasn't spot on
-
-# sol 2: check cache for last report. if it's past 5pm friday, and we haven't sent the
-#   report yet, do so, and update the cache
-
-
-@tasks.task(Cadences.once_weekly, Days.FRIDAY)
-def weekly_report():
-    pass
+tasks = Tasks(RedisCache())

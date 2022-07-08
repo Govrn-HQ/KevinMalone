@@ -5,16 +5,16 @@ from pyairtable import Table
 from pyairtable.formulas import match
 from bot.config import AIRTABLE_BASE, AIRTABLE_KEY
 from bot.common.graphql import (
-    fetch_user,
+    fetch_user_by_discord_id,
     create_guild_user,
     create_user as cu,
-    get_guild as gg,
+    get_guild_by_discord_id,
     get_guild_by_id as ggbi,
     update_user_display_name,
     update_user_wallet,
     update_user_twitter_handle,
     create_guild as cg,
-    update_guild as ug,
+    update_guild_name as ug,
 )
 
 
@@ -36,7 +36,7 @@ async def find_user(user_id):
     #     return record_id
 
     # return await loop.run_in_executor(None, _find_user)
-    return await fetch_user(user_id)
+    return await fetch_user_by_discord_id(user_id)
 
 
 async def get_user_record(user_id):
@@ -57,7 +57,7 @@ async def get_user_record(user_id):
     #     return record_id
 
     # return await loop.run_in_executor(None, _find_user)
-    return await fetch_user(user_id)
+    return await fetch_user_by_discord_id(user_id)
 
 
 async def get_contribution_records(guild_id):
@@ -151,17 +151,6 @@ async def find_guild(guild_id):
     return await loop.run_in_executor(None, _find_guild)
 
 
-def get_guild_id_by_guild_name(guild_name):
-    
-    """Returns the community's guild ID (str) given the guild name (str)."""
-
-    table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-    records = table.all(formula=match({"guild_name": guild_name}))
-    guild_id = records[0].get("fields").get("guild_id")
-
-    return guild_id
-
-
 async def get_guild_by_guild_id(guild_id):
 
     """Return airtable record number in guild table given guild_id."""
@@ -178,7 +167,7 @@ async def get_guild_by_guild_id(guild_id):
     #     return record_id
 
     # return await loop.run_in_executor(None, _find_guild)
-    return await gg(guild_id)
+    return await get_guild_by_discord_id(guild_id)
 
 
 async def get_guild(record_id):
@@ -200,7 +189,7 @@ async def get_guild(record_id):
 
 
 def get_activity_name(airtable_record):
-    
+
     """Given the airtable record for an entry in the `ActivityType`
     table, returns `activity_name_only` field."""
 
@@ -211,9 +200,9 @@ def get_activity_name(airtable_record):
     return activity
 
 
- def get_member_name(airtable_record):
+def get_member_name(airtable_record):
 
-    """Given the airtable record for an entry in the `Members` table, 
+    """Given the airtable record for an entry in the `Members` table,
     return the `Name` field."""
 
     table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
@@ -224,7 +213,7 @@ def get_activity_name(airtable_record):
 
 
 def get_discord_id_from_user_record(airtable_record):
-    
+
     """Given the airtable record for an entry in the `Users` table,
     return their `discord_id` field from a linked record in the `global` table"""
 
@@ -397,54 +386,56 @@ async def create_guild(user_id, dao_id):
 
     # def _create_guild():
     #     guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-    #     guild_record = guild_table.create({"guild_id": guild_id, "Status": "inputted"})
+    #   guild_record = guild_table.create({"guild_id": guild_id, "Status": "inputted"})
     #     return guild_record.get("id")
 
     # return await loop.run_in_executor(None, _create_guild)
     return await cg(user_id, dao_id)
 
 
-async def create_user(discord_id, guild_id, wallet):
+async def create_user(discord_id, guild_db_id, wallet):
     """Return new airtable record # in users table given user_id & guild_id.
     If user table record for combo already exist, return existing record_id."""
     user = await cu(discord_id, wallet)
-    await create_guild_user(user.get("id"), guild_id)
+    await create_guild_user(user.get("id"), guild_db_id)
+    return user
 
-    # loop = asyncio.get_running_loop()
 
-    # record_id = await find_user(user_id, guild_id)
-    # guild_record = await find_guild(guild_id)
+# loop = asyncio.get_running_loop()
 
-    # def _create_user():
-    #     global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "global")
-    #     user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
-    #     guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
-    #     member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
+# record_id = await find_user(user_id, guild_id)
+# guild_record = await find_guild(guild_id)
 
-    #     # check if user, guild combo already exists
-    #     if record_id != "":  # existing combo
-    #         return record_id
-    #     else:  # new combo
-    #         # add discord id to global table if user completely new
-    #         discord_record = find_discord(user_id)
-    #         if discord_record == "":
-    #             global_table.create({"discord_id": str(user_id)})
-    #             discord_record = find_discord(user_id)
-    #         user_dao_id = (
-    #             guild_table.get(guild_record).get("fields").get("total_members") + 1
-    #         )
-    #         i = user_table.create(
-    #             {
-    #                 "discord_id": [discord_record],
-    #                 "guild_id": [guild_record],
-    #                 "user_dao_id": str(user_dao_id),
-    #             }
-    #         )
-    #         member_id = member_table.create(
-    #             {"global_id": [i.get("id")], "Name": i.get("fields").get("Name")}
-    #         )
-    #         i.update({"Members": (member_id)})
+# def _create_user():
+#     global_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "global")
+#     user_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Users")
+#     guild_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Guilds")
+#     member_table = Table(AIRTABLE_KEY, AIRTABLE_BASE, "Members")
 
-    #         return i.get("id")
+#     # check if user, guild combo already exists
+#     if record_id != "":  # existing combo
+#         return record_id
+#     else:  # new combo
+#         # add discord id to global table if user completely new
+#         discord_record = find_discord(user_id)
+#         if discord_record == "":
+#             global_table.create({"discord_id": str(user_id)})
+#             discord_record = find_discord(user_id)
+#         user_dao_id = (
+#             guild_table.get(guild_record).get("fields").get("total_members") + 1
+#         )
+#         i = user_table.create(
+#             {
+#                 "discord_id": [discord_record],
+#                 "guild_id": [guild_record],
+#                 "user_dao_id": str(user_dao_id),
+#             }
+#         )
+#         member_id = member_table.create(
+#             {"global_id": [i.get("id")], "Name": i.get("fields").get("Name")}
+#         )
+#         i.update({"Members": (member_id)})
 
-    # return await loop.run_in_executor(None, _create_user)
+#         return i.get("id")
+
+# return await loop.run_in_executor(None, _create_user)

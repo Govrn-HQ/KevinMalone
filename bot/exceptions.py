@@ -13,6 +13,14 @@ class ThreadTerminatingException(Exception):
     pass
 
 
+class UserWithAddressAlreadyExists(ThreadTerminatingException):
+    pass
+
+
+class UserWithTwitterHandleAlreadyExists(ThreadTerminatingException):
+    pass
+
+
 class ErrorHandler:
     def __init__(self, error):
         self.err = error

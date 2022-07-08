@@ -1,5 +1,4 @@
 from bot import constants
-from discord import option
 from discord.commands import Option
 from distutils.util import strtobool
 import logging
@@ -9,9 +8,6 @@ import discord
 
 from bot.common.airtable import (
     find_user,
-    fetch_user,
-    create_user,
-    get_discord_record,
     get_guild,
 )
 from bot.common.bot.bot import bot
@@ -20,19 +16,19 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
 )
 from bot.common.threads.onboarding import Onboarding
-from bot.common.threads.report import ReportStep
-from bot.common.threads.points import Points
+from bot.common.threads.report import ReportStep, get_reporting_link
+from bot.common.threads.history import History
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
+from bot.common.threads.guild_select import GuildSelect
+from bot.common.threads.utils import get_thread
 from bot.config import (
-    REPORTING_FORM_FMT,
     GUILD_IDS,
     INFO_EMBED_COLOR,
     Redis,
     get_list_of_emojis,
 )
 from bot.exceptions import NotGuildException, ErrorHandler
-from bot.common.guild_select import get_thread, GuildSelect
 
 
 logger = logging.getLogger(__name__)
@@ -76,24 +72,23 @@ async def report(ctx):
             ),
         )
 
-    airtableLink = REPORTING_FORM_FMT % ctx.guild.id
+    reporting_form_link = await get_reporting_link(ctx.guild.id)
 
-    if airtableLink:
+    if reporting_form_link:
         _, metadata = await ReportStep(
-            guild_id=ctx.guild.id, cache=Redis, bot=bot, channel=ctx.channel
+            guild_id=ctx.guild.id,
+            cache=Redis,
+            bot=bot,
+            channel=ctx.channel,
+            reporting_link=reporting_form_link,
         ).send(None, ctx.author.id)
         # send message to congrats channel
 
         await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
-    else:
-        await ctx.response.send_message(
-            "No airtable link was provided for this Discord server", ephemeral=True
-        )
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-@option("wallet", description="Enter your ethereum wallet address", required=True)
-async def join(ctx, wallet):
+async def join(ctx):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
@@ -135,8 +130,8 @@ async def join(ctx, wallet):
     logger.info(
         f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"
     )
-    try:
 
+    try:
         message = await ctx.author.send(embed=embed)
     except discord.Forbidden:
         message = await ctx.followup.send(
@@ -144,22 +139,26 @@ async def join(ctx, wallet):
         )
         return
 
-    # Check if user exists
-    #
-    # If user does not exist ask for wallet address
-    # then create
-    user = await fetch_user(ctx.author.id)
-    print(user)
-    if not user:
-        await create_user(ctx.author.id, ctx.guild.id, wallet)
-    onboarding = await Onboarding(
+    await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
+
+    thread = await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         message.id,
         ctx.guild.id,
     )
-    await onboarding.send(message)
-    await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
+    # Need to set the metadata here to provide the guild id
+    await Redis.set(
+        ctx.author.id,
+        build_cache_value(
+            thread=ThreadKeys.ONBOARDING.value,
+            step=thread.steps.hash_,
+            guild_id=ctx.guild.id,
+            message_id=message.id,
+            metadata={"guild_name": ctx.guild.name},
+        ),
+    )
+    await thread.send(message)
 
 
 @bot.slash_command(
@@ -206,9 +205,9 @@ async def update(ctx):
 
 @bot.slash_command(
     guild_id=GUILD_IDS,
-    description="Send user points for a given community",
+    description="Send user history for a given community",
 )
-async def points(
+async def history(
     ctx,
     days: Option(
         str,
@@ -226,7 +225,7 @@ async def points(
         error_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             description="You are not a part of any communities. "
-            "Please run the /points command in a guild you are in",
+            "Please run the /history command in a guild you are in",
         )
 
         message, metadata = await select_guild(ctx, embed, error_embed)
@@ -254,7 +253,7 @@ async def points(
             ),
         )
 
-    thread = await Points(
+    thread = await History(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         None,
@@ -325,7 +324,7 @@ if bool(strtobool(constants.Bot.is_dev)):
 #    async def add_onboarding_contributions(ctx):
 #        is_guild = bool(ctx.guild)
 #        if is_guild:
-#            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+#           await ctx.respond("Please run this command in a DM channel", ephemeral=True)
 #            return
 #        else:
 #            embed = discord.Embed(
@@ -367,15 +366,19 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 async def select_guild(ctx, response_embed, error_embed):
     discord_rec = await find_user(ctx.author.id)
-    airtable_guild_ids = discord_rec.get("guild_users")
-    if not airtable_guild_ids:
+    guild_ids = discord_rec.get("guild_users")
+    if not guild_ids:
         await ctx.response.send_message(embed=error_embed)
         ctx.response.is_done()
         return None, None
 
     await ctx.response.defer()
     guild_metadata = []
-    for record_id in airtable_guild_ids:
+    # TODO: this will set Thread.guild_id to the database id of the guild
+    # there are many places which still use guild_id to represent the discord
+    # id of the guild itself. We should standardize on guild_id vs guild_discord_id
+    # everywhere that's appropriate. Also with user_id vs user_discord_id
+    for record_id in guild_ids:
         g = await get_guild(record_id.get("guild_id"))
         guild_id = g.get("id")
         guild_name = g.get("name")
