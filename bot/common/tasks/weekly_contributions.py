@@ -76,7 +76,8 @@ def get_guilds_to_report():
 async def create_guild_dataframe(guild_id) -> pd.DataFrame:
     """Returns the community's weekly csv given the guild name."""
     records = await get_contributions_for_guild(
-        guild_id, user_discord_id=None, after_date=None)
+        guild_id, user_discord_id=None, after_date=None
+    )
 
     # convert records from json to df
     df_rows = []

@@ -19,13 +19,13 @@ class MockCache(Cache):
             del self.internal[key]
 
 
+# This is a continual cadence; it's always running
 class MockCadence(Cadence):
     def __init__(self, time_to_run: time):
         self.time_to_run = time_to_run
 
-    async def get_timedelta_until_run(self) -> timedelta:
-        now = datetime.now()
-        return datetime.combine(now.date, self.time_to_run) - now
+    async def get_timedelta_until_run(self, cache, cache_key) -> timedelta:
+        return timedelta(seconds=-1)
 
     def set_time_to_run(self, time_to_run):
         self.time_to_run = time_to_run
