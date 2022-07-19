@@ -165,9 +165,7 @@ query listContributions($where: ContributionWhereInput! = {},
                 "user": {
                     "is": {
                         "discord_users": {
-                            "some": {
-                                "discord_id": {"equals": f"{user_discord_id}"}
-                            }
+                            "some": {"discord_id": {"equals": f"{user_discord_id}"}}
                         }
                     }
                 }
