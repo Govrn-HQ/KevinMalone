@@ -147,30 +147,40 @@ query listContributions($where: ContributionWhereInput! = {},
     }
 }
 
-    """
-    data = {
-        "where": {
-            "AND": [
-                {"guilds": {"some": {"guild_id": {"equals": guild_id}}}},
-            ]
-        }
-    }
-    if after_date is not None:
-        data["where"]["AND"].append(
-            {"date_of_submission": {"gt": after_date}},
-        )
-    if user_discord_id is not None:
-        data["where"]["AND"].append(
-            {
-                "user": {
-                    "is": {
-                        "discord_users": {
-                            "some": {"discord_id": {"equals": f"{user_discord_id}"}}
-                        }
-                    }
+    """ 
+    guild_clause = {
+        "guilds": {"some": {"guild_id": {"equals": guild_id}}},
+    } 
+    date_clause = {"date_of_submission": {"gt": after_date}}
+    user_clause = {
+        "user": {
+            "is": {
+                "discord_users": {
+                    "some": {"discord_id": {"equals": f"{user_discord_id}"}}
                 }
             }
-        )
+        }
+    }
+
+    clauses = []
+    data = {}
+    if guild_id is not None:
+        clauses.append(guild_clause)
+    if after_date is not None:
+        clauses.append(date_clause)
+    if user_discord_id is not None:
+        clauses.append(user_clause)
+
+    data = {
+        "where": clauses[0]
+    }
+    if len(clauses) > 1:
+        data = {
+            "where": {
+                "AND": clauses
+            }
+        }
+
     result = await execute_query(
         query,
         data,

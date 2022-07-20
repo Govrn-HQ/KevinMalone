@@ -2,10 +2,12 @@ import pytest
 import time as systime
 
 from datetime import datetime, time, timedelta
+from bot.common.graphql import get_contributions_for_guild
 
 from bot.common.tasks.tasks import (
     DATETIME_CACHE_FMT, TaskBatch, Weekly, task
 )
+from bot.common.tasks.weekly_contributions import create_guild_dataframe, generate_contribution_reports
 from tests.test_utils import MockCache, MockCadence
 
 
@@ -108,7 +110,7 @@ async def test_weekly_cadence_with_last_run():
     now = datetime.now()
     cache = MockCache()
 
-    # create a weekly cadence that runs on the current weekday, 
+    # create a weekly cadence that runs on the current weekday,
     # one hour from the current time
     weekday = now.weekday()
     time_minus: time = (now - timedelta(hours=1)).time()
@@ -133,7 +135,7 @@ async def test_weekly_cadence_with_last_run():
 
 
 @pytest.mark.asyncio
-@pytest.mark.cadence
-@pytest.mark.task
-async def test_task_with_cadence():
-    pass
+@pytest.mark.weekly_report
+async def test_weekly_report():
+    report = await get_contributions_for_guild(3, None, "2022-03-24 18:22:44.000")
+    assert report

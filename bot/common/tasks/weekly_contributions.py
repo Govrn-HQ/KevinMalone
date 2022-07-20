@@ -21,7 +21,9 @@ from bot.config import INFO_EMBED_COLOR
 
 logger = logging.getLogger(__name__)
 
-active_guilds = ["Govrn"]
+active_guild_ids = [
+    "Govrn"
+]
 
 
 async def send_weekly_contribution_reports():
@@ -38,8 +40,14 @@ async def send_weekly_contribution_reports():
     # get guilds for reporting
     guilds_to_report = get_guilds_to_report()
 
-    # generate reports
     reports = generate_contribution_reports(guilds_to_report)
+
+    channel = bot.get_channel(report_channel_id)
+    await send_reports(channel, guilds_to_report, reports)
+
+
+# helper functions
+async def send_reports(channel, guilds_to_report, reports):
     formatted_date = get_formatted_date()
     guilds_to_report_field = EmbedField(
         name="Reporting guilds", value=", ".join(guilds_to_report)
@@ -57,23 +65,43 @@ async def send_weekly_contribution_reports():
         fields=[guilds_to_report_field],
     )
 
-    channel = bot.get_channel(report_channel_id)
-
-    channel.send(embed=embed)
+    await channel.send(embed=embed)
 
     # print message for series of reports
     for guild, report in reports:
         await channel.send(content=guild, file=report)
 
 
-# helper functions
-
 # TODO: config? airtable query?
 def get_guilds_to_report():
-    return active_guilds
+    return active_guild_ids
 
 
-async def create_guild_dataframe(guild_id) -> pd.DataFrame:
+def generate_contribution_reports(guilds_to_report) -> Dict[str, File]:
+    reports = {}
+    for guild in guilds_to_report:
+        # generate dataframe
+        df = create_guild_dataframe(guild)
+        date_reformat = get_formatted_date()
+
+        csv_name = "{}_{}.csv".format(guild, date_reformat)
+
+        s = io.StringIO()
+        s.write(df.to_string())
+        s.seek(0)
+
+        csv_file = File(
+            fp=s,
+            filename=csv_name,
+            description=f"{date_reformat} weekly contribution report for {guild}",
+        )
+
+        reports[csv_name] = csv_file
+
+    return reports
+
+
+async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     """Returns the community's weekly csv given the guild name."""
     records = await get_contributions_for_guild(
         guild_id, user_discord_id=None, after_date=None
@@ -142,27 +170,3 @@ def get_formatted_date():
         + str(date.day).zfill(2)
     )
     return date_reformat
-
-
-def generate_contribution_reports(guilds_to_report) -> Dict[str, File]:
-    reports = {}
-    for guild in guilds_to_report:
-        # generate dataframe
-        df = create_guild_dataframe(guild)
-        date_reformat = get_formatted_date()
-
-        csv_name = "{}_{}.csv".format(guild, date_reformat)
-
-        s = io.StringIO()
-        s.write(df.to_string())
-        s.seek(0)
-
-        csv_file = File(
-            fp=s,
-            filename=csv_name,
-            description=f"{date_reformat} weekly contribution report for {guild}",
-        )
-
-        reports[csv_name] = csv_file
-
-    return reports
