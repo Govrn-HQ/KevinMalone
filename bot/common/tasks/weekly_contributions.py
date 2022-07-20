@@ -18,9 +18,7 @@ from bot.config import INFO_EMBED_COLOR
 
 logger = logging.getLogger(__name__)
 
-active_guild_ids = [
-    "Govrn"
-]
+active_guild_ids = ["Govrn"]
 
 
 async def send_weekly_contribution_reports():
@@ -124,18 +122,12 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
         ]
     ]
 
-    df["activity_type"] = df.apply(
-        lambda x: x["activity_type"]["name"], axis=1
-    )
+    df["activity_type"] = df.apply(lambda x: x["activity_type"]["name"], axis=1)
     df["discord_id"] = df.apply(
         lambda x: x["user"]["discord_users"][0]["discord_id"], axis=1
     )
-    df["user"] = df.apply(
-        lambda x: x["user"]["display_name"], axis=1
-    )
-    df["status"] = df.apply(
-        lambda x: x["status"]["name"], axis=1
-    )
+    df["user"] = df.apply(lambda x: x["user"]["display_name"], axis=1)
+    df["status"] = df.apply(lambda x: x["status"]["name"], axis=1)
 
     # rename columns
     df = df.rename(

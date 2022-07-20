@@ -171,15 +171,9 @@ query listContributions($where: ContributionWhereInput! = {},
     if user_discord_id is not None:
         clauses.append(user_clause)
 
-    data = {
-        "where": clauses[0]
-    }
+    data = {"where": clauses[0]}
     if len(clauses) > 1:
-        data = {
-            "where": {
-                "AND": clauses
-            }
-        }
+        data = {"where": {"AND": clauses}}
 
     result = await execute_query(
         query,

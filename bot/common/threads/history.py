@@ -273,7 +273,5 @@ async def get_contributions(metadata, user_id, guild_id, days):
     date = datetime.now() - td
     date = date.isoformat()
     guild = await get_guild_by_discord_id(guild_id)
-    contributions = await get_contributions_for_guild(
-        guild.get("id"), user_id, date
-    )
+    contributions = await get_contributions_for_guild(guild.get("id"), user_id, date)
     return contributions
