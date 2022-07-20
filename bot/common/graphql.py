@@ -147,10 +147,10 @@ query listContributions($where: ContributionWhereInput! = {},
     }
 }
 
-    """ 
+    """
     guild_clause = {
         "guilds": {"some": {"guild_id": {"equals": guild_id}}},
-    } 
+    }
     date_clause = {"date_of_submission": {"gt": after_date}}
     user_clause = {
         "user": {

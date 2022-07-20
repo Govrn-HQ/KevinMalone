@@ -7,9 +7,6 @@ from discord import EmbedField, File, Embed
 
 from bot.common.airtable import (
     get_guild_by_guild_id,
-    get_activity_name,
-    get_member_name,
-    get_discord_id_from_user_record,
 )
 from bot.common.graphql import (
     get_contributions_for_guild,
@@ -112,41 +109,44 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     df_index = []
 
     for rec in records:  # this part can be optimized for speed later
-        df_rows.append(rec["fields"])
+        df_rows.append(rec)
         df_index.append(rec["id"])
     df = pd.DataFrame(df_rows, index=df_index)
 
     df = df[
         [
-            "ActivityType",
-            "Description",
+            "activity_type",
+            "details",
             "status",
-            "Member",
-            "member_globalID",
-            "DateOfEngagement",
-            "DateofSubmission",
+            "user",
+            "date_of_engagement",
+            "date_of_submission",
         ]
     ]
 
-    # map linked records
-    # TODO: These should be rewritten so the lambdas are async/nonblocking
-    df["ActivityType"] = df.apply(
-        lambda x: get_activity_name(x["ActivityType"][0]), axis=1
+    df["activity_type"] = df.apply(
+        lambda x: x["activity_type"]["name"], axis=1
     )
-    df["Member"] = df.apply(lambda x: get_member_name(x["Member"][0]), axis=1)
-    df["member_globalID"] = df.apply(
-        lambda x: get_discord_id_from_user_record(x["member_globalID"][0]), axis=1
+    df["discord_id"] = df.apply(
+        lambda x: x["user"]["discord_users"][0]["discord_id"], axis=1
+    )
+    df["user"] = df.apply(
+        lambda x: x["user"]["display_name"], axis=1
+    )
+    df["status"] = df.apply(
+        lambda x: x["status"]["name"], axis=1
     )
 
     # rename columns
     df = df.rename(
         columns={
-            "ActivityType": "Engagement",
+            "activity_type": "Engagement",
+            "details": "Description",
             "status": "Status",
-            "Member": "User",
-            "member_globalID": "Discord_ID",
-            "DateofSubmission": "Date of Submission",
-            "DateOfEngagement": "Date of Engagement",
+            "user": "User",
+            "discord_id": "Discord_ID",
+            "date_of_submission": "Date of Submission",
+            "date_of_engagement": "Date of Engagement",
         }
     )
 

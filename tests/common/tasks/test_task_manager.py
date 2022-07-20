@@ -2,12 +2,11 @@ import pytest
 import time as systime
 
 from datetime import datetime, time, timedelta
-from bot.common.graphql import get_contributions_for_guild
 
 from bot.common.tasks.tasks import (
     DATETIME_CACHE_FMT, TaskBatch, Weekly, task
 )
-from bot.common.tasks.weekly_contributions import create_guild_dataframe, generate_contribution_reports
+from bot.common.tasks.weekly_contributions import create_guild_dataframe
 from tests.test_utils import MockCache, MockCadence
 
 
@@ -136,6 +135,7 @@ async def test_weekly_cadence_with_last_run():
 
 @pytest.mark.asyncio
 @pytest.mark.weekly_report
+@pytest.mark.skip(reason="gh actions env is not populated with data")
 async def test_weekly_report():
-    report = await get_contributions_for_guild(3, None, "2022-03-24 18:22:44.000")
-    assert report
+    df = await create_guild_dataframe(3)
+    assert df
