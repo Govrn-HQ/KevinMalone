@@ -1,3 +1,4 @@
+import asyncio
 import io
 import logging
 from typing import Dict, Union
@@ -28,8 +29,10 @@ async def save_weekly_contribution_reports():
         local_csv=True
     )
     for csv_name, csv in reports:
+        logger.info(f"saving report {csv_name}...")
         with open(csv_name, 'w') as f:
             print(csv.getvalue(), file=f)
+        logger.info(f"done saving report {csv_name}")
 
 
 async def send_weekly_contribution_reports(bot):
@@ -116,13 +119,19 @@ async def generate_contribution_reports(guilds_to_report, local_csv=False) -> Di
 
 async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     """Returns the community's weekly csv given the guild name."""
+    logger.info(f"retrieving contributions for guild {guild_id}...")
+
     records = await get_contributions_for_guild(
         guild_id, user_discord_id=None, after_date=None
     )
+    
+    logger.info(f"done retrieving contributions for guild {guild_id}")
 
     # convert records from json to df
     df_rows = []
     df_index = []
+
+    logger.info(f"constructing dataframe for guild {guild_id}...")
 
     for rec in records:  # this part can be optimized for speed later
         df_rows.append(rec)
@@ -163,8 +172,7 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     # sort by descending date of engagement
     df = df.sort_values(by=["Date of Engagement"], ascending=False)
 
-    # drop airtable record index
-    # df = df.reset_index(drop=True)
+    logger.info(f"done constructing dataframe for guild {guild_id}")
 
     return df
 
@@ -180,3 +188,9 @@ def get_formatted_date():
         + str(date.day).zfill(2)
     )
     return date_reformat
+
+
+if __name__ == "__main__":
+    logger.info("file directly invoked. saving weekly contributions locally...")
+    asyncio.run(save_weekly_contribution_reports())
+    logger.info("done saving weekly contribution reports locally!")
