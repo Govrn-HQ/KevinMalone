@@ -18,7 +18,7 @@ from bot.config import INFO_EMBED_COLOR
 
 logger = logging.getLogger(__name__)
 
-active_guild_ids = ["Govrn"]
+active_guild_ids = [3]
 
 
 async def save_weekly_contribution_reports():
@@ -87,7 +87,7 @@ def get_guilds_to_report():
     return active_guild_ids
 
 
-async def generate_contribution_reports(guilds_to_report, local_csv=False) -> Dict[str, Union(File, io.StringIO)]:
+async def generate_contribution_reports(guilds_to_report, local_csv=False) -> Dict[str, Union[File, io.StringIO]]:
     reports = {}
     for guild in guilds_to_report:
         # generate dataframe
