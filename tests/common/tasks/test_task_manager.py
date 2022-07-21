@@ -10,7 +10,6 @@ from bot.common.tasks.weekly_contributions import create_guild_dataframe
 from tests.test_utils import MockCache, MockCadence
 
 
-@pytest.mark.tasks
 def test_add_task():
     task_batch = TaskBatch(MockCache(), 60 * 60)
 
@@ -21,7 +20,6 @@ def test_add_task():
     assert len(task_batch.tasks) == 1
 
 
-@pytest.mark.tasks
 @pytest.mark.asyncio
 async def test_add_and_run_task():
     task_batch = TaskBatch(MockCache(), 60 * 60)
@@ -36,7 +34,6 @@ async def test_add_and_run_task():
     assert has_run
 
 
-@pytest.mark.tasks
 def test_start_task_batch():
     task_batch = TaskBatch(MockCache(), 1)
     acc = 0
@@ -53,7 +50,6 @@ def test_start_task_batch():
     task_batch.stop()
 
 
-@pytest.mark.tasks
 def test_start_stop_task_batch():
     task_batch = TaskBatch(MockCache(), 1)
     acc = 0
@@ -79,7 +75,6 @@ def test_start_stop_task_batch():
     assert acc > latch_acc
 
 
-@pytest.mark.cadence
 def test_weekly_cadence():
     now = datetime.now()
     # create a weekly cadence that runs on the current weekday, 
@@ -103,7 +98,6 @@ def test_weekly_cadence():
     assert td.total_seconds() > 6 * 24 * 60 * 60
 
 
-@pytest.mark.cadence
 @pytest.mark.asyncio
 async def test_weekly_cadence_with_last_run():
     now = datetime.now()
@@ -134,7 +128,6 @@ async def test_weekly_cadence_with_last_run():
 
 
 @pytest.mark.asyncio
-@pytest.mark.weekly_report
 @pytest.mark.skip(reason="gh actions env is not populated with data")
 async def test_weekly_report():
     df = await create_guild_dataframe(3)
