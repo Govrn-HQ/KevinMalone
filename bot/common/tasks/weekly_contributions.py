@@ -1,6 +1,6 @@
 import io
 import logging
-from typing import Dict
+from typing import Dict, Union
 import pandas as pd
 from datetime import datetime
 from discord import EmbedField, File, Embed
@@ -20,6 +20,18 @@ logger = logging.getLogger(__name__)
 active_guild_ids = ["Govrn"]
 
 
+async def save_weekly_contribution_reports():
+    # get guilds for reporting
+    guilds_to_report = get_guilds_to_report()
+    reports = await generate_contribution_reports(
+        guilds_to_report,
+        local_csv=True
+    )
+    for csv_name, csv in reports:
+        with open(csv_name, 'w') as f:
+            print(csv.getvalue(), file=f)
+
+
 async def send_weekly_contribution_reports(bot):
     # retrieve the reporting channel from airtable
     govrn_guild_id = constants.Bot.govrn_guild_id
@@ -35,7 +47,7 @@ async def send_weekly_contribution_reports(bot):
     # get guilds for reporting
     guilds_to_report = get_guilds_to_report()
 
-    reports = generate_contribution_reports(guilds_to_report)
+    reports = await generate_contribution_reports(guilds_to_report)
 
     channel = bot.get_channel(report_channel_id)
     await send_reports(channel, guilds_to_report, reports)
@@ -72,18 +84,24 @@ def get_guilds_to_report():
     return active_guild_ids
 
 
-def generate_contribution_reports(guilds_to_report) -> Dict[str, File]:
+async def generate_contribution_reports(guilds_to_report, local_csv=False) -> Dict[str, Union(File, io.StringIO)]:
     reports = {}
     for guild in guilds_to_report:
         # generate dataframe
-        df = create_guild_dataframe(guild)
+        df = await create_guild_dataframe(guild)
         date_reformat = get_formatted_date()
 
         csv_name = "{}_{}.csv".format(guild, date_reformat)
 
         s = io.StringIO()
-        s.write(df.to_string())
+        df.to_csv(s, index=False)
         s.seek(0)
+
+        # just store the string buffer if we're generating local
+        # reports on disk
+        if local_csv:
+            reports[csv_name] = s
+            continue
 
         csv_file = File(
             fp=s,
