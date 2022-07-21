@@ -1,6 +1,6 @@
 import logging
 import sys
-from bot.common.tasks import tasks
+from bot.common.tasks.tasks import tasks
 
 from bot.common.bot.bot import bot
 import constants
@@ -14,6 +14,7 @@ def main():
     TOKEN = constants.Bot.token
     if TOKEN is None:
         sys.exit("Environment variable API_TOKEN must be supplied")
+    tasks.start()
     bot.run(TOKEN)
 
 
