@@ -13,7 +13,6 @@ from bot.common.graphql import (
 )
 
 from bot import constants
-from bot.common.bot.bot import bot
 from bot.config import INFO_EMBED_COLOR
 
 logger = logging.getLogger(__name__)
@@ -21,10 +20,11 @@ logger = logging.getLogger(__name__)
 active_guild_ids = ["Govrn"]
 
 
-async def send_weekly_contribution_reports():
+async def send_weekly_contribution_reports(bot):
     # retrieve the reporting channel from airtable
     govrn_guild_id = constants.Bot.govrn_guild_id
     govrn_guild = await get_guild_by_guild_id(govrn_guild_id)
+    # TODO
     report_channel_id = govrn_guild.get("fields").get("report_channel")
 
     # if none is specified, log message and return
