@@ -28,11 +28,13 @@ async def save_weekly_contribution_reports():
         guilds_to_report,
         local_csv=True
     )
-    for csv_name, csv in reports:
-        logger.info(f"saving report {csv_name}...")
-        with open(csv_name, 'w') as f:
+    directory = "./reports/"
+    for csv_name, csv in reports.items():
+        path = f"{directory}{csv_name}"
+        logger.info(f"saving report {path}...")
+        with open(path, 'w') as f:
             print(csv.getvalue(), file=f)
-        logger.info(f"done saving report {csv_name}")
+        logger.info(f"done saving report {path}")
 
 
 async def send_weekly_contribution_reports(bot):
