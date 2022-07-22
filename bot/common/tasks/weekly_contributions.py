@@ -1,4 +1,5 @@
 import asyncio
+import os
 import io
 import logging
 from typing import Dict, Union
@@ -26,6 +27,8 @@ async def save_weekly_contribution_reports():
     guilds_to_report = get_guilds_to_report()
     reports = await generate_contribution_reports(guilds_to_report, local_csv=True)
     directory = "./reports/"
+    if not os.path.exists(directory):
+        os.mkdir(directory)
     for csv_name, csv in reports.items():
         path = f"{directory}{csv_name}"
         logger.info(f"saving report {path}...")
