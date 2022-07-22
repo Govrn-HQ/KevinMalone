@@ -128,9 +128,6 @@ fragment ContributionFragment on Contribution {
     name
     updatedAt
   }
-  attestations {
-    id
-  }
 }
 
 query listContributions($where: ContributionWhereInput! = {},
