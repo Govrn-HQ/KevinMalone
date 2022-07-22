@@ -24,15 +24,12 @@ active_guild_ids = [3]
 async def save_weekly_contribution_reports():
     # get guilds for reporting
     guilds_to_report = get_guilds_to_report()
-    reports = await generate_contribution_reports(
-        guilds_to_report,
-        local_csv=True
-    )
+    reports = await generate_contribution_reports(guilds_to_report, local_csv=True)
     directory = "./reports/"
     for csv_name, csv in reports.items():
         path = f"{directory}{csv_name}"
         logger.info(f"saving report {path}...")
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             print(csv.getvalue(), file=f)
         logger.info(f"done saving report {path}")
 
@@ -89,7 +86,9 @@ def get_guilds_to_report():
     return active_guild_ids
 
 
-async def generate_contribution_reports(guilds_to_report, local_csv=False) -> Dict[str, Union[File, io.StringIO]]:
+async def generate_contribution_reports(
+    guilds_to_report, local_csv=False
+) -> Dict[str, Union[File, io.StringIO]]:
     reports = {}
     for guild in guilds_to_report:
         # generate dataframe
@@ -126,7 +125,7 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     records = await get_contributions_for_guild(
         guild_id, user_discord_id=None, after_date=None
     )
-    
+
     logger.info(f"done retrieving contributions for guild {guild_id}")
 
     # convert records from json to df
