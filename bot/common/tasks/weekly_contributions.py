@@ -78,7 +78,7 @@ async def send_reports(channel, guilds_to_report, reports):
     await channel.send(embed=embed)
 
     # print message for series of reports
-    for guild, report in reports:
+    for guild, report in reports.items():
         await channel.send(content=guild, file=report)
 
 
