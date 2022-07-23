@@ -4,7 +4,7 @@ import io
 import logging
 from typing import Dict, Union
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from discord import EmbedField, File, Embed
 
 from bot.common.airtable import (
@@ -12,6 +12,7 @@ from bot.common.airtable import (
 )
 from bot.common.graphql import (
     get_contributions_for_guild,
+    get_guilds
 )
 
 from bot import constants
@@ -19,13 +20,21 @@ from bot.config import INFO_EMBED_COLOR
 
 logger = logging.getLogger(__name__)
 
-active_guild_ids = [3]
-
 
 async def save_weekly_contribution_reports():
     # get guilds for reporting
-    guilds_to_report = get_guilds_to_report()
-    reports = await generate_contribution_reports(guilds_to_report, local_csv=True)
+    # guilds_to_report = await get_guilds_to_report()
+    # reports = await generate_guild_contribution_reports(
+    #     guilds_to_report, local_csv=True)
+    reports = {}
+    all_contributions_name = "all_contributions.csv"
+    all_contributions_df = await create_all_contributions_dataframe()
+    all_contributions_csv = write_dataframe_to_csv(
+        all_contributions_df,
+        all_contributions_name,
+        local_csv=True)
+    reports[all_contributions_name] = all_contributions_csv
+
     directory = "./reports/"
     if not os.path.exists(directory):
         os.mkdir(directory)
@@ -50,9 +59,9 @@ async def send_weekly_contribution_reports(bot):
         return
 
     # get guilds for reporting
-    guilds_to_report = get_guilds_to_report()
+    guilds_to_report = await get_guilds_to_report()
 
-    reports = await generate_contribution_reports(guilds_to_report)
+    reports = await generate_guild_contribution_reports(guilds_to_report)
 
     channel = bot.get_channel(report_channel_id)
     await send_reports(channel, guilds_to_report, reports)
@@ -84,41 +93,136 @@ async def send_reports(channel, guilds_to_report, reports):
         await channel.send(content=guild, file=report)
 
 
-# TODO: config? airtable query?
-def get_guilds_to_report():
-    return active_guild_ids
+async def get_guilds_to_report():
+    # query all guilds
+    guilds = await get_guilds()
+    return guilds
+    # return [
+    #     (1, "Rolf's Server"),
+    #     (2, "Ludium"),
+    #     (3, "Boys Club"),
+    #     (4, "Education DAO"),
+    #     (5, "DreamDAO"),
+    #     (6, "GDS"),
+    #     (7, "PadawanDAO"),
+    #     (8, "Dynamiculture"),
+    #     (9, "MGD"),
+    #     (10, "Keating"),
+    #     (11, "RaidGuild"),
+    #     (12, "SporeDAO"),
+    #     (13, "Govrn"),
+    #     (14, "ATS"),
+    #     (15, "Daohaus"),
+    # ]
 
 
-async def generate_contribution_reports(
+async def write_dataframe_to_csv(
+    dataframe, name, description, local_csv=False
+) -> Union[File, io.StringIO]:
+    if dataframe is None:
+        return (None, None)
+
+    s = io.StringIO()
+    dataframe.to_csv(s, index=False)
+    s.seek(0)
+
+    # just store the string buffer if we're generating local
+    # reports on disk
+    if local_csv:
+        return s
+
+    csv_file = File(
+        fp=s,
+        filename=name,
+        description=description
+    )
+
+    return csv_file
+
+
+async def generate_guild_contribution_reports(
     guilds_to_report, local_csv=False
 ) -> Dict[str, Union[File, io.StringIO]]:
     reports = {}
-    for guild in guilds_to_report:
+    for guild_id, guild_name in guilds_to_report:
         # generate dataframe
-        df = await create_guild_dataframe(guild)
+        df = await create_guild_dataframe(guild_id)
         date_reformat = get_formatted_date()
 
-        csv_name = "{}_{}.csv".format(guild, date_reformat)
-
-        s = io.StringIO()
-        df.to_csv(s, index=False)
-        s.seek(0)
-
-        # just store the string buffer if we're generating local
-        # reports on disk
-        if local_csv:
-            reports[csv_name] = s
+        if (df is None):
             continue
 
-        csv_file = File(
-            fp=s,
-            filename=csv_name,
-            description=f"{date_reformat} weekly contribution report for {guild}",
-        )
+        description = f"{date_reformat} weekly contribution report for {guild_name}",
 
-        reports[csv_name] = csv_file
+        reports[guild_name] = write_dataframe_to_csv(
+            df, guild_name, description, local_csv)
 
     return reports
+
+
+async def create_all_contributions_dataframe() -> pd.DataFrame:
+    """Returns a dataframe as below, but with every contribution"""
+    beginning_of_time = datetime.now() - timedelta(weeks=52 * 20)
+    records = await get_contributions_for_guild(
+        guild_id=None, user_discord_id=None, after_date=beginning_of_time.isoformat()
+    )
+
+    # convert records from json to df
+    df_rows = []
+    df_index = []
+
+    logger.info("constructing dataframe for all contributions")
+
+    if not records:
+        logger.info("No contributions reported")
+        return None
+
+    for rec in records:  # this part can be optimized for speed later
+        df_rows.append(rec)
+        df_index.append(rec["id"])
+
+    df = pd.DataFrame(df_rows, index=df_index)
+
+    df = df[
+        [
+            "activity_type",
+            "details",
+            "status",
+            "user",
+            "guilds",
+            "date_of_engagement",
+            "date_of_submission",
+        ]
+    ]
+
+    df["activity_type"] = df.apply(lambda x: x["activity_type"]["name"], axis=1)
+    df["discord_id"] = df.apply(
+        lambda x: get_user_discord_id(x), axis=1
+    )
+    df["user"] = df.apply(lambda x: x["user"]["display_name"], axis=1)
+    df["status"] = df.apply(lambda x: x["status"]["name"], axis=1)
+    df["guild"] = df.apply(lambda x: get_guild_name(x))
+
+    # rename columns
+    df = df.rename(
+        columns={
+            "activity_type": "Engagement",
+            "details": "Description",
+            "status": "Status",
+            "user": "User",
+            "guild": "Guild Name",
+            "discord_id": "Discord_ID",
+            "date_of_submission": "Date of Submission",
+            "date_of_engagement": "Date of Engagement",
+        }
+    )
+
+    # sort by descending date of engagement
+    df = df.sort_values(by=["Date of Engagement"], ascending=False)
+
+    logger.info("done constructing dataframe for all contributions")
+
+    return df
 
 
 async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
@@ -137,9 +241,14 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
 
     logger.info(f"constructing dataframe for guild {guild_id}...")
 
+    if not records:
+        logger.info(f"No contributions reported for {guild_id}")
+        return None
+
     for rec in records:  # this part can be optimized for speed later
         df_rows.append(rec)
         df_index.append(rec["id"])
+
     df = pd.DataFrame(df_rows, index=df_index)
 
     df = df[
@@ -155,7 +264,7 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
 
     df["activity_type"] = df.apply(lambda x: x["activity_type"]["name"], axis=1)
     df["discord_id"] = df.apply(
-        lambda x: x["user"]["discord_users"][0]["discord_id"], axis=1
+        lambda x: get_user_discord_id(x), axis=1
     )
     df["user"] = df.apply(lambda x: x["user"]["display_name"], axis=1)
     df["status"] = df.apply(lambda x: x["status"]["name"], axis=1)
@@ -179,6 +288,20 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     logger.info(f"done constructing dataframe for guild {guild_id}")
 
     return df
+
+
+def get_user_discord_id(record):
+    discord_users = record["user"]["discord_users"]
+    if len(discord_users) == 0:
+        return "NO_DISCORD_ID"
+    return discord_users[0]["discord_id"]
+
+
+def get_guild_name(record):
+    guilds = record["guilds"]
+    if len(guilds) == 0:
+        return "NO_GUILD"
+    return guilds["guild"]["name"]
 
 
 def get_formatted_date():
