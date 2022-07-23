@@ -23,23 +23,24 @@ logger = logging.getLogger(__name__)
 
 async def save_weekly_contribution_reports():
     # get guilds for reporting
-    # guilds_to_report = await get_guilds_to_report()
-    # reports = await generate_guild_contribution_reports(
-    #     guilds_to_report, local_csv=True)
-    reports = {}
-    all_contributions_name = "all_contributions.csv"
+    guilds_to_report = await get_guilds_to_report()
+    reports = await generate_guild_contribution_reports(
+        guilds_to_report, local_csv=True)
+    all_contributions_name = "all_contributions"
     all_contributions_df = await create_all_contributions_dataframe()
-    all_contributions_csv = write_dataframe_to_csv(
+    all_contributions_csv = await write_dataframe_to_csv(
         all_contributions_df,
         all_contributions_name,
+        description="",
         local_csv=True)
     reports[all_contributions_name] = all_contributions_csv
 
     directory = "./reports/"
     if not os.path.exists(directory):
         os.mkdir(directory)
+    formatted_date = get_formatted_date()
     for csv_name, csv in reports.items():
-        path = f"{directory}{csv_name}"
+        path = f"{directory}{csv_name}_{formatted_date}.csv"
         logger.info(f"saving report {path}...")
         with open(path, "w") as f:
             print(csv.getvalue(), file=f)
@@ -144,7 +145,9 @@ async def generate_guild_contribution_reports(
     guilds_to_report, local_csv=False
 ) -> Dict[str, Union[File, io.StringIO]]:
     reports = {}
-    for guild_id, guild_name in guilds_to_report:
+    for guild in guilds_to_report:
+        guild_id = guild["id"]
+        guild_name = guild["name"]
         # generate dataframe
         df = await create_guild_dataframe(guild_id)
         date_reformat = get_formatted_date()
@@ -154,7 +157,7 @@ async def generate_guild_contribution_reports(
 
         description = f"{date_reformat} weekly contribution report for {guild_name}",
 
-        reports[guild_name] = write_dataframe_to_csv(
+        reports[guild_name] = await write_dataframe_to_csv(
             df, guild_name, description, local_csv)
 
     return reports
@@ -201,7 +204,7 @@ async def create_all_contributions_dataframe() -> pd.DataFrame:
     )
     df["user"] = df.apply(lambda x: x["user"]["display_name"], axis=1)
     df["status"] = df.apply(lambda x: x["status"]["name"], axis=1)
-    df["guild"] = df.apply(lambda x: get_guild_name(x))
+    df["guilds"] = df.apply(lambda x: get_guild_name(x), axis=1)
 
     # rename columns
     df = df.rename(
@@ -301,7 +304,7 @@ def get_guild_name(record):
     guilds = record["guilds"]
     if len(guilds) == 0:
         return "NO_GUILD"
-    return guilds["guild"]["name"]
+    return guilds[0]["guild"]["name"]
 
 
 def get_formatted_date():
