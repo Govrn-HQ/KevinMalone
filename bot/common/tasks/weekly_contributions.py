@@ -7,10 +7,11 @@ import pandas as pd
 from datetime import datetime, timedelta
 from discord import EmbedField, File, Embed
 
-from bot.common.airtable import (
-    get_guild_by_guild_id,
+from bot.common.graphql import (
+    get_contributions_for_guild,
+    get_guilds,
+    get_guild_by_id
 )
-from bot.common.graphql import get_contributions_for_guild, get_guilds
 
 from bot import constants
 from bot.config import INFO_EMBED_COLOR
@@ -44,9 +45,9 @@ async def save_weekly_contribution_reports():
 
 
 async def send_weekly_contribution_reports(bot):
-    # retrieve the reporting channel from airtable
+    # retrieve the reporting channel
     govrn_guild_id = constants.Bot.govrn_guild_id
-    govrn_guild = await get_guild_by_guild_id(govrn_guild_id)
+    govrn_guild = await get_guild_by_id(govrn_guild_id)
     # TODO
     report_channel_id = govrn_guild.get("fields").get("report_channel")
 
