@@ -1,11 +1,11 @@
 import discord
 from web3 import Web3
-from bot.common.airtable import (
-    create_user,
-    update_user,
-)
 from bot.common.graphql import (
     get_guild_by_discord_id,
+    create_user as _create_user,
+    create_guild_user,
+    update_user_display_name,
+    update_user_twitter_handle,
 )
 from bot.config import (
     YES_EMOJI,
@@ -29,6 +29,11 @@ def _handle_skip_emoji(raw_reaction, guild_id):
     if SKIP_EMOJI in raw_reaction.emoji.name:
         return None, True
     raise Exception("Reacted with the wrong emoji")
+
+
+async def create_user(discord_id, guild_id, wallet):
+    user = await _create_user(discord_id, wallet)
+    await create_guild_user(user.get("id"), guild_id)
 
 
 class UserDisplayConfirmationStep(BaseStep):
@@ -55,7 +60,7 @@ class UserDisplayConfirmationStep(BaseStep):
 
 
 # save is a single branch so it can be one to one
-# handle_emoji can branch and the airtable logic can handle that
+# handle_emoji can branch
 class UserDisplayConfirmationEmojiStep(BaseStep):
     """Emoji confirmation step of whether the Discord name should be accepted"""
 
@@ -138,7 +143,7 @@ class CreateUserWithWalletAddressStep(BaseStep):
         # TODO: wrap into a single CRUD
         user = await create_user(user_id, guild.get("id"), wallet)
         user_db_id = user.get("id")
-        await update_user(user_db_id, "display_name", display_name)
+        await update_user_display_name(user_db_id, display_name)
         await write_cache_metadata(user_id, self.cache, "user_db_id", user_db_id)
 
 
@@ -162,7 +167,7 @@ class AddUserTwitterStep(BaseStep):
     async def save(self, message, guild_id, user_id):
         twitter_handle = message.content.strip().replace("@", "")
         user_db_id = await get_cache_metadata_key(user_id, self.cache, "user_db_id")
-        await update_user(user_db_id, "twitter", twitter_handle)
+        await update_user_twitter_handle(user_db_id, twitter_handle)
 
     async def handle_emoji(self, raw_reaction):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
