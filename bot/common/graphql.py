@@ -23,7 +23,7 @@ async def execute_query(query, values):
     transport = get_async_transport(constants.Bot.protocol_url)
     try:
         async with Client(
-            transport=transport, fetch_schema_from_transport=False
+            transport=transport, fetch_schema_from_transport=False, execute_timeout=30
         ) as session:
             query = gql(query)
             resp = await session.execute(query, variable_values=values)
@@ -86,7 +86,7 @@ query getUser($where: UserWhereInput!,) {
     return result
 
 
-async def list_user_contributions_for_guild(user_discord_id, guild_id, after_date):
+async def get_contributions_for_guild(guild_id, user_discord_id, after_date):
     query = """
 fragment ContributionFragment on Contribution {
   activity_type {
@@ -103,6 +103,7 @@ fragment ContributionFragment on Contribution {
     guild_id
     guild {
         discord_id
+        name
     }
     id
   }
@@ -128,19 +129,14 @@ fragment ContributionFragment on Contribution {
     name
     updatedAt
   }
-  attestations {
-    id
-  }
 }
 
 query listContributions($where: ContributionWhereInput! = {},
                         $skip: Int! = 0,
-                        $first: Int! = 10,
                         $orderBy: [ContributionOrderByWithRelationInput!]) {
     result: contributions(
         where: $where,
         skip: $skip,
-        take: $first,
         orderBy: $orderBy,
     ) {
       ...ContributionFragment
@@ -148,27 +144,36 @@ query listContributions($where: ContributionWhereInput! = {},
 }
 
     """
+    guild_clause = {
+        "guilds": {"some": {"guild_id": {"equals": guild_id}}},
+    }
+    date_clause = {"date_of_submission": {"gt": after_date}}
+    user_clause = {
+        "user": {
+            "is": {
+                "discord_users": {
+                    "some": {"discord_id": {"equals": f"{user_discord_id}"}}
+                }
+            }
+        }
+    }
+
+    clauses = []
+    data = {}
+    if guild_id is not None:
+        clauses.append(guild_clause)
+    if after_date is not None:
+        clauses.append(date_clause)
+    if user_discord_id is not None:
+        clauses.append(user_clause)
+
+    data = {"where": clauses[0]}
+    if len(clauses) > 1:
+        data = {"where": {"AND": clauses}}
+
     result = await execute_query(
         query,
-        {
-            "where": {
-                "AND": [
-                    {"guilds": {"some": {"guild_id": {"equals": guild_id}}}},
-                    {
-                        "user": {
-                            "is": {
-                                "discord_users": {
-                                    "some": {
-                                        "discord_id": {"equals": f"{user_discord_id}"}
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    {"date_of_submission": {"gt": after_date}},
-                ]
-            }
-        },
+        data,
     )
     if result:
         res = result.get("result")
@@ -227,6 +232,36 @@ query getGuild($where: GuildWhereUniqueInput!) {
     """
     result = await execute_query(query, {"where": {"id": id}})
     print("Get guild")
+    print(result)
+    if result:
+        return result.get("result")
+    return result
+
+
+async def get_guilds():
+    query = """
+fragment GuildFragment on Guild {
+  congrats_channel
+  createdAt
+  discord_id
+  id
+  logo
+  name
+  updatedAt
+}
+
+query listGuilds(
+  $where: GuildWhereInput! = {}
+  $skip: Int! = 0
+  $orderBy: [GuildOrderByWithRelationInput!]
+) {
+  result: guilds(where: $where, skip: $skip, orderBy: $orderBy) {
+    ...GuildFragment
+  }
+}
+    """
+    result = await execute_query(query, None)
+    print("list guilds")
     print(result)
     if result:
         return result.get("result")
