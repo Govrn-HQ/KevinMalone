@@ -23,7 +23,9 @@ async def execute_query(query, values):
     transport = get_async_transport(constants.Bot.protocol_url)
     try:
         async with Client(
-            transport=transport, fetch_schema_from_transport=False
+            transport=transport,
+            fetch_schema_from_transport=False,
+            execute_timeout=30
         ) as session:
             query = gql(query)
             resp = await session.execute(query, variable_values=values)
@@ -103,6 +105,7 @@ fragment ContributionFragment on Contribution {
     guild_id
     guild {
         discord_id
+        name
     }
     id
   }
@@ -132,12 +135,10 @@ fragment ContributionFragment on Contribution {
 
 query listContributions($where: ContributionWhereInput! = {},
                         $skip: Int! = 0,
-                        $first: Int! = 10,
                         $orderBy: [ContributionOrderByWithRelationInput!]) {
     result: contributions(
         where: $where,
         skip: $skip,
-        take: $first,
         orderBy: $orderBy,
     ) {
       ...ContributionFragment
@@ -233,6 +234,36 @@ query getGuild($where: GuildWhereUniqueInput!) {
     """
     result = await execute_query(query, {"where": {"id": id}})
     print("Get guild")
+    print(result)
+    if result:
+        return result.get("result")
+    return result
+
+
+async def get_guilds():
+    query = """
+fragment GuildFragment on Guild {
+  congrats_channel
+  createdAt
+  discord_id
+  id
+  logo
+  name
+  updatedAt
+}
+
+query listGuilds(
+  $where: GuildWhereInput! = {}
+  $skip: Int! = 0
+  $orderBy: [GuildOrderByWithRelationInput!]
+) {
+  result: guilds(where: $where, skip: $skip, orderBy: $orderBy) {
+    ...GuildFragment
+  }
+}
+    """
+    result = await execute_query(query, None)
+    print("list guilds")
     print(result)
     if result:
         return result.get("result")
