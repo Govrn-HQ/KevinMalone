@@ -4,8 +4,6 @@ bot:
   prefix: "/"
   token: !ENV "API_TOKEN"
   redis_url: !ENV "REDIS_URL"
-  airtable_key: !ENV "AIRTABLE_KEY"
-  airtable_base: !ENV "AIRTABLE_BASE"
   is_dev: !ENV "IS_DEV"
   govrn_guild_id: !ENV "GOVRN_GUILD_ID"
   protocol_url: !ENV "PROTOCOL_URL"
@@ -89,24 +87,14 @@ guilds:
   guilds:
     - id: 799328534988193793
       name: "Dynamiculture"
-      airtable: "https://placeholder"
     - id: 837049837886767125
       name: "Govrn"
-      airtable: "https://placeholder"
     - id: 692218984728100877
       name: "MGD"
-      airtable: "https://placeholder"
     - id: 895453604520009738
       name: "ATS"
-      airtable: "https://placeholder"
     - id: 684227450204323876
       name: "Raid Guild"
-      airtable: "https://placeholder"
-
-airtable:
-  username: !ENV "AIRTABLE_USERNAME"
-  password: !ENV "AIRTABLE_PASSWORD"
-  base_url: "http://airtable.com"
 
 config:
   required_keys: ["bot.token", "bot.redis_url"]
