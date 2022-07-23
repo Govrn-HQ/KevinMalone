@@ -5,12 +5,11 @@ import logging
 import hashlib
 import discord
 
-
-from bot.common.airtable import (
-    find_user,
-    get_guild,
-)
 from bot.common.bot.bot import bot
+from bot.common.graphql import (
+    fetch_user_by_discord_id,
+    get_guild_by_id
+)
 from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
@@ -93,7 +92,7 @@ async def join(ctx):
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
 
-    is_user = await find_user(ctx.author.id)
+    is_user = await fetch_user_by_discord_id(ctx.author.id)
     if is_user:
         # Send welcome message and
         # And ask what journey they are
@@ -365,7 +364,7 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 
 async def select_guild(ctx, response_embed, error_embed):
-    discord_rec = await find_user(ctx.author.id)
+    discord_rec = await fetch_user_by_discord_id(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
     if not guild_ids:
         await ctx.response.send_message(embed=error_embed)
@@ -379,7 +378,7 @@ async def select_guild(ctx, response_embed, error_embed):
     # id of the guild itself. We should standardize on guild_id vs guild_discord_id
     # everywhere that's appropriate. Also with user_id vs user_discord_id
     for record_id in guild_ids:
-        g = await get_guild(record_id.get("guild_id"))
+        g = await get_guild_by_id(record_id.get("guild_id"))
         guild_id = g.get("id")
         guild_name = g.get("name")
         if guild_id:
