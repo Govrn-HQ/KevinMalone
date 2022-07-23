@@ -1,7 +1,12 @@
 import discord
 import json
 
-from bot.common.airtable import find_user, update_user, get_user_record
+from bot.common.graphql import (
+    fetch_user_by_discord_id,
+    update_user_twitter_handle,
+    update_user_display_name,
+    update_user_wallet
+)
 from bot.config import (
     Redis,
     INFO_EMBED_COLOR,
@@ -17,6 +22,7 @@ from bot.common.threads.thread_builder import (
 )
 
 from bot.common.threads.shared_steps import SelectGuildEmojiStep
+from bot.exceptions import ThreadTerminatingException
 
 
 class UpdateProfile(BaseThread):
@@ -51,7 +57,7 @@ class UserUpdateFieldSelectStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        user = await get_user_record(user_id)
+        user = await fetch_user_by_discord_id(user_id)
         if not user:
             raise Exception("No user for updating field")
         embed = discord.Embed(
@@ -71,9 +77,6 @@ class UserUpdateFieldSelectStep(BaseStep):
         embed.add_field(
             name=f"Ethereum Wallet Address {emojis[2]}", value=user.get("address")
         )
-        # embed.add_field(
-        #     name=f"Discourse Handle {emojis[3]}", value=user.get("discourse")
-        # )
 
         channel = message.channel
         sent_message = await channel.send(embed=embed)
@@ -85,7 +88,6 @@ class UserUpdateFieldSelectStep(BaseStep):
                 emojis[0]: "display_name",
                 emojis[1]: "twitter",
                 emojis[2]: "wallet",
-                # emojis[3]: "discourse",
             },
         )
 
@@ -133,8 +135,18 @@ class UpdateFieldStep(BaseStep):
         field = metadata.get("field")
         if not field:
             raise Exception("No field present to update")
-        record = await find_user(user_id)
-        await update_user(record.get("id"), field, message.content.strip())
+        record = await fetch_user_by_discord_id(user_id)
+        record_id = record["id"]
+        value = message.content.strip()
+
+        if field == "display_name":
+            return await update_user_display_name(value, record_id)
+        elif field == "twitter":
+            return await update_user_twitter_handle(value, record_id)
+        elif field == "wallet":
+            return await update_user_wallet(value, record_id)
+
+        raise ThreadTerminatingException(f"Unsupported field update {field}")
 
 
 class CongratsFieldUpdateStep(BaseStep):
