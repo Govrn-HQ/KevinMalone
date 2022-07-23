@@ -10,10 +10,7 @@ from discord import EmbedField, File, Embed
 from bot.common.airtable import (
     get_guild_by_guild_id,
 )
-from bot.common.graphql import (
-    get_contributions_for_guild,
-    get_guilds
-)
+from bot.common.graphql import get_contributions_for_guild, get_guilds
 
 from bot import constants
 from bot.config import INFO_EMBED_COLOR
@@ -25,14 +22,13 @@ async def save_weekly_contribution_reports():
     # get guilds for reporting
     guilds_to_report = await get_guilds_to_report()
     reports = await generate_guild_contribution_reports(
-        guilds_to_report, local_csv=True)
+        guilds_to_report, local_csv=True
+    )
     all_contributions_name = "all_contributions"
     all_contributions_df = await create_all_contributions_dataframe()
     all_contributions_csv = await write_dataframe_to_csv(
-        all_contributions_df,
-        all_contributions_name,
-        description="",
-        local_csv=True)
+        all_contributions_df, all_contributions_name, description="", local_csv=True
+    )
     reports[all_contributions_name] = all_contributions_csv
 
     directory = "./reports/"
@@ -132,11 +128,7 @@ async def write_dataframe_to_csv(
     if local_csv:
         return s
 
-    csv_file = File(
-        fp=s,
-        filename=name,
-        description=description
-    )
+    csv_file = File(fp=s, filename=name, description=description)
 
     return csv_file
 
@@ -152,13 +144,14 @@ async def generate_guild_contribution_reports(
         df = await create_guild_dataframe(guild_id)
         date_reformat = get_formatted_date()
 
-        if (df is None):
+        if df is None:
             continue
 
-        description = f"{date_reformat} weekly contribution report for {guild_name}",
+        description = (f"{date_reformat} weekly contribution report for {guild_name}",)
 
         reports[guild_name] = await write_dataframe_to_csv(
-            df, guild_name, description, local_csv)
+            df, guild_name, description, local_csv
+        )
 
     return reports
 
@@ -199,9 +192,7 @@ async def create_all_contributions_dataframe() -> pd.DataFrame:
     ]
 
     df["activity_type"] = df.apply(lambda x: x["activity_type"]["name"], axis=1)
-    df["discord_id"] = df.apply(
-        lambda x: get_user_discord_id(x), axis=1
-    )
+    df["discord_id"] = df.apply(lambda x: get_user_discord_id(x), axis=1)
     df["user"] = df.apply(lambda x: x["user"]["display_name"], axis=1)
     df["status"] = df.apply(lambda x: x["status"]["name"], axis=1)
     df["guilds"] = df.apply(lambda x: get_guild_name(x), axis=1)
@@ -266,9 +257,7 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     ]
 
     df["activity_type"] = df.apply(lambda x: x["activity_type"]["name"], axis=1)
-    df["discord_id"] = df.apply(
-        lambda x: get_user_discord_id(x), axis=1
-    )
+    df["discord_id"] = df.apply(lambda x: get_user_discord_id(x), axis=1)
     df["user"] = df.apply(lambda x: x["user"]["display_name"], axis=1)
     df["status"] = df.apply(lambda x: x["status"]["name"], axis=1)
 

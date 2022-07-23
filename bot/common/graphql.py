@@ -23,9 +23,7 @@ async def execute_query(query, values):
     transport = get_async_transport(constants.Bot.protocol_url)
     try:
         async with Client(
-            transport=transport,
-            fetch_schema_from_transport=False,
-            execute_timeout=30
+            transport=transport, fetch_schema_from_transport=False, execute_timeout=30
         ) as session:
             query = gql(query)
             resp = await session.execute(query, variable_values=values)
