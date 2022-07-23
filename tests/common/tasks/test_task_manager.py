@@ -3,9 +3,7 @@ import time as systime
 
 from datetime import datetime, time, timedelta
 
-from bot.common.tasks.tasks import (
-    DATETIME_CACHE_FMT, TaskBatch, Weekly, task
-)
+from bot.common.tasks.tasks import DATETIME_CACHE_FMT, TaskBatch, Weekly, task
 from bot.common.tasks.weekly_contributions import create_guild_dataframe
 from tests.test_utils import MockCache, MockCadence
 
@@ -77,7 +75,7 @@ def test_start_stop_task_batch():
 
 def test_weekly_cadence():
     now = datetime.now()
-    # create a weekly cadence that runs on the current weekday, 
+    # create a weekly cadence that runs on the current weekday,
     # one hour from the current time
     weekday = now.weekday()
     time_plus: time = (now + timedelta(hours=1)).time()
