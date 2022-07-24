@@ -18,7 +18,7 @@ from bot.common.threads.thread_builder import (
 from bot.common.graphql import (
     get_guild_by_discord_id,
     fetch_user_by_discord_id,
-    list_user_contributions_for_guild,
+    get_contributions_for_guild,
 )
 from bot.config import (
     YES_EMOJI,
@@ -273,7 +273,6 @@ async def get_contributions(metadata, user_id, guild_id, days):
     date = datetime.now() - td
     date = date.isoformat()
     guild = await get_guild_by_discord_id(guild_id)
-    contributions = await list_user_contributions_for_guild(
-        user_id, guild.get("id"), date
-    )
+    # todo: truncate
+    contributions = await get_contributions_for_guild(guild.get("id"), user_id, date)
     return contributions
