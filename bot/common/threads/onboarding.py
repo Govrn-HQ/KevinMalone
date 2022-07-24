@@ -24,10 +24,7 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata_key,
     write_cache_metadata,
 )
-from bot.exceptions import (
-    ThreadTerminatingException,
-    InvalidWalletAddressException
-)
+from bot.exceptions import InvalidWalletAddressException
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
@@ -63,9 +60,7 @@ class CheckIfUserExists(BaseStep):
             await write_cache_metadata(
                 user_id, self.cache, "wallet_address", user["address"]
             )
-            await write_cache_metadata(
-                user_id, self.cache, "user_db_id", user["id"]
-            )
+            await write_cache_metadata(user_id, self.cache, "user_db_id", user["id"])
             return StepKeys.ASSOCIATE_EXISTING_USER_WITH_GUILD.value
         return StepKeys.USER_DISPLAY_CONFIRM.value
 
@@ -201,7 +196,8 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
         if not Web3.isAddress(wallet):
             raise InvalidWalletAddressException(
-                f"{wallet} is not a valid wallet address")
+                f"{wallet} is not a valid wallet address"
+            )
 
         display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
         guild = await get_guild_by_discord_id(guild_id)
@@ -307,15 +303,12 @@ class Onboarding(BaseThread):
             .build()
         )
 
-        profile_setup_steps = (
-            Step(current=CheckIfUserExists(cache=self.cache))
-            .fork(
-                (
-                    AssociateExistingUserWithGuild(
-                        cache=self.cache, guild_id=self.guild_id
-                    ),
-                    user_not_exist_flow
-                )
+        profile_setup_steps = Step(current=CheckIfUserExists(cache=self.cache)).fork(
+            (
+                AssociateExistingUserWithGuild(
+                    cache=self.cache, guild_id=self.guild_id
+                ),
+                user_not_exist_flow,
             )
         )
 
