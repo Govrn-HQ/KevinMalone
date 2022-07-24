@@ -167,7 +167,7 @@ class AddDaoSuccess(BaseStep):
         return (
             await message.channel.send(
                 f"Thanks for adding {guild_name} as a new guild! Let's get "
-                "you set up with a new profile for this guild. After setting it up, "
+                "you set up with a profile for this guild. After setting it up, "
                 "you can report your contributions using the /report command."
             ),
             None,
