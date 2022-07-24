@@ -11,6 +11,7 @@ from bot.common.airtable import (
     get_guild,
 )
 from bot.common.bot.bot import bot
+from bot.common.graphql import get_guild_by_discord_id
 from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
@@ -94,8 +95,17 @@ async def join(ctx):
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
 
-    is_user = await find_user(ctx.author.id)
-    if is_user:
+    # defer response before awaiting queries to db
+    await ctx.response.defer()
+
+    guild_discord_id = ctx.guild.id
+
+    # TODO: a single query could be written for this
+    user = await find_user(ctx.author.id)
+    guild = await get_guild_by_discord_id(guild_discord_id)
+    guild_id = guild["id"]
+
+    if any(guild_user["guild_id"] == guild_id for guild_user in user["guild_users"]):
         # Send welcome message and
         # And ask what journey they are
         # on by sending all the commands
@@ -114,8 +124,6 @@ async def join(ctx):
         await ctx.response.send_message(embed=embed, ephemeral=True)
         ctx.response.is_done()
         return
-
-    await ctx.response.defer()
 
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
