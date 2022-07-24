@@ -6,10 +6,7 @@ import hashlib
 import discord
 
 from bot.common.bot.bot import bot
-from bot.common.graphql import (
-    fetch_user_by_discord_id,
-    get_guild_by_id
-)
+from bot.common.graphql import fetch_user_by_discord_id, get_guild_by_id
 from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,

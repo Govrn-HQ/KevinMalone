@@ -5,7 +5,7 @@ from bot.common.graphql import (
     fetch_user_by_discord_id,
     update_user_twitter_handle,
     update_user_display_name,
-    update_user_wallet
+    update_user_wallet,
 )
 from bot.config import (
     Redis,

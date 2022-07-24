@@ -7,11 +7,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from discord import EmbedField, File, Embed
 
-from bot.common.graphql import (
-    get_contributions_for_guild,
-    get_guilds,
-    get_guild_by_id
-)
+from bot.common.graphql import get_contributions_for_guild, get_guilds, get_guild_by_id
 
 from bot import constants
 from bot.config import INFO_EMBED_COLOR
