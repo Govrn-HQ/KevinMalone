@@ -9,6 +9,10 @@ class NotGuildException(errors.ApplicationCommandError):
     pass
 
 
+class InvalidWalletAddressException(errors.ApplicationCommandError):
+    pass
+
+
 class ThreadTerminatingException(Exception):
     pass
 
