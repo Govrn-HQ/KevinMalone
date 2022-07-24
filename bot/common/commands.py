@@ -28,6 +28,7 @@ from bot.config import (
     Redis,
     get_list_of_emojis,
 )
+from discord import errors
 from bot.exceptions import NotGuildException, ErrorHandler
 
 
@@ -425,7 +426,11 @@ async def on_message(message):
         return
 
     thread = await get_thread(message.author.id, thread_key)
-    await thread.send(message)
+
+    try:
+        await thread.send(message)
+    except errors.ApplicationCommandError as e:
+        await message.channel.send(str(e))
 
 
 @bot.event
