@@ -27,7 +27,7 @@ class OverrideThreadStep(BaseStep):
         self.parent_thread = cls
 
     async def send(self, message, user_id):
-        thread = get_jump_thread(self.parent_thread, message, user_id)
+        thread = await get_jump_thread(self.parent_thread, message, user_id)
         return await thread.step.current.send(message, user_id)
 
 
