@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class AddDaoPromptId(BaseStep):
     """Prompts the user to input the discord ID of the guild they wish to add"""
 
-    name = StepKeys.ADD_DAO_PROMPT_ID
+    name = StepKeys.ADD_DAO_PROMPT_ID.value
 
     def __init__(self, cache):
         super().__init__()
@@ -50,7 +50,7 @@ class AddDaoGetOrCreate(BaseStep):
     the flow accordingly to either create the DAO + user, or direct the
     user down the join flow."""
 
-    name = StepKeys.ADD_DAO_GET_OR_CREATE
+    name = StepKeys.ADD_DAO_GET_OR_CREATE.value
 
     def __init__(self, parent_thread, cache):
         self.parent_thread = parent_thread
@@ -93,7 +93,7 @@ class AddDaoGetOrCreate(BaseStep):
             # guild exists, user does not, drop into /join flow
             await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
             await write_cache_metadata(user_id, self.cache, "guild_name", guild_name)
-            return StepKeys.ADD_DAO_PREVIOUSLY_ADDED_PROMPT
+            return StepKeys.ADD_DAO_PREVIOUSLY_ADDED_PROMPT.value
 
         await create_guild(dao_id)
 
@@ -101,13 +101,13 @@ class AddDaoGetOrCreate(BaseStep):
         await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
 
         # Prompt for guild name
-        return StepKeys.ADD_DAO_PROMPT_NAME
+        return StepKeys.ADD_DAO_PROMPT_NAME.value
 
 
 class AddDaoPromptName(BaseStep):
     """Prompts the user to input the name of the guild they wish to add"""
 
-    name = StepKeys.ADD_DAO_PROMPT_NAME
+    name = StepKeys.ADD_DAO_PROMPT_NAME.value
 
     def __init__(self, cache):
         super().__init__()
@@ -131,7 +131,7 @@ class AddDaoPromptName(BaseStep):
 class AddDaoPreviouslyAddedPrompt(BaseStep):
     """Prompts that a particular DAO has already been added"""
 
-    name = StepKeys.ADD_DAO_PREVIOUSLY_ADDED_PROMPT
+    name = StepKeys.ADD_DAO_PREVIOUSLY_ADDED_PROMPT.value
     trigger = True
 
     def __init__(self, cache):
@@ -154,7 +154,7 @@ class AddDaoPreviouslyAddedPrompt(BaseStep):
 class AddDaoSuccess(BaseStep):
     """Sends a success message for adding the Guild"""
 
-    name = StepKeys.ADD_DAO_SUCCESS
+    name = StepKeys.ADD_DAO_SUCCESS.value
     trigger = True
 
     def __init__(self, cache):
@@ -166,7 +166,7 @@ class AddDaoSuccess(BaseStep):
         return (
             await message.channel.send(
                 f"Thanks for adding {guild_name} as a new guild! Let's get "
-                "you set up with a new profile for this guild. After setting it up, "
+                "you set up with a profile for this guild. After setting it up, "
                 "you can report your contributions using the /report command."
             ),
             None,
@@ -176,7 +176,7 @@ class AddDaoSuccess(BaseStep):
 class AddDaoJoinFlowOverride(BaseStep):
     """Overrides the Add_Dao flow and drops user into join flow"""
 
-    name = StepKeys.ADD_DAO_JOIN
+    name = StepKeys.ADD_DAO_JOIN.value
 
     def __init__(self, cache, parent_thread):
         super().__init__()

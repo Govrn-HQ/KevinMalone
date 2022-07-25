@@ -268,7 +268,7 @@ query listGuilds(
     return result
 
 
-async def create_guild_user(user_id, guild_db_id):
+async def create_guild_user(user_id: str, guild_db_id: str):
     query = """
 mutation createGuildUser($data: GuildUserCreateInput!) {
   createGuildUser(data: $data) {
