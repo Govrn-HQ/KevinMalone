@@ -5,7 +5,9 @@ from bot.common.airtable import (
     update_user,
 )
 from bot.common.graphql import (
+    fetch_user_by_discord_id,
     get_guild_by_discord_id,
+    create_guild_user,
 )
 from bot.config import (
     YES_EMOJI,
@@ -22,13 +24,78 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata_key,
     write_cache_metadata,
 )
-from bot.exceptions import ThreadTerminatingException
+from bot.exceptions import InvalidWalletAddressException
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
     if SKIP_EMOJI in raw_reaction.emoji.name:
         return None, True
     raise Exception("Reacted with the wrong emoji")
+
+
+DISCORD_USER_CACHE_KEY = "discord_user_previously_exists"
+USER_CACHE_KEY = "user_previously_exists"
+
+
+class CheckIfUserExists(BaseStep):
+    """Checks if the user with particular discord id exists"""
+
+    name = StepKeys.CHECK_USER_EXISTS.value
+
+    def __init__(self, cache):
+        super().__init__()
+        self.cache = cache
+
+    async def send(self, message, user_id):
+        return None, None
+
+    async def control_hook(self, message, user_id):
+        user = await fetch_user_by_discord_id(user_id)
+        if user:
+            # Cache for the message send in the next step rather than retrieving
+            # from the database
+            await write_cache_metadata(
+                user_id, self.cache, "display_name", user["display_name"]
+            )
+            await write_cache_metadata(
+                user_id, self.cache, "wallet_address", user["address"]
+            )
+            await write_cache_metadata(user_id, self.cache, "user_db_id", user["id"])
+            return StepKeys.ASSOCIATE_EXISTING_USER_WITH_GUILD.value
+        return StepKeys.USER_DISPLAY_CONFIRM.value
+
+
+class AssociateExistingUserWithGuild(BaseStep):
+    """Associates an existing user profile with a given guild"""
+
+    name = StepKeys.ASSOCIATE_EXISTING_USER_WITH_GUILD.value
+
+    def __init__(self, cache, guild_id):
+        super().__init__()
+        self.cache = cache
+        self.guild_id = guild_id
+
+    async def send(self, message, user_id):
+        # discord user + user exist, guild user does not
+        guild = await get_guild_by_discord_id(self.guild_id)
+        user_db_id = await get_cache_metadata_key(user_id, self.cache, "user_db_id")
+        await create_guild_user(user_db_id, guild["id"])
+
+        guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
+        display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
+        address = await get_cache_metadata_key(user_id, self.cache, "wallet_address")
+
+        channel = message.channel
+        sent_message = await channel.send(
+            f'I found your profile "`{display_name}`" associated with wallet address '
+            f" {address} through your discord id, and associated it with {guild_name}."
+            " You should be all good to start reporting those contributions with"
+            " `/report`!"
+        )
+        return sent_message, None
+
+    async def control_hook(self, message, user_id):
+        return StepKeys.END.value
 
 
 class UserDisplayConfirmationStep(BaseStep):
@@ -128,7 +195,9 @@ class CreateUserWithWalletAddressStep(BaseStep):
         wallet = message.content.strip()
 
         if not Web3.isAddress(wallet):
-            raise ThreadTerminatingException(f"{wallet} is not a valid wallet address")
+            raise InvalidWalletAddressException(
+                f"{wallet} is not a valid wallet address"
+            )
 
         display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
         guild = await get_guild_by_discord_id(guild_id)
@@ -136,6 +205,7 @@ class CreateUserWithWalletAddressStep(BaseStep):
         # user creation is performed when supplying wallet address since this
         # is a mandatory field for the user record
         # TODO: wrap into a single CRUD
+        user = await fetch_user_by_discord_id(user_id)
         user = await create_user(user_id, guild.get("id"), wallet)
         user_db_id = user.get("id")
         await update_user(user_db_id, "display_name", display_name)
@@ -224,12 +294,22 @@ class Onboarding(BaseThread):
             .build()
         )
 
-        profile_setup_steps = (
+        user_not_exist_flow = (
             Step(current=UserDisplayConfirmationStep(bot=self.bot))
             .add_next_step(
                 UserDisplayConfirmationEmojiStep(cache=self.cache, bot=self.bot)
             )
             .fork((custom_user_name_steps, data_retrival_steps))
+            .build()
+        )
+
+        profile_setup_steps = Step(current=CheckIfUserExists(cache=self.cache)).fork(
+            (
+                AssociateExistingUserWithGuild(
+                    cache=self.cache, guild_id=self.guild_id
+                ),
+                user_not_exist_flow,
+            )
         )
 
         return profile_setup_steps.build()
