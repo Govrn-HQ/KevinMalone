@@ -121,8 +121,7 @@ async def join(ctx):
                     name=f"/ {cmd.name}", value=cmd.description, inline=False
                 )
         print(embed)
-        await ctx.response.send_message(embed=embed, ephemeral=True)
-        ctx.response.is_done()
+        await ctx.followup.send(embed=embed, ephemeral=True)
         return
 
     embed = discord.Embed(
@@ -378,8 +377,7 @@ async def select_guild(ctx, response_embed, error_embed):
     discord_rec = await find_user(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
     if not guild_ids:
-        await ctx.response.send_message(embed=error_embed)
-        ctx.response.is_done()
+        await ctx.followup.send(embed=error_embed)
         return None, None
 
     guild_metadata = []
