@@ -28,6 +28,7 @@ from bot.exceptions import InvalidWalletAddressException
 
 DISCORD_USER_CACHE_KEY = "discord_user_previously_exists"
 USER_CACHE_KEY = "user_previously_exists"
+DISCORD_DISPLAY_NAME_CACHE_KEY = "discord_display_name"
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
@@ -36,8 +37,8 @@ def _handle_skip_emoji(raw_reaction, guild_id):
     raise Exception("Reacted with the wrong emoji")
 
 
-async def create_user(discord_id, guild_id, wallet):
-    user = await _create_user(discord_id, wallet)
+async def create_user(discord_id, discord_name, guild_id, wallet):
+    user = await _create_user(discord_id, discord_name, wallet)
     await create_guild_user(user.get("id"), guild_id)
 
 
@@ -117,9 +118,13 @@ class UserDisplayConfirmationStep(BaseStep):
 
     async def send(self, message, user_id):
         user = await self.bot.fetch_user(user_id)
+        discord_display_name = user.display_name
+        await write_cache_metadata(
+            user_id, self.cache, DISCORD_DISPLAY_NAME_CACHE_KEY, discord_display_name
+        )
         channel = message.channel
         print(dir(user))
-        sent_message = await channel.send(f"{self.msg} `{user.display_name}`")
+        sent_message = await channel.send(f"{self.msg} `{discord_display_name}`")
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
         return sent_message, None
@@ -149,9 +154,11 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
         raise Exception("Reacted with the wrong emoji")
 
     async def save(self, message, guild_id, user_id):
-        user = await self.bot.fetch_user(user_id)
+        discord_display_name = await get_cache_metadata_key(
+            user_id, self.cache, DISCORD_DISPLAY_NAME_CACHE_KEY
+        )
         await write_cache_metadata(
-            user_id, self.cache, "display_name", user.display_name
+            user_id, self.cache, "display_name", discord_display_name
         )
 
 
@@ -204,13 +211,16 @@ class CreateUserWithWalletAddressStep(BaseStep):
             )
 
         display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
+        discord_display_name = await get_cache_metadata_key(
+            user_id, self.cache, DISCORD_DISPLAY_NAME_CACHE_KEY
+        )
         guild = await get_guild_by_discord_id(guild_id)
 
         # user creation is performed when supplying wallet address since this
         # is a mandatory field for the user record
         # TODO: wrap into a single CRUD
         user = await fetch_user_by_discord_id(user_id)
-        user = await create_user(user_id, guild.get("id"), wallet)
+        user = await create_user(user_id, discord_display_name, guild.get("id"), wallet)
         user_db_id = user.get("id")
         await update_user_display_name(user_db_id, display_name)
         await write_cache_metadata(user_id, self.cache, "user_db_id", user_db_id)
