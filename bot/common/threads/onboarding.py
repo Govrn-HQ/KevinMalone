@@ -40,6 +40,7 @@ def _handle_skip_emoji(raw_reaction, guild_id):
 async def create_user(discord_id, discord_name, guild_id, wallet):
     user = await _create_user(discord_id, discord_name, wallet)
     await create_guild_user(user.get("id"), guild_id)
+    return user
 
 
 class CheckIfUserExists(BaseStep):
@@ -109,7 +110,8 @@ class UserDisplayConfirmationStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM.value
     msg = "Would you like your display name to be"
 
-    def __init__(self, bot):
+    def __init__(self, cache, bot):
+        self.cache = cache
         self.bot = bot
 
     @property
@@ -309,7 +311,7 @@ class Onboarding(BaseThread):
         )
 
         user_not_exist_flow = (
-            Step(current=UserDisplayConfirmationStep(bot=self.bot))
+            Step(current=UserDisplayConfirmationStep(cache=self.cache, bot=self.bot))
             .add_next_step(
                 UserDisplayConfirmationEmojiStep(cache=self.cache, bot=self.bot)
             )

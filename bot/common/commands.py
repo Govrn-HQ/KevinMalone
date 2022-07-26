@@ -104,7 +104,9 @@ async def join(ctx):
     guild = await get_guild_by_discord_id(guild_discord_id)
     guild_id = guild["id"]
 
-    if any(guild_user["guild_id"] == guild_id for guild_user in user["guild_users"]):
+    if user is not None and any(
+        guild_user["guild_id"] == guild_id for guild_user in user["guild_users"]
+    ):
         # Send welcome message and
         # And ask what journey they are
         # on by sending all the commands

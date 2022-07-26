@@ -140,11 +140,11 @@ class UpdateFieldStep(BaseStep):
         value = message.content.strip()
 
         if field == "display_name":
-            return await update_user_display_name(value, record_id)
+            return await update_user_display_name(record_id, value)
         elif field == "twitter":
-            return await update_user_twitter_handle(value, record_id)
+            return await update_user_twitter_handle(record_id, value)
         elif field == "wallet":
-            return await update_user_wallet(value, record_id)
+            return await update_user_wallet(record_id, value)
 
         raise ThreadTerminatingException(f"Unsupported field update {field}")
 
