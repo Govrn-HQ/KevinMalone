@@ -415,7 +415,7 @@ async def update_user_twitter_handle(id, twitter_handle):
         return await update_user(
             {
                 "twitter_user": {
-                    "create": {"username": twitter_handle, "name": twitter_handle}
+                    "create": {"username": twitter_handle}
                 }
             },
             {"id": id},
