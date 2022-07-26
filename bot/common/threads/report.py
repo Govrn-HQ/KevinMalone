@@ -9,9 +9,7 @@ from bot.common.threads.thread_builder import (
     Step,
 )
 from bot.config import REPORTING_FORM_FMT
-from bot.common.graphql import (
-    get_guild_by_discord_id
-)
+from bot.common.graphql import get_guild_by_discord_id
 from bot.common.cache import build_congrats_key
 
 logger = logging.getLogger(__name__)
