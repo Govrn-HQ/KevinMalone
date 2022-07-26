@@ -31,7 +31,7 @@ class SelectGuildEmojiStep(BaseStep):
         for reaction in message.reactions:
             if reaction.count >= 2:
                 selected_guild_reaction = reaction
-                self.cls.guild_id = daos.get(reaction.emoji)["guild_discord_id"]
+                self.cls.guild_id = daos.get(reaction.emoji)
                 break
         if not selected_guild_reaction:
             raise Exception("Reacted with the wrong emoji")

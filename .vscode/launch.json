@@ -8,13 +8,6 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Python: Save contribution reports",
-            "type": "python",
-            "request": "launch",
-            "program": "bot/common/tasks/weekly_contributions.py",
-            "console": "integratedTerminal"
-        },
-        {
             "name": "Docker: Python - General",
             "type": "docker",
             "request": "launch",
