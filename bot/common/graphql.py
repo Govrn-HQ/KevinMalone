@@ -401,13 +401,27 @@ mutation updateUser($data: UserUpdateInput!, $where: UserWhereUniqueInput!) {
 
 
 async def update_user_display_name(display_name, id):
-    return await update_user({"display_name": {"set": display_name}}, {"id": id})
+    return await update_user(
+        {
+            "display_name": {"set": display_name},
+            "name": {"set": display_name}
+        },
+        {"id": id}
+    )
 
 
 async def update_user_twitter_handle(twitter_handle, id):
     try:
         return await update_user(
-            {"twitter_user": {"create": {"username": twitter_handle}}}, {"id": id}
+            {
+                "twitter_user": {
+                    "create": {
+                        "username": twitter_handle,
+                        "name": twitter_handle
+                    }
+                }
+            },
+            {"id": id}
         )
     except TransportQueryError as e:
         if is_unique_constraint_failure(e):
