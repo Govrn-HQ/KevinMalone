@@ -1,4 +1,5 @@
 from bot import constants
+from discord import option
 from discord.commands import Option
 from distutils.util import strtobool
 import logging
@@ -8,29 +9,29 @@ import discord
 
 from bot.common.airtable import (
     find_user,
+    fetch_user,
+    create_user,
     get_guild,
 )
 from bot.common.bot.bot import bot
-from bot.common.graphql import get_guild_by_discord_id
 from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep, get_reporting_link
+from bot.common.threads.points import Points
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
-from bot.common.threads.history import History
-from bot.common.threads.guild_select import GuildSelect
-from bot.common.threads.utils import get_thread
 from bot.config import (
     GUILD_IDS,
     INFO_EMBED_COLOR,
     Redis,
     get_list_of_emojis,
 )
-from discord import errors
 from bot.exceptions import NotGuildException, ErrorHandler
+from bot.common.guild_select import get_thread, GuildSelect
+from web3 import Web3
 
 
 logger = logging.getLogger(__name__)
@@ -90,22 +91,20 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-async def join(ctx):
+@option(
+    "wallet", description="Enter your ethereum wallet address (No ENS)", required=True
+)
+async def join(ctx, wallet):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
+    if not Web3.isAddress(wallet):
+        await ctx.response.send_message("Not a valid wallet address", ephemeral=True)
+        ctx.response.is_done()
+        return
 
-    # defer response before awaiting queries to db
-    await ctx.response.defer()
-
-    guild_discord_id = ctx.guild.id
-
-    # TODO: a single query could be written for this
-    user = await find_user(ctx.author.id)
-    guild = await get_guild_by_discord_id(guild_discord_id)
-    guild_id = guild["id"]
-
-    if any(guild_user["guild_id"] == guild_id for guild_user in user["guild_users"]):
+    is_user = await find_user(ctx.author.id)
+    if is_user:
         # Send welcome message and
         # And ask what journey they are
         # on by sending all the commands
@@ -125,6 +124,8 @@ async def join(ctx):
         ctx.response.is_done()
         return
 
+    await ctx.response.defer()
+
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
         title="Welcome",
@@ -139,8 +140,8 @@ async def join(ctx):
     logger.info(
         f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"
     )
-
     try:
+
         message = await ctx.author.send(embed=embed)
     except discord.Forbidden:
         message = await ctx.followup.send(
@@ -148,26 +149,22 @@ async def join(ctx):
         )
         return
 
-    await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
-
-    thread = await Onboarding(
+    # Check if user exists
+    #
+    # If user does not exist ask for wallet address
+    # then create
+    user = await fetch_user(ctx.author.id)
+    print(user)
+    if not user:
+        await create_user(ctx.author.id, ctx.guild.id, wallet)
+    onboarding = await Onboarding(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         message.id,
         ctx.guild.id,
     )
-    # Need to set the metadata here to provide the guild id
-    await Redis.set(
-        ctx.author.id,
-        build_cache_value(
-            thread=ThreadKeys.ONBOARDING.value,
-            step=thread.steps.hash_,
-            guild_id=ctx.guild.id,
-            message_id=message.id,
-            metadata={"guild_name": ctx.guild.name},
-        ),
-    )
-    await thread.send(message)
+    await onboarding.send(message)
+    await ctx.followup.send("Check your DM's to continue onboarding", ephemeral=True)
 
 
 @bot.slash_command(
@@ -214,9 +211,9 @@ async def update(ctx):
 
 @bot.slash_command(
     guild_id=GUILD_IDS,
-    description="Send user history for a given community",
+    description="Send user points for a given community",
 )
-async def history(
+async def points(
     ctx,
     days: Option(
         str,
@@ -234,7 +231,7 @@ async def history(
         error_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             description="You are not a part of any communities. "
-            "Please run the /history command in a guild you are in",
+            "Please run the /points command in a guild you are in",
         )
 
         message, metadata = await select_guild(ctx, embed, error_embed)
@@ -262,7 +259,7 @@ async def history(
             ),
         )
 
-    thread = await History(
+    thread = await Points(
         ctx.author.id,
         hashlib.sha256("".encode()).hexdigest(),
         None,
@@ -374,22 +371,25 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 
 async def select_guild(ctx, response_embed, error_embed):
-    await ctx.response.defer()
     discord_rec = await find_user(ctx.author.id)
-    guild_ids = discord_rec.get("guild_users")
-    if not guild_ids:
+    airtable_guild_ids = discord_rec.get("guild_users")
+    if not airtable_guild_ids:
         await ctx.response.send_message(embed=error_embed)
         ctx.response.is_done()
         return None, None
 
+    await ctx.response.defer()
     guild_metadata = []
-    for record_id in guild_ids:
+    # TODO: this will set Thread.guild_id to the database id of the guild
+    # there are many places which still use guild_id to represent the discord
+    # id of the guild itself. We should standardize on guild_id vs guild_discord_id
+    # everywhere that's appropriate. Also with user_id vs user_discord_id
+    for record_id in airtable_guild_ids:
         g = await get_guild(record_id.get("guild_id"))
         guild_id = g.get("id")
-        guild_discord_id = g.get("discord_id")
         guild_name = g.get("name")
         if guild_id:
-            guild_metadata.append([guild_id, guild_name, guild_discord_id])
+            guild_metadata.append([guild_id, guild_name])
     embed = response_embed
     emojis = get_list_of_emojis(len(guild_metadata))
     daos = {}
@@ -398,7 +398,7 @@ async def select_guild(ctx, response_embed, error_embed):
         # hasn't yet been added to the guild_id in question
         # guild = await bot.fetch_guild(guild_id)
         emoji = emojis[idx]
-        daos[emoji] = {"guild_id": guild_data[0], "guild_discord_id": guild_data[2]}
+        daos[emoji] = guild_data[0]
         embed.add_field(name=guild_data[1], value=emoji)
     message = await ctx.followup.send(embed=embed)
     for emoji in emojis:
@@ -431,11 +431,7 @@ async def on_message(message):
         return
 
     thread = await get_thread(message.author.id, thread_key)
-
-    try:
-        await thread.send(message)
-    except errors.ApplicationCommandError as e:
-        await message.channel.send(str(e))
+    await thread.send(message)
 
 
 @bot.event

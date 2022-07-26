@@ -9,16 +9,6 @@ A self reporting bot for the movement model
 - `/update` - Update a profile for a given community
 - `/add_onboarding_contributions` - Ask user whether they have completed the initial contributions
 
-## Setup
-
-1. Clone this repository
-1. Create a virtual environment (`python3.9 -m venv ./.venv`)
-1. Activate the virtual environment (`source ./.venv/bin/activate`)
-1. Install dependencies via pip (`pip install -r requirements-dev.txt`)
-1. Setup environment variables as required in ./.env (see env.sample) for the values which need populating
-1. In a separate directory, clone the (Govrn monorepo)[https://github.com/Govrn-HQ/govrn-monorepo], and follow the the setup instructions there. 
-
-
 ## Development in VS Code
 
 Requires the following VS Code extensions to be installed:

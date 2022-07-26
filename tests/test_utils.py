@@ -1,6 +1,4 @@
-from datetime import timedelta, time
 from bot.common.cache import Cache
-from bot.common.tasks.tasks import Cadence
 
 
 # Add in memory implementation
@@ -17,22 +15,3 @@ class MockCache(Cache):
     async def delete(self, key):
         if self.internal.get(key):
             del self.internal[key]
-
-
-# This is a continual cadence; it's always running
-class MockCadence(Cadence):
-    def __init__(self, time_to_run: time):
-        self.time_to_run = time_to_run
-
-    async def get_timedelta_until_run(self, cache, cache_key) -> timedelta:
-        return timedelta(seconds=-1)
-
-    def set_time_to_run(self, time_to_run):
-        self.time_to_run = time_to_run
-
-
-# This is a simple "ping" task
-async def ping_task(bot):
-    # fts general
-    channel = bot.get_channel(956271220951765005)
-    await channel.send("ping")
