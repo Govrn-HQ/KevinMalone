@@ -413,11 +413,7 @@ async def update_user_display_name(id, display_name):
 async def update_user_twitter_handle(id, twitter_handle):
     try:
         return await update_user(
-            {
-                "twitter_user": {
-                    "create": {"username": twitter_handle}
-                }
-            },
+            {"twitter_user": {"create": {"username": twitter_handle}}},
             {"id": id},
         )
     except TransportQueryError as e:
