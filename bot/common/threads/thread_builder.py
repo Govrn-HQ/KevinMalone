@@ -270,7 +270,11 @@ class BaseThread:
         return await self.cache.set(
             self.user_id,
             build_cache_value(
-                self.name, step.hash_, self.guild_id, msg.id, metadata=metadata,
+                self.name,
+                step.hash_,
+                self.guild_id,
+                msg.id,
+                metadata=metadata,
             ),
         )
 
