@@ -57,7 +57,7 @@ class ThreadKeys(Enum):
     INITIAL_CONTRIBUTIONS = "initial_contributions"
     GUILD_SELECT = "guild_select"
     REPORT = "report"
-    POINTS = "history"
+    POINTS = "points"
     ADD_DAO = "add_dao"
 
 
@@ -95,10 +95,10 @@ class StepKeys(Enum):
     INITIAL_CONTRIBUTION_REPORT_COMMAND = "initial_contribution_report_command"
     OVERRIDE_THREAD = "override_thread"
     REPORT = "report"
-    DISPLAY_POINTS = "display_history"
-    POINTS_CSV_PROMPT = "history_csv_prompt"
-    POINTS_CSV_PROMPT_EMOJI = "history_csv_prompt_emoji"
-    POINTS_CSV_PROMPT_ACCEPT = "history_csv_prompt_accept"
+    DISPLAY_POINTS = "display_points"
+    POINTS_CSV_PROMPT = "points_csv_prompt"
+    POINTS_CSV_PROMPT_EMOJI = "points_csv_prompt_emoji"
+    POINTS_CSV_PROMPT_ACCEPT = "points_csv_prompt_accept"
     ADD_DAO_PROMPT_ID = "add_dao_prompt_id"
     ADD_DAO_PREVIOUSLY_ADDED_PROMPT = "add_dao_previously_added_prompt"
     ADD_DAO_GET_OR_CREATE = "add_dao_check_exists"
@@ -388,7 +388,7 @@ class Step:
     def add_next_step(self, step):
         """Add a new Step after the current
 
-        Adds a step that the current steps history to
+        Adds a step that the current steps points to
         and derives a hash from the current and next
         step.
 

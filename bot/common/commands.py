@@ -18,9 +18,9 @@ from bot.common.threads.thread_builder import (
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep, get_reporting_link
-from bot.common.threads.history import History
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
+from bot.common.threads.history import History
 from bot.common.threads.guild_select import GuildSelect
 from bot.common.threads.utils import get_thread
 from bot.config import (
@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send users link to report engagement",
+    guild_id=GUILD_IDS, description="Send users link to report engagement",
 )
 async def report(ctx):
     is_guild = bool(ctx.guild)
@@ -57,10 +56,7 @@ async def report(ctx):
 
         message, metadata = await select_guild(ctx, embed, error_embed)
         thread = await GuildSelect(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            message.id,
-            "",
+            ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
         )
         # TODO add thread and step
         return await Redis.set(
@@ -111,9 +107,7 @@ async def join(ctx):
         # on by sending all the commands
         application_commands = bot.application_commands
         embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            title="Welcome Back",
-            description="",
+            colour=INFO_EMBED_COLOR, title="Welcome Back", description="",
         )
         for cmd in application_commands:
             if isinstance(cmd, discord.SlashCommand):
@@ -195,10 +189,7 @@ async def update(ctx):
         if not metadata:
             return
         thread = await UpdateProfile(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            message.id,
-            "",
+            ctx.author.id, hashlib.sha256("".encode()).hexdigest(), message.id, "",
         )
         await Redis.set(
             ctx.author.id,
@@ -213,10 +204,9 @@ async def update(ctx):
 
 
 @bot.slash_command(
-    guild_id=GUILD_IDS,
-    description="Send user history for a given community",
+    guild_id=GUILD_IDS, description="Send user points for a given community",
 )
-async def history(
+async def points(
     ctx,
     days: Option(
         str,
@@ -234,7 +224,7 @@ async def history(
         error_embed = discord.Embed(
             colour=INFO_EMBED_COLOR,
             description="You are not a part of any communities. "
-            "Please run the /history command in a guild you are in",
+            "Please run the /points command in a guild you are in",
         )
 
         message, metadata = await select_guild(ctx, embed, error_embed)
@@ -277,10 +267,7 @@ async def history(
             ThreadKeys.POINTS.value,
             thread.steps.hash_,
             ctx.guild.id,
-            metadata={
-                "thread_name": ThreadKeys.POINTS.value,
-                "days": days,
-            },
+            metadata={"thread_name": ThreadKeys.POINTS.value, "days": days,},
         ),
     )
     await thread.send(None)
