@@ -1,4 +1,5 @@
 import logging
+from webbrowser import get
 
 from bot.common.threads.thread_builder import (
     BaseThread,
@@ -9,7 +10,7 @@ from bot.common.threads.thread_builder import (
 )
 from bot.config import REPORTING_FORM_FMT
 from bot.common.graphql import (
-    get_guild_by_id,
+    get_guild_by_discord_id
 )
 from bot.common.cache import build_congrats_key
 
@@ -47,9 +48,8 @@ class ReportStep(BaseStep):
         if message:
             await channel.send(msg)
 
-        # TODO: this will break because of self.guild_id and db changes
         if not await self.cache.get(build_congrats_key(user_id)):
-            fields = await get_guild_by_id(self.guild_id)
+            fields = await get_guild_by_discord_id(self.guild_id)
             congrats_channel_id = fields.get("congrats_channel_id")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
@@ -84,6 +84,6 @@ class Report(BaseThread):
 
 
 async def get_reporting_link(guild_discord_id):
-    guild = await get_guild_by_id(guild_discord_id)
+    guild = await get_guild_by_discord_id(guild_discord_id)
     guild_id = guild.get("id")
     return REPORTING_FORM_FMT % guild_id
