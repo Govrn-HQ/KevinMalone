@@ -1,6 +1,4 @@
 import logging
-from webbrowser import get
-
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
