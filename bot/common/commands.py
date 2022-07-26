@@ -18,9 +18,9 @@ from bot.common.threads.thread_builder import (
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep, get_reporting_link
-from bot.common.threads.history import History
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
+from bot.common.threads.history import History
 from bot.common.threads.guild_select import GuildSelect
 from bot.common.threads.utils import get_thread
 from bot.config import (
