@@ -5,13 +5,12 @@ import logging
 import hashlib
 import discord
 
-
-from bot.common.airtable import (
-    find_user,
-    get_guild,
-)
 from bot.common.bot.bot import bot
-from bot.common.graphql import get_guild_by_discord_id
+from bot.common.graphql import (
+    fetch_user_by_discord_id,
+    get_guild_by_id,
+    get_guild_by_discord_id,
+)
 from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
@@ -101,7 +100,7 @@ async def join(ctx):
     guild_discord_id = ctx.guild.id
 
     # TODO: a single query could be written for this
-    user = await find_user(ctx.author.id)
+    user = await fetch_user_by_discord_id(ctx.author.id)
     guild = await get_guild_by_discord_id(guild_discord_id)
     guild_id = guild["id"]
 
@@ -374,7 +373,7 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 async def select_guild(ctx, response_embed, error_embed):
     await ctx.response.defer()
-    discord_rec = await find_user(ctx.author.id)
+    discord_rec = await fetch_user_by_discord_id(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
     if not guild_ids:
         await ctx.followup.send(embed=error_embed)
@@ -382,7 +381,7 @@ async def select_guild(ctx, response_embed, error_embed):
 
     guild_metadata = []
     for record_id in guild_ids:
-        g = await get_guild(record_id.get("guild_id"))
+        g = await get_guild_by_id(record_id.get("guild_id"))
         guild_id = g.get("id")
         guild_discord_id = g.get("discord_id")
         guild_name = g.get("name")

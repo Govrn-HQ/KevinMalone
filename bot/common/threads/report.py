@@ -8,10 +8,8 @@ from bot.common.threads.thread_builder import (
     Step,
 )
 from bot.config import REPORTING_FORM_FMT
-from bot.common.airtable import (
-    get_guild_by_guild_id,
-    get_contribution_count,
-    get_user_record,
+from bot.common.graphql import (
+    get_guild_by_id,
 )
 from bot.common.cache import build_congrats_key
 
@@ -51,25 +49,27 @@ class ReportStep(BaseStep):
 
         # TODO: this will break because of self.guild_id and db changes
         if not await self.cache.get(build_congrats_key(user_id)):
-            fields = await get_guild_by_guild_id(self.guild_id)
+            fields = await get_guild_by_id(self.guild_id)
             congrats_channel_id = fields.get("congrats_channel_id")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
                 return None, {"msg": msg}
-            channel = self.bot.get_channel(int(congrats_channel_id))
-            user = self.bot.get_user(user_id)
-            # get count of uses
-            record = await get_user_record(user_id, self.guild_id)
-            fields = record.get("fields")
-            count = await get_contribution_count(fields.get("id"))
-            if count > 0:
-                await channel.send(
-                    f"Congrats {user.display_name} for reporting {count} "
-                    "engagements this week!"
-                )
-                await self.cache.set(
-                    build_congrats_key(user_id), "True", ex=60 * 60
-                )  # Expires in an hour
+
+            # channel = self.bot.get_channel(int(congrats_channel_id))
+            # user = self.bot.get_user(user_id)
+            # # get count of uses
+            # record = await fetch_user_by_discord_id(user_id, self.guild_id)
+            # fields = record.get("fields")
+            # # TODO: Pro-309
+            # # count = await get_contribution_count(fields.get("id"))
+            # if count > 0:
+            #     await channel.send(
+            #         f"Congrats {user.display_name} for reporting {count} "
+            #         "engagements this week!"
+            #     )
+            #     await self.cache.set(
+            #         build_congrats_key(user_id), "True", ex=60 * 60
+            #     )  # Expires in an hour
 
         return None, {"msg": msg}
 
@@ -84,6 +84,6 @@ class Report(BaseThread):
 
 
 async def get_reporting_link(guild_discord_id):
-    guild = await get_guild_by_guild_id(guild_discord_id)
+    guild = await get_guild_by_id(guild_discord_id)
     guild_id = guild.get("id")
     return REPORTING_FORM_FMT % guild_id
