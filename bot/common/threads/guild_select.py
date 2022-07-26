@@ -14,11 +14,9 @@ from bot.config import Redis
 
 class OverrideThreadStep(BaseStep):
     """A step that overwrites the current thread
-
     This step gets the name of the jump thread from
     the cache metadata and then overwrites the current
     steps in memory with the new threads steps.
-
     """
 
     name = StepKeys.OVERRIDE_THREAD.value
@@ -27,13 +25,12 @@ class OverrideThreadStep(BaseStep):
         self.parent_thread = cls
 
     async def send(self, message, user_id):
-        thread = get_jump_thread(self.parent_thread, message, user_id)
+        thread = await get_jump_thread(self.parent_thread, message, user_id)
         return await thread.step.current.send(message, user_id)
 
 
 class GuildSelect(BaseThread):
     """A thread that sets the guild_id for another thread
-
     This thread is typically called from a command which
     will set the next thread to jump to on the next step
     and responds with an emoji prompt for a user to set

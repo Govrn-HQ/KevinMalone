@@ -17,9 +17,9 @@ from bot.common.threads.thread_builder import (
 )
 from bot.common.threads.onboarding import Onboarding
 from bot.common.threads.report import ReportStep, get_reporting_link
-from bot.common.threads.history import History
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
+from bot.common.threads.history import History
 from bot.common.threads.guild_select import GuildSelect
 from bot.common.threads.utils import get_thread
 from bot.config import (
@@ -373,6 +373,7 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 
 async def select_guild(ctx, response_embed, error_embed):
+    await ctx.response.defer()
     discord_rec = await fetch_user_by_discord_id(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
     if not guild_ids:
@@ -380,18 +381,14 @@ async def select_guild(ctx, response_embed, error_embed):
         ctx.response.is_done()
         return None, None
 
-    await ctx.response.defer()
     guild_metadata = []
-    # TODO: this will set Thread.guild_id to the database id of the guild
-    # there are many places which still use guild_id to represent the discord
-    # id of the guild itself. We should standardize on guild_id vs guild_discord_id
-    # everywhere that's appropriate. Also with user_id vs user_discord_id
     for record_id in guild_ids:
         g = await get_guild_by_id(record_id.get("guild_id"))
         guild_id = g.get("id")
+        guild_discord_id = g.get("discord_id")
         guild_name = g.get("name")
         if guild_id:
-            guild_metadata.append([guild_id, guild_name])
+            guild_metadata.append([guild_id, guild_name, guild_discord_id])
     embed = response_embed
     emojis = get_list_of_emojis(len(guild_metadata))
     daos = {}
@@ -400,7 +397,7 @@ async def select_guild(ctx, response_embed, error_embed):
         # hasn't yet been added to the guild_id in question
         # guild = await bot.fetch_guild(guild_id)
         emoji = emojis[idx]
-        daos[emoji] = guild_data[0]
+        daos[emoji] = {"guild_id": guild_data[0], "guild_discord_id": guild_data[2]}
         embed.add_field(name=guild_data[1], value=emoji)
     message = await ctx.followup.send(embed=embed)
     for emoji in emojis:
