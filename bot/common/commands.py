@@ -1,6 +1,4 @@
-from bot import constants
 from discord.commands import Option
-from distutils.util import strtobool
 import logging
 import hashlib
 import discord
