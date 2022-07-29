@@ -313,7 +313,7 @@ mutation createGuild($data: GuildCreateInput!) {
     return result
 
 
-async def create_user(discord_id, discord_name, wallet):
+async def create_user(discord_id, wallet):
     query = """
 mutation createUser($data: UserCreateInput!) {
   createUser(data: $data) {
@@ -328,10 +328,7 @@ mutation createUser($data: UserCreateInput!) {
             "discord_users": {
                 "connectOrCreate": [
                     {
-                        "create": {
-                            "discord_id": str(discord_id),
-                            "display_name": discord_name,
-                        },
+                        "create": {"discord_id": str(discord_id)},
                         "where": {"discord_id": str(discord_id)},
                     }
                 ]
@@ -403,18 +400,14 @@ mutation updateUser($data: UserUpdateInput!, $where: UserWhereUniqueInput!) {
     return result
 
 
-async def update_user_display_name(id, display_name):
-    return await update_user(
-        {"display_name": {"set": display_name}, "name": {"set": display_name}},
-        {"id": id},
-    )
+async def update_user_display_name(display_name, id):
+    return await update_user({"display_name": {"set": display_name}}, {"id": id})
 
 
-async def update_user_twitter_handle(id, twitter_handle):
+async def update_user_twitter_handle(twitter_handle, id):
     try:
         return await update_user(
-            {"twitter_user": {"create": {"username": twitter_handle}}},
-            {"id": id},
+            {"twitter_user": {"create": {"username": twitter_handle}}}, {"id": id}
         )
     except TransportQueryError as e:
         if is_unique_constraint_failure(e):
@@ -425,7 +418,7 @@ async def update_user_twitter_handle(id, twitter_handle):
             raise UserWithTwitterHandleAlreadyExists(err)
 
 
-async def update_user_wallet(id, wallet):
+async def update_user_wallet(wallet, id):
     return await update_user({"address": {"set": wallet}}, {"id": id})
 
 
