@@ -4,7 +4,7 @@ A self reporting bot for the movement model
 
 ## Functionality
 
-- `/report` - creates a private message to the user with a link the guild's airtable
+- `/report` - creates a private message to the user with a link the reporting form
 - `/join` - Join a guild where this command is run
 - `/update` - Update a profile for a given community
 - `/add_onboarding_contributions` - Ask user whether they have completed the initial contributions

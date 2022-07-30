@@ -1,9 +1,5 @@
 import discord
 import hashlib
-from bot.common.airtable import (
-    add_user_to_contribution,
-    get_contribution_records,
-)
 from bot.common.threads.thread_builder import (
     BaseThread,
     BaseStep,
@@ -64,7 +60,8 @@ class SendContributionInstructions(BaseStep):
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
 
-        await add_user_to_contribution(self.guild_id, user_id, self.contribution_number)
+        # TODO: Pro-310
+        # await add_user_to_contribution(...)
 
         return sent_message, None
 
@@ -145,7 +142,9 @@ class InitialContributions(BaseThread):
     async def build_steps(self):
         if not self.guild_id:
             raise Exception("No provided guild_id for Initial Contribution thread")
-        contribution_records = await get_contribution_records(self.guild_id)
+        # TODO: Pro-310
+        # contribution_records = await get_contribution_records(self.guild_id)
+        contribution_records = None
         previous_step = None
         for i, record in enumerate(
             sorted(
