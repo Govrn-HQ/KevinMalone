@@ -1,17 +1,14 @@
-from bot import constants
 from discord.commands import Option
-from distutils.util import strtobool
 import logging
 import hashlib
 import discord
 
-
-from bot.common.airtable import (
-    find_user,
-    get_guild,
-)
 from bot.common.bot.bot import bot
-from bot.common.graphql import get_guild_by_discord_id
+from bot.common.graphql import (
+    fetch_user_by_discord_id,
+    get_guild_by_id,
+    get_guild_by_discord_id,
+)
 from bot.common.threads.thread_builder import (
     build_cache_value,
     ThreadKeys,
@@ -101,11 +98,13 @@ async def join(ctx):
     guild_discord_id = ctx.guild.id
 
     # TODO: a single query could be written for this
-    user = await find_user(ctx.author.id)
+    user = await fetch_user_by_discord_id(ctx.author.id)
     guild = await get_guild_by_discord_id(guild_discord_id)
     guild_id = guild["id"]
 
-    if any(guild_user["guild_id"] == guild_id for guild_user in user["guild_users"]):
+    if user is not None and any(
+        guild_user["guild_id"] == guild_id for guild_user in user["guild_users"]
+    ):
         # Send welcome message and
         # And ask what journey they are
         # on by sending all the commands
@@ -285,43 +284,39 @@ async def history(
     await thread.send(None)
 
 
-if bool(strtobool(constants.Bot.is_dev)):
+@bot.slash_command(
+    guild_id=GUILD_IDS, description="Add a new guild to report contributions"
+)
+async def add_dao(ctx):
+    is_guild = bool(ctx.guild)
 
-    @bot.slash_command(
-        guild_id=GUILD_IDS, description="Add a new guild to report contributions"
+    # Requiring DMs for now to keep things simple
+    if is_guild:
+        await ctx.respond("Please run this command in a DM channel", ephemeral=True)
+        return
+
+    embed = discord.Embed(
+        colour=INFO_EMBED_COLOR,
+        title="Add DAO",
+        description="Add a new guild so that you can report your contributions,"
+        " even if Kevin Malone hasn't been added to the server",
     )
-    async def add_dao(ctx):
-        is_guild = bool(ctx.guild)
+    sent_message = await ctx.response.send_message(embed=embed)
 
-        # Requiring DMs for now to keep things simple
-        if is_guild:
-            await ctx.respond("Please run this command in a DM channel", ephemeral=True)
-            return
+    thread = await AddDao(
+        ctx.author.id,
+        hashlib.sha256("".encode()).hexdigest(),
+        sent_message.id,
+        None,
+        cache=Redis,
+        discord_bot=bot,
+        context=ctx,
+    )
+    cache_value = build_cache_value(ThreadKeys.ADD_DAO.value, thread.steps.hash_, "")
 
-        embed = discord.Embed(
-            colour=INFO_EMBED_COLOR,
-            title="Add DAO",
-            description="Add a new guild so that you can report your contributions,"
-            " even if Kevin Malone hasn't been added to the server",
-        )
-        sent_message = await ctx.response.send_message(embed=embed)
-
-        thread = await AddDao(
-            ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
-            sent_message.id,
-            None,
-            cache=Redis,
-            discord_bot=bot,
-            context=ctx,
-        )
-        cache_value = build_cache_value(
-            ThreadKeys.ADD_DAO.value, thread.steps.hash_, ""
-        )
-
-        logger.info(f"Key: {cache_value}")
-        await Redis.set(ctx.author.id, cache_value)
-        await thread.send(sent_message)
+    logger.info(f"Key: {cache_value}")
+    await Redis.set(ctx.author.id, cache_value)
+    await thread.send(sent_message)
 
 
 # if bool(strtobool(constants.Bot.is_dev)):
@@ -374,7 +369,7 @@ if bool(strtobool(constants.Bot.is_dev)):
 
 async def select_guild(ctx, response_embed, error_embed):
     await ctx.response.defer()
-    discord_rec = await find_user(ctx.author.id)
+    discord_rec = await fetch_user_by_discord_id(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
     if not guild_ids:
         await ctx.followup.send(embed=error_embed)
@@ -382,7 +377,7 @@ async def select_guild(ctx, response_embed, error_embed):
 
     guild_metadata = []
     for record_id in guild_ids:
-        g = await get_guild(record_id.get("guild_id"))
+        g = await get_guild_by_id(record_id.get("guild_id"))
         guild_id = g.get("id")
         guild_discord_id = g.get("discord_id")
         guild_name = g.get("name")
