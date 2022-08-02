@@ -30,8 +30,9 @@ class ReportStep(BaseStep):
         if message:
             channel = message.channel
 
+        guild = await get_guild_by_discord_id(self.guild_id)
         link = (
-            REPORTING_FORM_FMT % self.guild_id
+            REPORTING_FORM_FMT % guild["id"]
             if self.reporting_link is None
             else self.reporting_link
         )
