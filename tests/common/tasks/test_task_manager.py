@@ -69,6 +69,8 @@ async def test_weekly_cadence_with_last_run():
 async def test_weekly_report():
     df = await create_guild_dataframe(3)
     assert df
+
+
 # TODO: need versions of below tests with proper mocking and
 # assertions. For now, integration tests (w/discord) are
 # sufficient
@@ -124,7 +126,9 @@ def test_reporting():
             MockCache(),
             MockCadence(None),
             loop_settings,
-            reporting_channel=CHANNEL))
+            reporting_channel=CHANNEL,
+        )
+    )
     bot.run(TOKEN)
 
 
@@ -142,18 +146,17 @@ def test_reporting_with_cache():
     # set cache entry to mock as if the bot had sent the report,
     # crashed, and is now re-running after restart to ensure the
     # report is not sent constantly if the bot is crashing
-    asyncio.run_coroutine_threadsafe(mock_cache.set(
-        ReportingTask.REPORT_LAST_SENT_DATETIME_CACHE_KEY,
-        datetime.now().strftime(DATETIME_CACHE_FMT)
-    ), bot.loop)
+    asyncio.run_coroutine_threadsafe(
+        mock_cache.set(
+            ReportingTask.REPORT_LAST_SENT_DATETIME_CACHE_KEY,
+            datetime.now().strftime(DATETIME_CACHE_FMT),
+        ),
+        bot.loop,
+    )
 
     bot.add_cog(
         ReportingTask(
-            bot,
-            mock_cache,
-            cadence,
-            loop_settings,
-            reporting_channel=CHANNEL
+            bot, mock_cache, cadence, loop_settings, reporting_channel=CHANNEL
         )
     )
     # TODO: assert that the task is not run
@@ -172,11 +175,7 @@ def test_task_disable():
 
     bot.add_cog(
         ReportingTask(
-            bot,
-            mock_cache,
-            cadence,
-            loop_settings,
-            reporting_channel=CHANNEL
+            bot, mock_cache, cadence, loop_settings, reporting_channel=CHANNEL
         )
     )
     # TODO: assert that the task does not run
@@ -197,18 +196,17 @@ def test_task_hourly():
     # set cache entry to mock as if the bot had sent the report,
     # crashed, and is now re-running after restart to ensure the
     # report is not sent constantly if the bot is crashing
-    asyncio.run_coroutine_threadsafe(mock_cache.set(
-        ReportingTask.REPORT_LAST_SENT_DATETIME_CACHE_KEY,
-        datetime.now().strftime(DATETIME_CACHE_FMT)
-    ), bot.loop)
+    asyncio.run_coroutine_threadsafe(
+        mock_cache.set(
+            ReportingTask.REPORT_LAST_SENT_DATETIME_CACHE_KEY,
+            datetime.now().strftime(DATETIME_CACHE_FMT),
+        ),
+        bot.loop,
+    )
 
     bot.add_cog(
         ReportingTask(
-            bot,
-            mock_cache,
-            cadence,
-            loop_settings,
-            reporting_channel=CHANNEL
+            bot, mock_cache, cadence, loop_settings, reporting_channel=CHANNEL
         )
     )
     # TODO: assert that the task is not run
