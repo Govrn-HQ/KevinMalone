@@ -10,6 +10,7 @@ bot:
   protocol_token: !ENV "PROTOCOL_TOKEN"
   tasks:
     task_wakeup_period_minutes: !ENV "TASK_WAKEUP_PERIOD_MINUTES"
+    weekly_report_minimum_time_between_loop_seconds: !ENV "WEEKLY_REPORT_MINIMUM_TIME_BETWEEN_LOOP_SECONDS"
     weekly_report_enable: !ENV "WEEKLY_REPORT_ENABLE"
     weekly_report_weekday: !ENV "WEEKLY_REPORT_WEEKDAY"
     weekly_report_time: !ENV "WEEKLY_REPORT_TIME"

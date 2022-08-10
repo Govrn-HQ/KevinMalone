@@ -213,6 +213,7 @@ class BotTasks(metaclass=YAMLGetter):
     subsection = "tasks"
 
     task_wakeup_period_minutes: int
+    weekly_report_minimum_time_between_loop_seconds: int
     weekly_report_enable: bool
     weekly_report_weekday: int
     weekly_report_time: str
