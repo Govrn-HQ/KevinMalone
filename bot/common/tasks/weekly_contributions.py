@@ -97,15 +97,15 @@ async def send_reports(
         guild_name = guild["name"]
         if guild_name not in reports.keys():
             logger.warn(f"{guild_name} did not have a report generated")
-            non_reporting_guilds += guild
+            non_reporting_guilds.append(guild)
             continue
         channel_id = guild["contribution_reporting_channel"]
         if channel_id is None or channel_id == "":
             logger.info(f"{guild_name} has no contribution channel specified")
-            default_reporting_guilds += guild
+            default_reporting_guilds.append(guild)
             continue
         logger.info(f"{guild_name} is reporting to channel {channel_id}")
-        reporting_guilds += guild
+        reporting_guilds.append(guild)
 
     await send_default_reports(
         bot,
@@ -155,9 +155,12 @@ async def send_default_reports(
         description=embed_description,
         fields=[default_reporting_guilds_field, non_reporting_guilds_field],
     )
+    files = [reports[guild_name] for guild_name in default_reporting_guild_names]
 
     channel = bot.get_channel(int(channel_id))
+    # to ensure the files are sent after
     await channel.send(embed=embed)
+    await channel.send(files=files)
 
 
 # sends contribution reports to guilds which have specified their reporting
@@ -172,7 +175,7 @@ async def send_guild_reports(bot: Bot, reporting_guilds, reports):
         report = reports[guild_name]
         try:
             channel = bot.get_channel(int(channel_id))
-            channel.send(content=message, file=report)
+            await channel.send(content=message, file=report)
         except Exception as e:
             logger.error(f"Exception in sending report for {guild_name}: {e}")
 
