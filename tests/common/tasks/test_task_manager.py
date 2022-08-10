@@ -120,15 +120,7 @@ def test_reporting():
 
     # the reporting task should run every minute, since the cadence
     # will always return "it's time to run"
-    bot.add_cog(
-        ReportingTask(
-            bot,
-            MockCache(),
-            MockCadence(None),
-            loop_settings,
-            reporting_channel=CHANNEL,
-        )
-    )
+    bot.add_cog(ReportingTask(bot, MockCache(), MockCadence(None), loop_settings))
     bot.run(TOKEN)
 
 
