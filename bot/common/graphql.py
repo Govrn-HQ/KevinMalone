@@ -121,7 +121,9 @@ fragment GuildFragment on Guild {
 
 
 async def fetch_user_by_discord_id(discord_id):
-    query = GqlFragments.USER_FRAGMENT + """
+    query = (
+        GqlFragments.USER_FRAGMENT
+        + """
 query getUser($where: UserWhereInput!,) {
     result: users(
         where: $where,
@@ -130,6 +132,7 @@ query getUser($where: UserWhereInput!,) {
     }
 }
     """
+    )
     result = await execute_query(
         query,
         {
@@ -150,7 +153,9 @@ query getUser($where: UserWhereInput!,) {
 
 
 async def get_contributions_for_guild(guild_id, user_discord_id, after_date):
-    query = GqlFragments.CONTRIBUTION_FRAGMENT + """
+    query = (
+        GqlFragments.CONTRIBUTION_FRAGMENT
+        + """
 query listContributions($where: ContributionWhereInput! = {},
                         $skip: Int! = 0,
                         $orderBy: [ContributionOrderByWithRelationInput!]) {
@@ -164,6 +169,7 @@ query listContributions($where: ContributionWhereInput! = {},
 }
 
     """
+    )
     guild_clause = {
         "guilds": {"some": {"guild_id": {"equals": guild_id}}},
     }
@@ -203,7 +209,9 @@ query listContributions($where: ContributionWhereInput! = {},
 
 
 async def get_guild_by_discord_id(id):
-    query = GqlFragments.GUILD_FRAGMENT + """
+    query = (
+        GqlFragments.GUILD_FRAGMENT
+        + """
 query getGuild($where: GuildWhereUniqueInput!) {
     result: guild(
         where: $where,
@@ -212,6 +220,7 @@ query getGuild($where: GuildWhereUniqueInput!) {
     }
 }
     """
+    )
     result = await execute_query(query, {"where": {"discord_id": str(id)}})
     print("Get guild")
     print(result)
@@ -221,7 +230,9 @@ query getGuild($where: GuildWhereUniqueInput!) {
 
 
 async def get_guild_by_id(id):
-    query = GqlFragments.GUILD_FRAGMENT + """
+    query = (
+        GqlFragments.GUILD_FRAGMENT
+        + """
 query getGuild($where: GuildWhereUniqueInput!) {
     result: guild(
         where: $where,
@@ -230,6 +241,7 @@ query getGuild($where: GuildWhereUniqueInput!) {
     }
 }
     """
+    )
     result = await execute_query(query, {"where": {"id": id}})
     print("Get guild")
     print(result)
@@ -239,7 +251,9 @@ query getGuild($where: GuildWhereUniqueInput!) {
 
 
 async def get_guilds():
-    query = GqlFragments.GUILD_FRAGMENT + """
+    query = (
+        GqlFragments.GUILD_FRAGMENT
+        + """
 query listGuilds(
   $where: GuildWhereInput! = {}
   $skip: Int! = 0
@@ -250,6 +264,7 @@ query listGuilds(
   }
 }
     """
+    )
     result = await execute_query(query, None)
     print("list guilds")
     print(result)
@@ -355,13 +370,16 @@ mutation createUser($data: UserCreateInput!) {
 # twitter
 # discourse
 async def update_user(data, where):
-    query = GqlFragments.USER_FRAGMENT + """
+    query = (
+        GqlFragments.USER_FRAGMENT
+        + """
 mutation updateUser($data: UserUpdateInput!, $where: UserWhereUniqueInput!) {
   updateUser(data: $data, where: $where) {
     ...UserFragment
   }
 }
     """
+    )
     result = await execute_query(
         query,
         {"data": data, "where": where},
