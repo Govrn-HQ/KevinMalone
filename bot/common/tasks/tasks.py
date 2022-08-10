@@ -173,19 +173,11 @@ class Days:
 class ReportingTask(commands.Cog):
     REPORT_LAST_SENT_DATETIME_CACHE_KEY = "contribution_report_last_sent"
 
-    def __init__(
-        self,
-        bot: discord.Bot,
-        cache: Cache,
-        cadence: Weekly,
-        loop_settings,
-        reporting_channel=None,
-    ):
+    def __init__(self, bot: discord.Bot, cache: Cache, cadence: Weekly, loop_settings):
         self.bot = bot
         self.cache: Cache = cache
         self.cadence: Weekly = cadence
         self.min_time_between_loop_seconds: int = 60
-        self.reporting_channel = reporting_channel
         self.init_loop(loop_settings)
 
     def init_loop(self, loop_settings):
@@ -240,7 +232,7 @@ class ReportingTask(commands.Cog):
             )
             return
 
-        await send_weekly_contribution_reports(self.bot, self.reporting_channel)
+        await send_weekly_contribution_reports(self.bot)
 
         # update cache
         await self.cache.set(
