@@ -1,25 +1,53 @@
-import threading
 import logging
 import asyncio
+import discord
+import pytz
 
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime, time
+from discord.ext import tasks, commands
 
 from bot.common.tasks.weekly_contributions import send_weekly_contribution_reports
-from bot.common.cache import Cache, RedisCache
+from bot.common.cache import Cache
+from bot.constants import BotTasks as TaskConstants
 
 logger = logging.getLogger(__name__)
 
-TASK_LOOP_INTERVAL_MINUTES = 10
-REPORT_LAST_SENT_DATETIME_CACHE_KEY = "contribution_report_last_sent"
+# TODO: tz?
 DATETIME_CACHE_FMT = "%m/%d/%Y, %H:%M:%S"
 
 
 class Cadence(ABC):
-    # Returns the number of seconds until the task can be run. Negative
-    # values reflect that the task is due to fire.
+    """
+    Abstract base class for cadences. Objects that implement this ABC 
+    are intended to help with repetive tasks that fire on a specific
+    schedule.
+    """
+
+    """
+    Returns the number of seconds until the task can be run. Negative
+    values reflect that the task is due to fire. When negative values
+    are returned are at the discretion of the implementing class.
+    """
     @abstractmethod
-    async def get_timedelta_until_run(self, cache: Cache, cache_key: str) -> timedelta:
+    def get_timedelta_until_run(self, from_dt: datetime) -> timedelta:
+        pass
+
+    """
+    Returns the timedelta until the next scheduled occurrence after 
+    from_dt. Return value's timedelta is expected to be gte zero (i.e.)
+    timedelta.total_seconds() >= 0.
+    """
+    @abstractmethod
+    def get_timedelta_until_next_occurrence(self, from_dt: datetime) -> timedelta:
+        pass
+
+    """
+    Returns the next scheduled occurrence after from_dt. Return value
+    is expected to be gte from_dt.
+    """
+    @abstractmethod
+    def get_next_runtime(self) -> datetime:
         pass
 
 
@@ -52,76 +80,12 @@ class Task:
         )
 
 
-# Sets up a batch of tasks and a separate thread to run them.
-# Each task is exceuted sequentially in the order it was added.
-# A single thread is used to manage the batch of added tasks.
-class TaskBatch:
-    def __init__(self, cache: Cache, timeout_seconds: int):
-        self.cache = cache
-        self.timeout_seconds = timeout_seconds
-        self.ticker = threading.Event()
-        self.thread = threading.Thread(target=self.run)
-        self.tasks: list[Task] = []
-
-    def add_task(self, fn, key: str, cadence: Cadence):
-        self.tasks.append(Task(self.cache, key, fn, cadence))
-
-    async def _batch_run_tasks(self):
-        for task in self.tasks:
-            await task.try_run()
-
-    def run(self):
-        while not self.ticker.wait(self.timeout_seconds):
-            logger.info(f"starting new execution loop of {len(self.tasks)} tasks")
-            asyncio.run(self._batch_run_tasks())
-
-    def start(self):
-        logger.info(f"starting task batch with {len(self.tasks)} tasks")
-        self.thread.start()
-
-    def stop(self):
-        logger.info(f"stopping task batch with {len(self.tasks)} tasks..")
-        self.ticker.set()
-        self.thread.join()
-        self.thread = threading.Thread(target=self.run)
-        self.ticker.clear()
-        logger.info(f"task batch with {len(self.tasks)} stopped")
-
-
 class Weekly(Cadence):
     def __init__(self, day_to_run: int, time_to_run: time):
         self.day_to_run = day_to_run
         self.time_to_run = time_to_run
 
-    # last_sent should be used to make sure that the bot doesn't
-    # always send something on a restart
-    async def get_timedelta_until_run(self, cache: Cache, cache_key: str) -> timedelta:
-        last_sent = await cache.get(cache_key)
-        # check that today is the same weekday as the cadence and that
-        # the last update was sent 1 week ago
-        now: datetime = datetime.now()
-
-        # last_entry does not exist -> return delta to closest ocurrence of next run
-        if last_sent is None:
-            return self.get_timedelta(now)
-
-        last_sent: datetime = datetime.strptime(last_sent, DATETIME_CACHE_FMT)
-
-        # if the last_sent is on a day that does not match specified weekday,
-        # the cadence may have been changed in code, or the task ran late
-        # for some reason. log appropriately, return timedelta for next ocurrence
-        if last_sent.weekday() != self.day_to_run:
-            logger.warning(
-                f"Weekly task {cache_key} was last run on a different day "
-                f"({last_sent.strftime(DATETIME_CACHE_FMT)}) than is specified on "
-                f"the task ({self.time_to_run.isoformat()} on {self.day_to_run}th "
-                "day of the week)"
-            )
-            return self.get_timedelta(now)
-
-        return self.get_timedelta_with_last_sent(now, last_sent)
-
-    def get_timedelta(self, now: datetime) -> timedelta:
+    def get_timedelta_until_run(self, now: datetime) -> timedelta:
         if now.weekday() == self.day_to_run:
             if now.time() >= self.time_to_run:
                 # run immediately
@@ -130,21 +94,38 @@ class Weekly(Cadence):
         return self.get_timedelta_until_next_occurrence(now)
 
     def get_timedelta_until_next_occurrence(self, now: datetime) -> timedelta:
+        next_ocurrence = self.get_next_runtime(now)
+        td = next_ocurrence - now
+        return td
+
+    def get_next_runtime(self, now: datetime) -> datetime:
         days_until = (self.day_to_run - now.weekday()) % 7
         next_ocurrence = now + timedelta(days=days_until)
         next_ocurrence = datetime.combine(next_ocurrence.date(), self.time_to_run)
+        return next_ocurrence
+
+
+class Hourly(Cadence):
+    def __init__(self):
+        super().__init__()
+
+    def get_timedelta_until_run(self, now: datetime) -> timedelta:
+        time = now.time()
+        if time.minute == 0:
+            return timedelta(seconds=-1)
+        # wait until the next ocurrence of the specified date and time
+        return self.get_timedelta_until_next_occurrence(now)
+
+    def get_timedelta_until_next_occurrence(self, now: datetime) -> timedelta:
+        next_ocurrence = self.get_next_runtime(now)
         td = next_ocurrence - now
-        if td.total_seconds() <= 0:
-            td = td + timedelta(days=7)
         return td
 
-    def get_timedelta_with_last_sent(
-        self, now: datetime, last_sent: datetime
-    ) -> timedelta:
-        # If the last_sent datetime is today, wait until next ocurrence
-        if now.date() == last_sent.date():
-            return self.get_timedelta_until_next_occurrence(now)
-        return self.get_timedelta(now)
+    def get_next_runtime(self, now: datetime) -> datetime:
+        delta = timedelta(hours=1)
+        next = now + delta
+        next_hour = next.replace(microsecond=0, second=0, minute=0)
+        return next_hour
 
 
 # conforms with date.weekday()
@@ -158,19 +139,108 @@ class Days:
     SUNDAY = 6
 
 
-# TASKS
-tasks = TaskBatch(RedisCache(), TASK_LOOP_INTERVAL_MINUTES * 60)
+# TODO: future refactor; abstract bot tasks class to accept a
+# cadence, action, and loop settings (enable/disable & wakeup time)
+# TODO: loop settings into its own class
+class ReportingTask(commands.Cog):
+    REPORT_LAST_SENT_DATETIME_CACHE_KEY = "contribution_report_last_sent"
+
+    def __init__(
+        self,
+        bot: discord.Bot,
+        cache: Cache,
+        cadence: Weekly,
+        loop_settings,
+        reporting_channel=None
+    ):
+        self.bot = bot
+        self.cache: Cache = cache
+        self.cadence: Weekly = cadence
+        self.reporting_channel = reporting_channel
+        self.init_loop(loop_settings)
+
+    def init_loop(self, loop_settings):
+        # TODO: checking on loop settings to be encapsulated in class/fn
+        if not loop_settings["enable"]:
+            logger.info("contribution report task disabled, skipping...")
+            return
+
+        m = loop_settings["task_wakeup_period_minutes"]
+        self.contribution_report: tasks.Loop = tasks.loop(
+            minutes=m
+        )(
+            self.contribution_report
+        )
+        self.contribution_report.before_loop(self.wait_until_ready)
+        self.contribution_report.start()
+        self.contribution_report.error(self.handle_error)
+
+    async def contribution_report(self):
+        now: datetime = datetime.now()
+        logger.info(f"contribution_report awake at {now}")
+
+        td_until_run: timedelta = self.cadence.get_timedelta_until_run(now)
+        s_until_run = td_until_run.total_seconds()
+
+        if s_until_run > 0:
+            if td_until_run.days > 0:
+                logger.info("contribution_report sleeping...")
+                return
+            logger.info(f"contribution_report waiting {s_until_run}s until run")
+            await asyncio.sleep(s_until_run)
+
+        # check cache
+        last_sent = await self.cache.get(self.REPORT_LAST_SENT_DATETIME_CACHE_KEY)
+        if last_sent is not None:
+            last_sent = datetime.strptime(last_sent, DATETIME_CACHE_FMT)
+
+        td_last_sent: timedelta = None if last_sent is None else now - last_sent
+
+        # if there's a cache entry from the same day, skip the task
+        # TODO: extract the 24h last run as a setting
+        if td_last_sent is not None and td_last_sent.total_seconds() < 60 * 60:  # * 24
+            logger.warn(
+                f"last sent time for {self.REPORT_LAST_SENT_DATETIME_CACHE_KEY} is "
+                f"{last_sent}, {td_last_sent.total_seconds()} seconds ago. "
+                "This is within the same day, so skipping this report...")
+            return
+
+        await send_weekly_contribution_reports(self.bot, self.reporting_channel)
+
+        # update cache
+        await self.cache.set(
+            self.REPORT_LAST_SENT_DATETIME_CACHE_KEY,
+            datetime.now().strftime(DATETIME_CACHE_FMT),
+        )
+
+    async def wait_until_ready(self):
+        await self.bot.wait_until_ready()
+
+    async def handle_error(self, ex):
+        logger.error(
+            f"Unhandled error in reporting: {ex}"
+        )
 
 
-def task(task_collection: TaskBatch, name: str, cadence: Cadence):
-    logger.info(f"adding {name} to task list")
-
-    def inner(f):
-        task_collection.add_task(f, name, cadence)
-
-    return inner
+def init_bot_tasks(bot: discord.Bot, cache: Cache):
+    # TODO: Going to keep friday hardcoded here for legibility
+    # TODO: swap env var from an index to the written day name,
+    # and convert to integer in Days class
+    bot.add_cog(get_reporting_task(bot, cache))
 
 
-@task(tasks, "weekly_contribution_report", cadence=Weekly(Days.FRIDAY, time(15, 00)))
-async def weekly_contribution_report():
-    await send_weekly_contribution_reports()
+def get_reporting_task(bot: discord.Bot, cache: Cache) -> discord.Cog:
+    settings = {
+        "enable": bool(TaskConstants.weekly_report_enable),
+        "task_wakeup_period_minutes": int(TaskConstants.task_wakeup_period_minutes)
+    }
+    return ReportingTask(
+        bot,
+        cache,
+        Hourly(),
+        # Weekly(Days.FRIDAY, time_to_run=time(
+        #    17, 00,
+        #    tzinfo=pytz.timezone('US/Eastern')
+        # )),
+        settings
+    )

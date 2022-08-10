@@ -5,9 +5,13 @@ import logging
 from typing import Dict, Union
 import pandas as pd
 from datetime import datetime, timedelta
-from discord import EmbedField, File, Embed
+from discord import EmbedField, File, Embed, Bot
 
-from bot.common.graphql import get_contributions_for_guild, get_guilds, get_guild_by_id
+from bot.common.graphql import (
+    get_contributions_for_guild,
+    get_guild_by_discord_id,
+    get_guilds,
+)
 
 from bot import constants
 from bot.config import INFO_EMBED_COLOR
@@ -40,32 +44,35 @@ async def save_weekly_contribution_reports():
         logger.info(f"done saving report {path}")
 
 
-async def send_weekly_contribution_reports(bot):
+async def send_weekly_contribution_reports(bot: Bot, reporting_channel_id: str = None):
     # retrieve the reporting channel
-    govrn_guild_id = constants.Bot.govrn_guild_id
-    govrn_guild = await get_guild_by_id(govrn_guild_id)
-    # TODO
-    report_channel_id = govrn_guild.get("fields").get("report_channel")
+    govrn_guild_discord_id = constants.Bot.govrn_guild_id
+    govrn_guild = await get_guild_by_discord_id(govrn_guild_discord_id)
 
-    # if none is specified, log message and return
-    if report_channel_id is None or report_channel_id == "":
-        logger.info(f"report_channel is not specified for guild {govrn_guild_id}")
-        return
+    if reporting_channel_id is None:
+        reporting_channel_id = govrn_guild.get("contribution_reporting_channel")
+        # if none is specified, log message and return
+        if reporting_channel_id is None or reporting_channel_id == "":
+            logger.info(
+                f"report_channel is not specified for guild {govrn_guild_discord_id}"
+            )
+            return
 
     # get guilds for reporting
     guilds_to_report = await get_guilds_to_report()
 
     reports = await generate_guild_contribution_reports(guilds_to_report)
 
-    channel = bot.get_channel(report_channel_id)
+    channel = bot.get_channel(int(reporting_channel_id))
     await send_reports(channel, guilds_to_report, reports)
 
 
 # helper functions
 async def send_reports(channel, guilds_to_report, reports):
+    guild_names = [guild["name"] for guild in guilds_to_report]
     formatted_date = get_formatted_date()
     guilds_to_report_field = EmbedField(
-        name="Reporting guilds", value=", ".join(guilds_to_report)
+        name="Reporting guilds", value=", ".join(guild_names)
     )
 
     embed_description = (
@@ -144,7 +151,7 @@ async def generate_guild_contribution_reports(
         if df is None:
             continue
 
-        description = (f"{date_reformat} weekly contribution report for {guild_name}",)
+        description = f"{date_reformat} weekly contribution report for {guild_name}"
 
         reports[guild_name] = await write_dataframe_to_csv(
             df, guild_name, description, local_csv

@@ -205,6 +205,23 @@ class Bot(metaclass=YAMLGetter):
 
     prefix: str
     token: str
+    govrn_guild_id: int
+
+
+class BotTasks(metaclass=YAMLGetter):
+    section = "bot"
+    subsection = "tasks"
+
+    task_wakeup_period_minutes: int
+    weekly_report_enable: bool
+    weekly_report_weekday: int
+    weekly_report_time: str
+
+
+class Tests(metaclass=YAMLGetter):
+    section = "tests"
+
+    test_channel: str
 
 
 class Colors(metaclass=YAMLGetter):

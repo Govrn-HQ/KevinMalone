@@ -33,8 +33,8 @@ async def execute_query(query, values):
         raise
 
 
-async def fetch_user_by_discord_id(discord_id):
-    query = """
+class GqlFragments:
+    USER_FRAGMENT = """
 fragment UserFragment on User {
   address
   chain_type {
@@ -58,36 +58,9 @@ fragment UserFragment on User {
     username
   }
 }
+"""
 
-query getUser($where: UserWhereInput!,) {
-    result: users(
-        where: $where,
-    ) {
-      ...UserFragment
-    }
-}
-    """
-    result = await execute_query(
-        query,
-        {
-            "where": {
-                "discord_users": {"some": {"discord_id": {"equals": str(discord_id)}}}
-            }
-        },
-    )
-    if result:
-        res = result.get("result")
-        print("Fetch")
-        print(result)
-        print(discord_id)
-        if len(res):
-            return res[0]
-        return None
-    return result
-
-
-async def get_contributions_for_guild(guild_id, user_discord_id, after_date):
-    query = """
+    CONTRIBUTION_FRAGMENT = """
 fragment ContributionFragment on Contribution {
   activity_type {
     active
@@ -130,7 +103,54 @@ fragment ContributionFragment on Contribution {
     updatedAt
   }
 }
+"""
 
+    GUILD_FRAGMENT = """
+fragment GuildFragment on Guild {
+  congrats_channel
+  createdAt
+  discord_id
+  id
+  logo
+  name
+  updatedAt
+  status
+  contribution_reporting_channel
+}
+"""
+
+
+async def fetch_user_by_discord_id(discord_id):
+    query = GqlFragments.USER_FRAGMENT + """
+query getUser($where: UserWhereInput!,) {
+    result: users(
+        where: $where,
+    ) {
+      ...UserFragment
+    }
+}
+    """
+    result = await execute_query(
+        query,
+        {
+            "where": {
+                "discord_users": {"some": {"discord_id": {"equals": str(discord_id)}}}
+            }
+        },
+    )
+    if result:
+        res = result.get("result")
+        print("Fetch")
+        print(result)
+        print(discord_id)
+        if len(res):
+            return res[0]
+        return None
+    return result
+
+
+async def get_contributions_for_guild(guild_id, user_discord_id, after_date):
+    query = GqlFragments.CONTRIBUTION_FRAGMENT + """
 query listContributions($where: ContributionWhereInput! = {},
                         $skip: Int! = 0,
                         $orderBy: [ContributionOrderByWithRelationInput!]) {
@@ -183,17 +203,7 @@ query listContributions($where: ContributionWhereInput! = {},
 
 
 async def get_guild_by_discord_id(id):
-    query = """
-fragment GuildFragment on Guild {
-  congrats_channel
-  createdAt
-  discord_id
-  id
-  logo
-  name
-  updatedAt
-}
-
+    query = GqlFragments.GUILD_FRAGMENT + """
 query getGuild($where: GuildWhereUniqueInput!) {
     result: guild(
         where: $where,
@@ -211,17 +221,7 @@ query getGuild($where: GuildWhereUniqueInput!) {
 
 
 async def get_guild_by_id(id):
-    query = """
-fragment GuildFragment on Guild {
-  congrats_channel
-  createdAt
-  discord_id
-  id
-  logo
-  name
-  updatedAt
-}
-
+    query = GqlFragments.GUILD_FRAGMENT + """
 query getGuild($where: GuildWhereUniqueInput!) {
     result: guild(
         where: $where,
@@ -239,17 +239,7 @@ query getGuild($where: GuildWhereUniqueInput!) {
 
 
 async def get_guilds():
-    query = """
-fragment GuildFragment on Guild {
-  congrats_channel
-  createdAt
-  discord_id
-  id
-  logo
-  name
-  updatedAt
-}
-
+    query = GqlFragments.GUILD_FRAGMENT + """
 query listGuilds(
   $where: GuildWhereInput! = {}
   $skip: Int! = 0
@@ -365,28 +355,7 @@ mutation createUser($data: UserCreateInput!) {
 # twitter
 # discourse
 async def update_user(data, where):
-    query = """
-fragment UserFragment on User {
-  address
-  chain_type {
-    id
-    name
-    createdAt
-    updatedAt
-  }
-  createdAt
-  display_name
-  full_name
-  id
-  name
-  updatedAt
-  guild_users {
-    id
-    guild_id
-  }
-}
-
-
+    query = GqlFragments.USER_FRAGMENT + """
 mutation updateUser($data: UserUpdateInput!, $where: UserWhereUniqueInput!) {
   updateUser(data: $data, where: $where) {
     ...UserFragment
