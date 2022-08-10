@@ -19,7 +19,7 @@ DATETIME_CACHE_FMT = "%m/%d/%Y, %H:%M:%S"
 
 class Cadence(ABC):
     """
-    Abstract base class for cadences. Objects that implement this ABC 
+    Abstract base class for cadences. Objects that implement this ABC
     are intended to help with repetive tasks that fire on a specific
     schedule.
     """
@@ -29,15 +29,17 @@ class Cadence(ABC):
     values reflect that the task is due to fire. When negative values
     are returned are at the discretion of the implementing class.
     """
+
     @abstractmethod
     def get_timedelta_until_run(self, from_dt: datetime) -> timedelta:
         pass
 
     """
-    Returns the timedelta until the next scheduled occurrence after 
+    Returns the timedelta until the next scheduled occurrence after
     from_dt. Return value's timedelta is expected to be gte zero (i.e.)
     timedelta.total_seconds() >= 0.
     """
+
     @abstractmethod
     def get_timedelta_until_next_occurrence(self, from_dt: datetime) -> timedelta:
         pass
@@ -46,6 +48,7 @@ class Cadence(ABC):
     Returns the next scheduled occurrence after from_dt. Return value
     is expected to be gte from_dt.
     """
+
     @abstractmethod
     def get_next_runtime(self) -> datetime:
         pass
@@ -80,6 +83,8 @@ class Task:
         )
 
 
+# TODO: refactor into every_x_days, only parameter here is 7
+# TODO: cadences into their own file
 class Weekly(Cadence):
     def __init__(self, day_to_run: int, time_to_run: time):
         self.day_to_run = day_to_run
@@ -128,6 +133,29 @@ class Hourly(Cadence):
         return next_hour
 
 
+class Minutely(Cadence):
+    def __init__(self):
+        super().__init__()
+
+    def get_timedelta_until_run(self, now: datetime) -> timedelta:
+        time = now.time()
+        if time.second == 0:
+            return timedelta(seconds=-1)
+        # wait until the next ocurrence of the specified date and time
+        return self.get_timedelta_until_next_occurrence(now)
+
+    def get_timedelta_until_next_occurrence(self, now: datetime) -> timedelta:
+        next_ocurrence = self.get_next_runtime(now)
+        td = next_ocurrence - now
+        return td
+
+    def get_next_runtime(self, now: datetime) -> datetime:
+        delta = timedelta(minutes=1)
+        next = now + delta
+        next_hour = next.replace(microsecond=0, second=0)
+        return next_hour
+
+
 # conforms with date.weekday()
 class Days:
     MONDAY = 0
@@ -151,11 +179,12 @@ class ReportingTask(commands.Cog):
         cache: Cache,
         cadence: Weekly,
         loop_settings,
-        reporting_channel=None
+        reporting_channel=None,
     ):
         self.bot = bot
         self.cache: Cache = cache
         self.cadence: Weekly = cadence
+        self.min_time_between_loop_seconds: int = 60
         self.reporting_channel = reporting_channel
         self.init_loop(loop_settings)
 
@@ -165,10 +194,11 @@ class ReportingTask(commands.Cog):
             logger.info("contribution report task disabled, skipping...")
             return
 
+        self.min_time_between_loop_seconds = loop_settings[
+            "min_time_between_loop_seconds"
+        ]
         m = loop_settings["task_wakeup_period_minutes"]
-        self.contribution_report: tasks.Loop = tasks.loop(
-            minutes=m
-        )(
+        self.contribution_report: tasks.Loop = tasks.loop(minutes=m)(
             self.contribution_report
         )
         self.contribution_report.before_loop(self.wait_until_ready)
@@ -192,17 +222,22 @@ class ReportingTask(commands.Cog):
         # check cache
         last_sent = await self.cache.get(self.REPORT_LAST_SENT_DATETIME_CACHE_KEY)
         if last_sent is not None:
-            last_sent = datetime.strptime(last_sent, DATETIME_CACHE_FMT)
+            last_sent = datetime.strptime(last_sent.decode("utf-8"), DATETIME_CACHE_FMT)
 
         td_last_sent: timedelta = None if last_sent is None else now - last_sent
 
         # if there's a cache entry from the same day, skip the task
         # TODO: extract the 24h last run as a setting
-        if td_last_sent is not None and td_last_sent.total_seconds() < 60 * 60:  # * 24
+        if (
+            td_last_sent is not None
+            and td_last_sent.total_seconds() < self.min_time_between_loop_seconds
+        ):
             logger.warn(
                 f"last sent time for {self.REPORT_LAST_SENT_DATETIME_CACHE_KEY} is "
                 f"{last_sent}, {td_last_sent.total_seconds()} seconds ago. "
-                "This is within the same day, so skipping this report...")
+                "This is less than the minimum time between execution "
+                f"({self.min_time_between_loop_seconds} sec), so skipping this report..."
+            )
             return
 
         await send_weekly_contribution_reports(self.bot, self.reporting_channel)
@@ -217,9 +252,7 @@ class ReportingTask(commands.Cog):
         await self.bot.wait_until_ready()
 
     async def handle_error(self, ex):
-        logger.error(
-            f"Unhandled error in reporting: {ex}"
-        )
+        logger.error(f"Unhandled error in reporting: {ex}")
 
 
 def init_bot_tasks(bot: discord.Bot, cache: Cache):
@@ -232,15 +265,16 @@ def init_bot_tasks(bot: discord.Bot, cache: Cache):
 def get_reporting_task(bot: discord.Bot, cache: Cache) -> discord.Cog:
     settings = {
         "enable": bool(TaskConstants.weekly_report_enable),
-        "task_wakeup_period_minutes": int(TaskConstants.task_wakeup_period_minutes)
+        "task_wakeup_period_minutes": int(TaskConstants.task_wakeup_period_minutes),
+        "min_time_between_loop_seconds": int(
+            TaskConstants.weekly_report_minimum_time_between_loop_seconds
+        ),
     }
+    day_to_run = int(TaskConstants.weekly_report_weekday)
+    time_to_run: time = time.fromisoformat(TaskConstants.weekly_report_time)
     return ReportingTask(
         bot,
         cache,
-        Hourly(),
-        # Weekly(Days.FRIDAY, time_to_run=time(
-        #    17, 00,
-        #    tzinfo=pytz.timezone('US/Eastern')
-        # )),
-        settings
+        Weekly(day_to_run, time_to_run=time_to_run),
+        settings,
     )
