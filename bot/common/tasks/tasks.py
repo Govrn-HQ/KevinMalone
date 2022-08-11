@@ -224,7 +224,7 @@ class ReportingTask(commands.Cog):
                 f"last sent time for {self.REPORT_LAST_SENT_DATETIME_CACHE_KEY} is "
                 f"{last_sent}, {td_last_sent.total_seconds()} seconds ago. "
                 "This is less than the minimum time between execution "
-                f"({self.min_time_between_loop_seconds} sec), so skipping this report..."
+                f"({self.min_time_between_loop_seconds} s), so skipping this report..."
             )
             return
 
