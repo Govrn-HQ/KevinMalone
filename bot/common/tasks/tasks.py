@@ -1,7 +1,6 @@
 import logging
 import asyncio
 import discord
-import pytz
 
 from abc import ABC, abstractmethod
 from datetime import timedelta, datetime, time
@@ -19,38 +18,35 @@ DATETIME_CACHE_FMT = "%m/%d/%Y, %H:%M:%S"
 
 class Cadence(ABC):
     """
-    Abstract base class for cadences. Objects that implement this ABC
-    are intended to help with repetive tasks that fire on a specific
-    schedule.
-    """
-
-    """
-    Returns the number of seconds until the task can be run. Negative
-    values reflect that the task is due to fire. When negative values
-    are returned are at the discretion of the implementing class.
+    Abstract base class for cadences to help schedule repetetive tasks.
     """
 
     @abstractmethod
     def get_timedelta_until_run(self, from_dt: datetime) -> timedelta:
-        pass
+        """
+        Returns the number of seconds until the task can be run.
 
-    """
-    Returns the timedelta until the next scheduled occurrence after
-    from_dt. Return value's timedelta is expected to be gte zero (i.e.)
-    timedelta.total_seconds() >= 0.
-    """
+        Negative values reflect that the task is due to fire.
+        """
+        pass
 
     @abstractmethod
     def get_timedelta_until_next_occurrence(self, from_dt: datetime) -> timedelta:
-        pass
+        """
+        Returns the timedelta until the next scheduled occurrence after from_dt.
 
-    """
-    Returns the next scheduled occurrence after from_dt. Return value
-    is expected to be gte from_dt.
-    """
+        Return value's timedelta is expected to be gte zero (i.e.)
+        timedelta.total_seconds() >= 0.
+        """
+        pass
 
     @abstractmethod
     def get_next_runtime(self) -> datetime:
+        """
+        Returns the next scheduled occurrence after from_dt.
+
+        Return value is expected to be gte from_dt.
+        """
         pass
 
 
