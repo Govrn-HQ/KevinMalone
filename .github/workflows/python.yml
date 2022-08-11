@@ -34,11 +34,13 @@ jobs:
           echo API_TOKEN=FAKEAPITOKEN >> .env
           echo CLIENT_ID=FAKECLIENTID >> .env
           echo BOT_DEBUG=true >> .env
-          echo TASK_WAKEUP_PERIOD_MINUTES= >> .env
+          echo GOVRN_GUILD_ID=xxx >> .env
+          echo TASK_WAKEUP_PERIOD_MINUTES=xxx >> .env
+          echo WEEKLY_REPORT_MINIMUM_TIME_BETWEEN_LOOP_SECONDS=xxx >> .env
           echo WEEKLY_REPORT_ENABLE=false >> .env
-          echo WEEKLY_REPORT_WEEKDAY= >> .env
-          echo WEEKLY_REPORT_TIME= >> .env
-          echo TEST_CHANNEL= >> .env
+          echo WEEKLY_REPORT_WEEKDAY=xxx >> .env
+          echo WEEKLY_REPORT_TIME=xxx >> .env
+          echo TEST_CHANNEL=xxx >> .env
           cat .env
       - name: Build docker image
         run: docker build -t local .
