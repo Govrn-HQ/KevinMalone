@@ -38,6 +38,7 @@ jobs:
           echo WEEKLY_REPORT_ENABLE=false >> .env
           echo WEEKLY_REPORT_WEEKDAY= >> .env
           echo WEEKLY_REPORT_TIME= >> .env
+          echo TEST_CHANNEL= >> .env
           cat .env
       - name: Build docker image
         run: docker build -t local .
