@@ -34,6 +34,10 @@ jobs:
           echo API_TOKEN=FAKEAPITOKEN >> .env
           echo CLIENT_ID=FAKECLIENTID >> .env
           echo BOT_DEBUG=true >> .env
+          echo TASK_WAKEUP_PERIOD_MINUTES= >> .env
+          echo WEEKLY_REPORT_ENABLE=false >> .env
+          echo WEEKLY_REPORT_WEEKDAY= >> .env
+          echo WEEKLY_REPORT_TIME= >> .env
           cat .env
       - name: Build docker image
         run: docker build -t local .
