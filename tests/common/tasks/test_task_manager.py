@@ -13,7 +13,7 @@ from tests.test_utils import MockCache, MockCadence
 
 
 def test_weekly_cadence():
-    now = datetime.now()
+    now = datetime.fromisoformat("2022-08-11T14:23:29.681771")
     # create a weekly cadence that runs on the current weekday,
     # one hour from the current time
     weekday = now.weekday()
@@ -30,38 +30,9 @@ def test_weekly_cadence():
 
     cadence = Weekly(weekday, time_minus)
     td = cadence.get_timedelta_until_next_occurrence(now)
-    # assert the timedelta is between 6 and 7 days
-    assert td.total_seconds() <= 7 * 24 * 60 * 60
-    assert td.total_seconds() > 6 * 24 * 60 * 60
-
-
-@pytest.mark.asyncio
-async def test_weekly_cadence_with_last_run():
-    now = datetime.now()
-    cache = MockCache()
-
-    # create a weekly cadence that runs on the current weekday,
-    # one hour from the current time
-    weekday = now.weekday()
-    time_minus: time = (now - timedelta(hours=1)).time()
-
-    cadence = Weekly(weekday, time_minus)
-
-    # nothing exists in the cache, so this should run immediately
-    td = await cadence.get_timedelta_until_run(cache, "empty_cache_key")
-
+    assert td.total_seconds() == (7 * 24 - 1) * 60 * 60
+    td = cadence.get_timedelta_until_run(now)
     assert td.total_seconds() == -1
-
-    # set the last run time in the cache to
-    last_run_str = now.strftime(DATETIME_CACHE_FMT)
-    await cache.set("last_run", last_run_str)
-
-    td = await cadence.get_timedelta_until_run(cache, "last_run")
-
-    # assert td is next week, since we've mocked the cache to
-    # indicate the task has already been run today
-    assert td.total_seconds() <= 7 * 24 * 60 * 60
-    assert td.total_seconds() > 6 * 24 * 60 * 60
 
 
 @pytest.mark.asyncio
@@ -107,6 +78,7 @@ CHANNEL = Tests.test_channel
 
 
 @pytest.mark.discord_bot
+@pytest.mark.skip("need to mock bot, redis, db")
 def test_reporting():
     """
     Tests the full BotTasks cog (currently only consisting of the reporting task)
@@ -125,6 +97,7 @@ def test_reporting():
 
 
 @pytest.mark.discord_bot
+@pytest.mark.skip("need to mock bot, redis, db")
 def test_reporting_with_cache():
     loop_settings = {
         "task_wakeup_period_minutes": 1,
@@ -156,6 +129,7 @@ def test_reporting_with_cache():
 
 
 @pytest.mark.discord_bot
+@pytest.mark.skip("need to mock bot, redis, db")
 def test_task_disable():
     loop_settings = {
         "enable": False,
@@ -175,6 +149,7 @@ def test_task_disable():
 
 
 @pytest.mark.discord_bot
+@pytest.mark.skip("need to mock bot, redis, db")
 def test_task_hourly():
     loop_settings = {
         "task_wakeup_period_minutes": 10,
