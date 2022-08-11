@@ -178,7 +178,7 @@ class ReportingTask(commands.Cog):
 
     def init_loop(self, loop_settings):
         # TODO: checking on loop settings to be encapsulated in class/fn
-        if not loop_settings["enable"]:
+        if not loop_settings.get("enable"):
             logger.info("contribution report task disabled, skipping...")
             return
 
