@@ -60,7 +60,7 @@ async def send_weekly_contribution_reports(bot: Bot):
     # all guilds which are registered but do not have a specified reporting
     # channel will default to reporting in the specified govrn channel
     default_reporting_channel_id = govrn_guild.get("contribution_reporting_channel")
-    if default_reporting_channel_id is None or default_reporting_channel_id == "":
+    if not default_reporting_channel_id:
         warn_msg = (
             f"reporting channel is not specified for guild {govrn_guild_discord_id}"
         )
@@ -100,7 +100,7 @@ async def send_reports(
             non_reporting_guilds.append(guild)
             continue
         channel_id = guild["contribution_reporting_channel"]
-        if channel_id is None or channel_id == "":
+        if not channel_id:
             logger.info(f"{guild_name} has no contribution channel specified")
             default_reporting_guilds.append(guild)
             continue
@@ -126,7 +126,7 @@ async def send_default_reports(
         guild["name"] for guild in default_reporting_guilds
     ]
     non_reporting_guild_names = [guild["name"] for guild in non_reporting_guilds]
-    if channel_id is None or channel_id == "":
+    if not channel_id:
         logger.warn(
             "no default reporting channel is specified for govrn! the reports for "
             f"{', '.join(default_reporting_guild_names)} are being dropped."
