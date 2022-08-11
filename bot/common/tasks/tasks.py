@@ -101,6 +101,8 @@ class Weekly(Cadence):
 
     def get_next_runtime(self, now: datetime) -> datetime:
         days_until = (self.day_to_run - now.weekday()) % 7
+        run_next_week = days_until == 0 and now.time() > self.time_to_run
+        days_until = 7 if run_next_week else days_until
         next_ocurrence = now + timedelta(days=days_until)
         next_ocurrence = datetime.combine(next_ocurrence.date(), self.time_to_run)
         return next_ocurrence
