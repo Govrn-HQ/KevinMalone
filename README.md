@@ -16,7 +16,7 @@ A self reporting bot for the movement model
 1. Activate the virtual environment (`source ./.venv/bin/activate`)
 1. Install dependencies via pip (`pip install -r requirements-dev.txt`)
 1. Setup environment variables as required in ./.env (see env.sample) for the values which need populating
-1. In a separate directory, clone the (Govrn monorepo)[https://github.com/Govrn-HQ/govrn-monorepo], and follow the the setup instructions there. 
+1. In a separate directory, clone the [Govrn monorepo](https://github.com/Govrn-HQ/govrn-monorepo), and follow the the setup instructions there. 
 
 
 ## Development in VS Code
