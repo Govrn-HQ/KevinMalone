@@ -79,8 +79,8 @@ class Task:
         )
 
 
-# TODO: refactor into every_x_days, only parameter here is 7
-# TODO: cadences into their own file
+# TODO Pro-378: refactor into every_x_days, only parameter here is 7
+# TODO Pro-378: cadences into their own file
 class Weekly(Cadence):
     def __init__(self, day_to_run: int, time_to_run: time):
         self.day_to_run = day_to_run
@@ -163,9 +163,9 @@ class Days:
     SUNDAY = 6
 
 
-# TODO: future refactor; abstract bot tasks class to accept a
+# TODO Pro-378: future refactor; abstract bot tasks class to accept a
 # cadence, action, and loop settings (enable/disable & wakeup time)
-# TODO: loop settings into its own class
+# TODO Pro-378: loop settings into its own class
 class ReportingTask(commands.Cog):
     REPORT_LAST_SENT_DATETIME_CACHE_KEY = "contribution_report_last_sent"
 
@@ -214,8 +214,6 @@ class ReportingTask(commands.Cog):
 
         td_last_sent: timedelta = None if last_sent is None else now - last_sent
 
-        # if there's a cache entry from the same day, skip the task
-        # TODO: extract the 24h last run as a setting
         if (
             td_last_sent is not None
             and td_last_sent.total_seconds() < self.min_time_between_loop_seconds
@@ -244,9 +242,6 @@ class ReportingTask(commands.Cog):
 
 
 def init_bot_tasks(bot: discord.Bot, cache: Cache):
-    # TODO: Going to keep friday hardcoded here for legibility
-    # TODO: swap env var from an index to the written day name,
-    # and convert to integer in Days class
     bot.add_cog(get_reporting_task(bot, cache))
 
 
