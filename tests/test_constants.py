@@ -48,7 +48,9 @@ class ConstantsTests(unittest.TestCase):
                     value = getattr(section, name)
                     origin = typing.get_origin(annotation)
                     annotation_args = typing.get_args(annotation)
-                    failure_msg = f"{value} is not an instance of {annotation}"
+                    failure_msg = (
+                        f"Key {name}: {value} is not an instance of {annotation}"
+                    )
 
                     if origin is typing.Union:
                         is_instance = is_any_instance(value, annotation_args)
