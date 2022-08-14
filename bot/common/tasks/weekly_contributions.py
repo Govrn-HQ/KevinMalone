@@ -5,9 +5,13 @@ import logging
 from typing import Dict, Union
 import pandas as pd
 from datetime import datetime, timedelta
-from discord import EmbedField, File, Embed
+from discord import EmbedField, File, Embed, Bot
 
-from bot.common.graphql import get_contributions_for_guild, get_guilds, get_guild_by_id
+from bot.common.graphql import (
+    get_contributions_for_guild,
+    get_guild_by_discord_id,
+    get_guilds,
+)
 
 from bot import constants
 from bot.config import INFO_EMBED_COLOR
@@ -40,74 +44,146 @@ async def save_weekly_contribution_reports():
         logger.info(f"done saving report {path}")
 
 
-async def send_weekly_contribution_reports(bot):
+async def send_weekly_contribution_reports(bot: Bot):
     # retrieve the reporting channel
-    govrn_guild_id = constants.Bot.govrn_guild_id
-    govrn_guild = await get_guild_by_id(govrn_guild_id)
-    # TODO
-    report_channel_id = govrn_guild.get("fields").get("report_channel")
+    govrn_guild_discord_id = constants.Bot.govrn_guild_id
+    warn_msg = None
+    if govrn_guild_discord_id is None:
+        warn_msg = "No discord id specified for govrn"
 
-    # if none is specified, log message and return
-    if report_channel_id is None or report_channel_id == "":
-        logger.info(f"report_channel is not specified for guild {govrn_guild_id}")
-        return
+    govrn_guild = await get_guild_by_discord_id(govrn_guild_discord_id)
+    if govrn_guild is None:
+        warn_msg = f"No guild found for govrn discord id {govrn_guild_discord_id}"
+
+    # default reporting channel will be the reporting channel specified for
+    # govrn (that is, whatever is specified as the govrn discord id in the .env)
+    # all guilds which are registered but do not have a specified reporting
+    # channel will default to reporting in the specified govrn channel
+    default_reporting_channel_id = govrn_guild.get("contribution_reporting_channel")
+    if not default_reporting_channel_id:
+        warn_msg = (
+            f"reporting channel is not specified for guild {govrn_guild_discord_id}"
+        )
+
+    if warn_msg:
+        logger.warn(
+            f"{warn_msg}! Reports will only be sent to guilds with specified "
+            "reporting channels since no default is specified."
+        )
 
     # get guilds for reporting
     guilds_to_report = await get_guilds_to_report()
 
     reports = await generate_guild_contribution_reports(guilds_to_report)
 
-    channel = bot.get_channel(report_channel_id)
-    await send_reports(channel, guilds_to_report, reports)
+    await send_reports(bot, default_reporting_channel_id, guilds_to_report, reports)
 
 
 # helper functions
-async def send_reports(channel, guilds_to_report, reports):
-    formatted_date = get_formatted_date()
-    guilds_to_report_field = EmbedField(
-        name="Reporting guilds", value=", ".join(guilds_to_report)
+async def send_reports(
+    bot: Bot, default_reporting_channel: str, guilds_to_report, reports
+):
+    # guilds which do not have contribution_reporting_channel specified will
+    # report to the default channel in the govrn server
+    default_reporting_guilds = []
+    # guilds which have reporting channel specified will report to that channel
+    reporting_guilds = []
+    # guilds which do not have a report generated (i.e. have no contributions)
+    # will be explicitly mentioned in the govrn channel (for a spot check)
+    non_reporting_guilds = []
+
+    # filter guilds
+    for guild in guilds_to_report:
+        guild_name = guild["name"]
+        if guild_name not in reports.keys():
+            logger.warn(f"{guild_name} did not have a report generated")
+            non_reporting_guilds.append(guild)
+            continue
+        channel_id = guild["contribution_reporting_channel"]
+        if not channel_id:
+            logger.info(f"{guild_name} has no contribution channel specified")
+            default_reporting_guilds.append(guild)
+            continue
+        logger.info(f"{guild_name} is reporting to channel {channel_id}")
+        reporting_guilds.append(guild)
+
+    await send_default_reports(
+        bot,
+        default_reporting_channel,
+        default_reporting_guilds,
+        non_reporting_guilds,
+        reports,
+    )
+    await send_guild_reports(bot, reporting_guilds, reports)
+
+
+# sends contribution reports to the default reporting channel in the govrn
+# server for guilds which have not specified a reporting channel
+async def send_default_reports(
+    bot: Bot, channel_id: str, default_reporting_guilds, non_reporting_guilds, reports
+):
+    default_reporting_guild_names = [
+        guild["name"] for guild in default_reporting_guilds
+    ]
+    non_reporting_guild_names = [guild["name"] for guild in non_reporting_guilds]
+    if not channel_id:
+        logger.warn(
+            "no default reporting channel is specified for govrn! the reports for "
+            f"{', '.join(default_reporting_guild_names)} are being dropped."
+        )
+        return
+
+    default_reporting_guilds_field = EmbedField(
+        name="Reporting guilds", value=", ".join(default_reporting_guild_names)
+    )
+    non_reporting_guilds_field = EmbedField(
+        name="Non-reporting guilds", value=", ".join(non_reporting_guild_names)
     )
 
     embed_description = (
-        "Reporting on the contributions submitted for each active"
-        " guild onboarded to Govrn are attached below as .csv files"
+        "Reporting on the contributions submitted for each active "
+        "guild onboarded to Govrn are attached below as .csv files. "
+        "These guilds don't have a specified channel for reporting in their "
+        "discord servers, and are by default sent to this channel! "
+        "Guilds without *any* contributions are listed as non-reporting."
     )
 
+    formatted_date = get_formatted_date()
     embed = Embed(
         colour=INFO_EMBED_COLOR,
         title=f"Weekly contribution report for {formatted_date}",
         description=embed_description,
-        fields=[guilds_to_report_field],
+        fields=[default_reporting_guilds_field, non_reporting_guilds_field],
     )
+    files = [reports[guild_name] for guild_name in default_reporting_guild_names]
 
+    channel = bot.get_channel(int(channel_id))
+    # to ensure the files are sent after
     await channel.send(embed=embed)
+    await channel.send(files=files)
 
-    # print message for series of reports
-    for guild, report in reports.items():
-        await channel.send(content=guild, file=report)
+
+# sends contribution reports to guilds which have specified their reporting
+# channels
+async def send_guild_reports(bot: Bot, reporting_guilds, reports):
+    guild_report_msg_fmt = "Hey %s! Here's your weekly contribution report!"
+    for guild in reporting_guilds:
+        guild_name = guild["name"]
+        channel_id = guild["contribution_reporting_channel"]
+        logger.info(f"Sending report for {guild_name} to channel {channel_id}")
+        message = guild_report_msg_fmt % guild_name
+        report = reports[guild_name]
+        try:
+            channel = bot.get_channel(int(channel_id))
+            await channel.send(content=message, file=report)
+        except Exception as e:
+            logger.error(f"Exception in sending report for {guild_name}: {e}")
 
 
 async def get_guilds_to_report():
     # query all guilds
     guilds = await get_guilds()
     return guilds
-    # return [
-    #     (1, "Rolf's Server"),
-    #     (2, "Ludium"),
-    #     (3, "Boys Club"),
-    #     (4, "Education DAO"),
-    #     (5, "DreamDAO"),
-    #     (6, "GDS"),
-    #     (7, "PadawanDAO"),
-    #     (8, "Dynamiculture"),
-    #     (9, "MGD"),
-    #     (10, "Keating"),
-    #     (11, "RaidGuild"),
-    #     (12, "SporeDAO"),
-    #     (13, "Govrn"),
-    #     (14, "ATS"),
-    #     (15, "Daohaus"),
-    # ]
 
 
 async def write_dataframe_to_csv(
@@ -144,8 +220,8 @@ async def generate_guild_contribution_reports(
         if df is None:
             continue
 
-        description = (f"{date_reformat} weekly contribution report for {guild_name}",)
-
+        description = f"{date_reformat} weekly contribution report for {guild_name}"
+        # TODO: change the key to the unique guild_id
         reports[guild_name] = await write_dataframe_to_csv(
             df, guild_name, description, local_csv
         )
