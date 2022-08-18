@@ -1,3 +1,4 @@
+from distutils.util import strtobool
 import logging
 import asyncio
 import discord
@@ -244,12 +245,15 @@ class ReportingTask(commands.Cog):
 
 
 def init_bot_tasks(bot: discord.Bot, cache: Cache):
-    bot.add_cog(get_reporting_task(bot, cache))
+    try:
+        bot.add_cog(get_reporting_task(bot, cache))
+    except Exception as ex:
+        logger.error(f"Failure when initializing reporting task: {ex}")
 
 
 def get_reporting_task(bot: discord.Bot, cache: Cache) -> discord.Cog:
     settings = {
-        "enable": bool(TaskConstants.weekly_report_enable),
+        "enable": strtobool(TaskConstants.weekly_report_enable),
         "task_wakeup_period_minutes": int(TaskConstants.task_wakeup_period_minutes),
         "min_time_between_loop_seconds": int(
             TaskConstants.weekly_report_minimum_time_between_loop_seconds
