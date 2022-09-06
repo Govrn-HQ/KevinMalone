@@ -201,7 +201,7 @@ async def write_dataframe_to_csv(
     if local_csv:
         return s
 
-    csv_file = File(fp=s, filename=name, description=description)
+    csv_file = File(fp=s, filename=f"{name}.csv", description=description)
 
     return csv_file
 
