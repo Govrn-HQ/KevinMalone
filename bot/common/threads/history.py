@@ -15,11 +15,7 @@ from bot.common.threads.thread_builder import (
     Step,
     build_cache_value,
 )
-from bot.common.graphql import (
-    get_guild_by_discord_id,
-    fetch_user_by_discord_id,
-    get_contributions_for_guild,
-)
+import bot.common.graphql as gql
 from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
@@ -79,6 +75,11 @@ def get_contribution_rows(contributions):
 class DisplayHistoryStep(BaseStep):
     """Displays history of a given user"""
 
+    onboard_prompt_content = (
+        "Looks like you're not yet onboarded to the guild! "
+        "Complete the intial onboarding /join command before running `/history`"
+    )
+
     name = StepKeys.DISPLAY_POINTS.value
     trigger = True
 
@@ -97,7 +98,7 @@ class DisplayHistoryStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        record = await fetch_user_by_discord_id(user_id)
+        record = await gql.fetch_user_by_discord_id(user_id)
         logger.info(
             "user_id "
             + str(user_id)
@@ -108,14 +109,18 @@ class DisplayHistoryStep(BaseStep):
         )
         if record is None:
             self.end_flow = True
-            content = "Looks like you're not yet onboarded to the guild! "
-            "Complete the intial onboarding /join command before running `/history`"
             if is_in_dms:
-                return await message.channel.send(content), None
+                return (
+                    await message.channel.send(
+                        DisplayHistoryStep.onboard_prompt_content
+                    ),
+                    None,
+                )
             else:
                 return (
                     await self.context.response.send_message(
-                        content=content, ephemeral=True
+                        content=DisplayHistoryStep.onbpard_prompt_content,
+                        ephemeral=True,
                     ),
                     None,
                 )
@@ -272,7 +277,9 @@ async def get_contributions(metadata, user_id, guild_id, days):
     td = timedelta(weeks=52 * 20) if days == "all" else timedelta(days=int(days or "1"))
     date = datetime.now() - td
     date = date.isoformat()
-    guild = await get_guild_by_discord_id(guild_id)
+    guild = await gql.get_guild_by_discord_id(guild_id)
     # todo: truncate
-    contributions = await get_contributions_for_guild(guild.get("id"), user_id, date)
+    contributions = await gql.get_contributions_for_guild(
+        guild.get("id"), user_id, date
+    )
     return contributions
