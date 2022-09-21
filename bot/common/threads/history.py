@@ -209,7 +209,7 @@ class GetContributionsCsvPromptStep(BaseStep):
         return sent_message, None
 
 
-class GetContributionsCsvPropmtEmoji(BaseStep):
+class GetContributionsCsvPromptStepEmoji(BaseStep):
     """Accepts user emoji reaction to if they want a contributions csv"""
 
     name = StepKeys.POINTS_CSV_PROMPT_EMOJI.value
@@ -228,7 +228,7 @@ class GetContributionsCsvPropmtEmoji(BaseStep):
         raise Exception("Reacted with the wrong emoji")
 
 
-class GetContributionsCsvPropmtAccept(BaseStep):
+class GetContributionsCsvPromptStepAccept(BaseStep):
     """Creates a contributions csv and sends to the user on emoji acceptance"""
 
     name = StepKeys.POINTS_CSV_PROMPT_ACCEPT.value
@@ -261,11 +261,11 @@ class History(BaseThread):
             )
         )
 
-        history_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
+        history_csv_accept = Step(current=GetContributionsCsvPromptStepAccept(self.cache))
 
         return (
-            display_history_step.add_next_step(GetContributionsCsvPropmt())
-            .add_next_step(GetContributionsCsvPropmtEmoji())
+            display_history_step.add_next_step(GetContributionsCsvPromptStep())
+            .add_next_step(GetContributionsCsvPromptStepEmoji())
             .add_next_step(history_csv_accept)
             .build()
         )
