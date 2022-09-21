@@ -88,7 +88,12 @@ async def test_display_history_step(mocker):
         "1", json.dumps({"metadata": {}, "thread": "t", "step": "s", "guild_id": "1"})
     )
     (sent_message, tmp) = await history_step.send(message, user_id)
-    assert True, "great job"
+    assert sent_message is not None, "expected contributions to be sent"
+    cache_values = await cache.get("1")
+    cache_values = json.loads(cache_values)
+    assert (
+        cache_values["metadata"]["contribution_rows"] is not None
+    ), "contributions are expected to be stored in cached metadata"
 
 
 @pytest.mark.asyncio
