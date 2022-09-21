@@ -261,7 +261,9 @@ class History(BaseThread):
             )
         )
 
-        history_csv_accept = Step(current=GetContributionsCsvPromptStepAccept(self.cache))
+        history_csv_accept = Step(
+            current=GetContributionsCsvPromptStepAccept(self.cache)
+        )
 
         return (
             display_history_step.add_next_step(GetContributionsCsvPromptStep())
