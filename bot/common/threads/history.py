@@ -79,6 +79,10 @@ class DisplayHistoryStep(BaseStep):
         "Looks like you're not yet onboarded to the guild! "
         "Complete the intial onboarding /join command before running `/history`"
     )
+    no_contributions_content = (
+        "Looks like you don't have any contribution history. "
+        "You can start reporting your contributions with /report!"
+    )
 
     name = StepKeys.DISPLAY_POINTS.value
     trigger = True
@@ -137,10 +141,7 @@ class DisplayHistoryStep(BaseStep):
 
         if contributions is None:
             self.end_flow = True
-            msg = (
-                "Looks like you don't have any contribution history. "
-                "You can start reporting your contributions with /report!"
-            )
+            msg = DisplayHistoryStep.no_contributions_content
             if is_in_dms:
                 return await message.channel.send(msg), None
             else:
@@ -192,14 +193,15 @@ class DisplayHistoryStep(BaseStep):
             return StepKeys.END.value
 
 
-class GetContributionsCsvPropmt(BaseStep):
+class GetContributionsCsvPromptStep(BaseStep):
     """Prompts user if they'd like a csv representation of their history"""
 
     name = StepKeys.POINTS_CSV_PROMPT.value
+    prompt = "Would you like a .csv file of your contributions?"
 
     async def send(self, message, user_id):
         sent_message = await message.channel.send(
-            content="Would you like a .csv file of your contributions?"
+            content=GetContributionsCsvPromptStep.prompt
         )
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
