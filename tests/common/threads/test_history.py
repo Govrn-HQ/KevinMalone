@@ -5,8 +5,6 @@ from tests.test_utils import MockCache, MockContext, MockMessage
 from tests.test_utils import mock_gql_query
 from tests.test_utils import (
     assert_message_content,
-    assert_context_response,
-    assert_file_in_response,
     assert_message_reaction,
 )
 from bot.config import (
@@ -18,7 +16,6 @@ from bot.common.threads.history import (
     DisplayHistoryStep,
     GetContributionsCsvPromptStep,
     GetContributionsCsvPromptStepEmoji,
-    GetContributionsCsvPromptStepAccept,
 )
 
 from bot.common.threads.thread_builder import StepKeys, build_cache_value
@@ -131,13 +128,3 @@ async def test_get_contributions_csv_prompt_emoji():
     with pytest.raises(Exception):
         # assert exception for anything else
         await step.handle_emoji("garbage")
-
-
-def test_get_contributions_csv_prompt_accept(mocker):
-    cache = MockCache()
-    cache.set(build_cache_value())
-    # acccept_step = GetContributionsCsvPromptStepAccept(cache)
-
-
-def test_history_thread_happypath(mocker):
-    mock_gql_query(mocker, method="", returns=None)
