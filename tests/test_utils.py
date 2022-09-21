@@ -1,5 +1,4 @@
 from datetime import timedelta, time, datetime
-import pytest
 from pytest_mock.plugin import MockerFixture
 import discord
 

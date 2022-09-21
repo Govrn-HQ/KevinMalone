@@ -18,7 +18,7 @@ from bot.common.threads.history import (
     GetContributionsCsvPromptStepEmoji,
 )
 
-from bot.common.threads.thread_builder import StepKeys, build_cache_value
+from bot.common.threads.thread_builder import StepKeys
 
 default_contributions = [
     {
