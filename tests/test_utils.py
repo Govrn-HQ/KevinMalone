@@ -43,17 +43,23 @@ class MockCadence(Cadence):
 
 class MockChannel:
     def __init__(self):
-        self.content: str = ""
+        pass
 
     async def send(self, content: str = None, embed: discord.Embed = None):
-        self.content = content
+        mock_message = MockMessage()
+        mock_message.channel = self
+        mock_message.content = content
+        return mock_message
 
 
 class MockMessage:
     def __init__(self):
         self.reactions = []
-        self.reply = None
+        self.content = None
         self.channel: MockChannel = MockChannel()
+
+    async def add_reaction(self, reaction: str):
+        self.reactions.append(reaction)
 
 
 class MockContext:
@@ -99,20 +105,8 @@ def get_default_return_for_bot_method(method: str):
 
 
 def mock_gql_query(mocker: MockerFixture, method: str, returns=None):
-    ret_value = None
-    if returns is None:
-        ret_value = get_default_return_for_gql_method(method)
     # TODO add type assertion for returns and method
-    mocker.patch(f"bot.common.graphql.{method}", return_value=ret_value)
-
-
-def get_default_return_for_gql_method(method: str):
-    if method == "get_guild_by_discord_id":
-        pass
-    elif method == "fetch_user_by_discord_id":
-        pass
-    elif method == "get_contributions_for_guild":
-        pass
+    mocker.patch(f"bot.common.graphql.{method}", return_value=returns)
 
 
 # assert that a message has a particular emoji reaction
@@ -120,11 +114,10 @@ def assert_message_reaction(message: MockMessage, emoji: str = None):
     assert emoji in message.reactions, f"emoji {emoji} was not in message reactions"
 
 
-# assert that the supplied mock channel has a particular message sent to it
-def assert_channel_message_sent(channel: MockChannel, message: str = None):
+def assert_message_content(message: MockMessage, expected_content: str = None):
     assert (
-        message == channel.content
-    ), f"message {message} was not in channel sent messages"
+        expected_content == message.content
+    ), f"message {expected_content} was not in message content"
 
 
 # assert that the supplied context has a particular message sent
