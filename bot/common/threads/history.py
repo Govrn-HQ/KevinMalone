@@ -130,9 +130,9 @@ class DisplayHistoryStep(BaseStep):
                 )
 
         cache_entry = await self.cache.get(user_id)
-        cache_values = json.loads(cache_entry)
         metadata = None
         if cache_entry:
+            cache_values = json.loads(cache_entry)
             metadata = cache_values.get("metadata")
 
         contributions = await get_contributions(
