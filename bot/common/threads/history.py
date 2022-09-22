@@ -123,7 +123,7 @@ class DisplayHistoryStep(BaseStep):
             else:
                 return (
                     await self.context.response.send_message(
-                        content=DisplayHistoryStep.onbpard_prompt_content,
+                        content=DisplayHistoryStep.onboard_prompt_content,
                         ephemeral=True,
                     ),
                     None,
