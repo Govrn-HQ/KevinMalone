@@ -262,7 +262,8 @@ class AddUserTwitterStep(BaseStep):
     async def save(self, message, guild_id, user_id):
         twitter_handle = message.content.strip().replace("@", "")
         await write_cache_metadata(
-            user_id, self.cache, TWITTER_HANDLE_CACHE_KEY, twitter_handle)
+            user_id, self.cache, TWITTER_HANDLE_CACHE_KEY, twitter_handle
+        )
 
     async def handle_emoji(self, raw_reaction):
         # skips twitter verification
@@ -316,7 +317,8 @@ class VerifyUserTwitterStep(BaseStep):
         profile, status_id = verify_twitter_url(tweet_url, twitter_handle)
         tweet = await retrieve_tweet(profile, status_id)
         requested_tweet = await get_cache_metadata_key(
-            self.user_id, self.cache, "requested_tweet")
+            self.user_id, self.cache, "requested_tweet"
+        )
         verify_tweet_text(tweet.content, requested_tweet)
 
     async def save_authenticated_account(self):
@@ -364,7 +366,8 @@ async def retrieve_tweet(profile, status_id):
         tweet = await loop.run_in_executor(None, gen.__next__)
     except Exception as e:
         logger.error(
-            f"unable to retrieve tweet for profile {profile}, id {status_id}: {e}")
+            f"unable to retrieve tweet for profile {profile}, id {status_id}: {e}"
+        )
         raise e
     return tweet
 
@@ -416,7 +419,8 @@ class Onboarding(BaseThread):
     def _data_retrival_steps(self):
         congrats = CongratsStep(self.user_id, self.guild_id, self.cache)
         verify_twitter = Step(
-            VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache))
+            VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+        )
         return (
             Step(
                 current=CreateUserWithWalletAddressStep(
@@ -424,10 +428,7 @@ class Onboarding(BaseThread):
                 )
             )
             .add_next_step(AddUserTwitterStep(guild_id=self.guild_id, cache=self.cache))
-            .fork((
-                verify_twitter.add_next_step(congrats).build(),
-                congrats
-            ))
+            .fork((verify_twitter.add_next_step(congrats).build(), congrats))
         )
 
     def get_profile_setup_steps(self):
