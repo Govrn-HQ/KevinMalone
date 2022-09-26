@@ -301,7 +301,7 @@ async def add_dao(ctx):
         description=(
             "Add a new guild so that you can report your contributions,"
             " even if Kevin Malone hasn't been added to the server"
-        )
+        ),
     )
     sent_message = await ctx.response.send_message(embed=embed)
 
@@ -464,6 +464,7 @@ async def on_raw_reaction_add(payload):
     thread = await get_thread(user.id, thread_key)
     await thread.handle_reaction(reaction, user)
 
+
 # Storing as a separate key to prevent conflict with existing metadata
 cooldown_key = "%s_cooldown"
 
@@ -472,7 +473,7 @@ async def send_message_if_not_on_cooldown(channel, user_id, msg):
     if not await is_user_on_cooldown(user_id):
         await channel.send(msg)
         await write_inactive_thread_cooldown(user_id)
-    else: 
+    else:
         logger.info(
             f"user_id {user_id} has a cooldown entry for an inactive thread..."
             " omitting the reply until cooldown expires"
