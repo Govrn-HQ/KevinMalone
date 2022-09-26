@@ -14,7 +14,7 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
 )
 from bot.common.threads.onboarding import Onboarding
-from bot.common.threads.report import ReportStep, get_reporting_link
+from bot.common.threads.report import ReportStep
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
 from bot.common.threads.history import History
@@ -71,19 +71,12 @@ async def report(ctx):
             ),
         )
 
-    reporting_form_link = await get_reporting_link(ctx.guild.id)
-
-    if reporting_form_link:
-        _, metadata = await ReportStep(
-            guild_id=ctx.guild.id,
-            cache=Redis,
-            bot=bot,
-            channel=ctx.channel,
-            reporting_link=reporting_form_link,
-        ).send(None, ctx.author.id)
-        # send message to congrats channel
-
-        await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
+    _, metadata = await ReportStep(
+        guild_id=ctx.guild.id,
+        cache=Redis,
+        bot=bot,
+        channel=ctx.channel,
+    ).send(ctx.followup, ctx.author.id)
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")

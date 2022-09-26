@@ -19,23 +19,20 @@ class ReportStep(BaseStep):
 
     name = StepKeys.USER_DISPLAY_CONFIRM.value
 
-    def __init__(self, guild_id, cache, bot, channel=None, reporting_link=None):
+    def __init__(self, guild_id, cache, bot, channel=None):
         self.guild_id = guild_id
         self.cache = cache
         self.bot = bot
         self.channel = channel
-        self.reporting_link = reporting_link
 
     async def send(self, message, user_id):
         channel = self.channel
         if message:
             channel = message.channel
 
-        guild = await gql.get_guild_by_discord_id(self.guild_id)
+        guild = await gql.fetch_guild_by_discord_id(self.guild_id)
         link = (
             REPORTING_FORM_FMT % guild["id"]
-            if self.reporting_link is None
-            else self.reporting_link
         )
 
         msg = (
@@ -47,8 +44,7 @@ class ReportStep(BaseStep):
             await channel.send(msg)
 
         if not await self.cache.get(build_congrats_key(user_id)):
-            fields = await gql.get_guild_by_discord_id(self.guild_id)
-            congrats_channel_id = fields.get("congrats_channel_id")
+            congrats_channel_id = guild.get("congrats_channel")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
                 return None, {"msg": msg}
@@ -56,11 +52,9 @@ class ReportStep(BaseStep):
             channel = self.bot.get_channel(int(congrats_channel_id))
             user = self.bot.get_user(user_id)
             # get count of uses
-            record = await gql.fetch_user_by_discord_id(user_id)
-            fields = record.get("fields")
             one_week = datetime.now() - datetime.timedelta(weeks=1)
             contributions = await gql.get_contributions(
-                guild_id=None,
+                guild_id=self.guild_id,
                 user_discord_id=user_id,
                 after_date=one_week.isoformat())
             if len(contributions) > 0:
@@ -82,9 +76,3 @@ class Report(BaseThread):
         return Step(
             current=ReportStep(guild_id=self.guild_id, cache=self.cache, bot=self.bot)
         ).build()
-
-
-async def get_reporting_link(guild_discord_id):
-    guild = await get_guild_by_discord_id(guild_discord_id)
-    guild_id = guild.get("id")
-    return REPORTING_FORM_FMT % guild_id
