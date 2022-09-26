@@ -8,3 +8,5 @@ web3==5.29.2
 pyyaml
 -e git+https://github.com/Pycord-Development/pycord.git@44eb9a0c92c406c38ac06d46583391c76c611bf6#egg=py-cord
 pandas==1.4.3
+snscrape==0.4.3.20220106
+
