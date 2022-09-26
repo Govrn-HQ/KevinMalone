@@ -260,17 +260,19 @@ class AddUserTwitterStep(BaseStep):
 
     async def save(self, message, guild_id, user_id):
         twitter_handle = message.content.strip().replace("@", "")
-        user_db_id = await get_cache_metadata_key(user_id, self.cache, "user_db_id")
-        await update_user_twitter_handle(user_db_id, twitter_handle)
+        await write_cache_metadata(
+            user_id, self.cache, "twitter_handle", twitter_handle)
 
     async def handle_emoji(self, raw_reaction):
-        return _handle_skip_emoji(raw_reaction, self.guild_id)
+        # skips twitter verification
+        if SKIP_EMOJI in raw_reaction.emoji.name:
+            return StepKeys.ONBOARDING_CONGRATS.value, False
+        raise Exception("Reacted with the wrong emoji")
 
 
 class VerifyUserTwitterStep(BaseStep):
     """Step to verify user's twitter profile"""
 
-    trigger = True
     name = StepKeys.VERIFY_USER_TWITTER.value
 
     def __init__(self, user_id, guild_id, cache):
@@ -410,6 +412,8 @@ class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
     def _data_retrival_steps(self):
+        congrats = CongratsStep(self.user_id, self.guild_id, self.cache)
+        verify_twitter = VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
         return (
             Step(
                 current=CreateUserWithWalletAddressStep(
@@ -417,7 +421,10 @@ class Onboarding(BaseThread):
                 )
             )
             .add_next_step(AddUserTwitterStep(guild_id=self.guild_id, cache=self.cache))
-            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.cache))
+            .fork((
+                verify_twitter.add_next_step(congrats).build(),
+                congrats
+            ))
         )
 
     def get_profile_setup_steps(self):
