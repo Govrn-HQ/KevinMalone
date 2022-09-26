@@ -27,7 +27,7 @@ class ReportStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = self.channel
-        if message:
+        if message and message.channel:
             channel = message.channel
 
         guild = await gql.get_guild_by_discord_id(self.guild_id)
@@ -43,7 +43,9 @@ class ReportStep(BaseStep):
         if message:
             await channel.send(msg)
 
-        if not await self.cache.get(build_congrats_key(user_id)):
+        congrats_key = build_congrats_key(user_id)
+
+        if not await self.cache.get(congrats_key):
             congrats_channel_id = guild.get("congrats_channel")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
@@ -52,9 +54,9 @@ class ReportStep(BaseStep):
             channel = self.bot.get_channel(int(congrats_channel_id))
             user = self.bot.get_user(user_id)
             # get count of uses
-            one_week = datetime.now() - datetime.timedelta(weeks=1)
+            one_week = datetime.datetime.now() - datetime.timedelta(weeks=1)
             contributions = await gql.get_contributions(
-                guild_id=self.guild_id,
+                guild_id=guild.get("id"),
                 user_discord_id=user_id,
                 after_date=one_week.isoformat())
             if len(contributions) > 0:
@@ -63,7 +65,7 @@ class ReportStep(BaseStep):
                     "engagements this week!"
                 )
                 await self.cache.set(
-                    build_congrats_key(user_id), "True", ex=60 * 60
+                    congrats_key, "True", ex=60 * 60
                 )  # Expires in an hour
 
         return None, {"msg": msg}
