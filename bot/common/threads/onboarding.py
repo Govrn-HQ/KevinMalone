@@ -38,7 +38,8 @@ from bot.exceptions import InvalidWalletAddressException, ThreadTerminatingExcep
 DISCORD_USER_CACHE_KEY = "discord_user_previously_exists"
 USER_CACHE_KEY = "user_previously_exists"
 DISCORD_DISPLAY_NAME_CACHE_KEY = "discord_display_name"
-TWITTER_HANDLE_STORAGE_KEY = "twitter"
+TWITTER_HANDLE_CACHE_KEY = "twitter_handle"
+REQUESTED_TWEET_CACHE_KEY = "requested_tweet"
 
 
 logger = logging.getLogger(__name__)
@@ -261,7 +262,7 @@ class AddUserTwitterStep(BaseStep):
     async def save(self, message, guild_id, user_id):
         twitter_handle = message.content.strip().replace("@", "")
         await write_cache_metadata(
-            user_id, self.cache, "twitter_handle", twitter_handle)
+            user_id, self.cache, TWITTER_HANDLE_CACHE_KEY, twitter_handle)
 
     async def handle_emoji(self, raw_reaction):
         # skips twitter verification
@@ -287,7 +288,7 @@ class VerifyUserTwitterStep(BaseStep):
             " selected account, and reply with the URL to the tweet"
         )
         nonce = self.get_nonce()
-        requested_tweet = REQUESTED_TWEET_FMT.format(nonce)
+        requested_tweet = REQUESTED_TWEET_FMT % nonce
 
         # save requested tweet in cache
         await write_cache_metadata(
@@ -300,7 +301,8 @@ class VerifyUserTwitterStep(BaseStep):
         )
 
         # send request to tweet a given message + nonce
-        await message.channel.send(embed=embed)
+        sent_message = await message.channel.send(embed=embed)
+        return sent_message, None
 
     async def save(self, message, guild_id, user_id):
         await self.verify_message(message)
@@ -308,20 +310,20 @@ class VerifyUserTwitterStep(BaseStep):
 
     async def verify_message(self, authentication_message):
         twitter_handle = await get_cache_metadata_key(
-            self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
+            self.user_id, self.cache, TWITTER_HANDLE_CACHE_KEY
         )
         tweet_url = authentication_message.content.strip()
         profile, status_id = verify_twitter_url(tweet_url, twitter_handle)
         tweet = await retrieve_tweet(profile, status_id)
         requested_tweet = await get_cache_metadata_key(
             self.user_id, self.cache, "requested_tweet")
-        verify_tweet_text(tweet.rawContent, requested_tweet)
+        verify_tweet_text(tweet.content, requested_tweet)
 
     async def save_authenticated_account(self):
         # retrieve and save handle from cache into airtable
         user_record = await fetch_user_by_discord_id(self.user_id)
         twitter_handle = await get_cache_metadata_key(
-            self.user_id, self.cache, TWITTER_HANDLE_STORAGE_KEY
+            self.user_id, self.cache, TWITTER_HANDLE_CACHE_KEY
         )
         await update_user_twitter_handle(user_record["id"], twitter_handle)
 
@@ -357,9 +359,9 @@ def verify_twitter_url(tweet_url, expected_profile):
 async def retrieve_tweet(profile, status_id):
     loop = asyncio.get_event_loop()
     scraper = sntwitter.TwitterTweetScraper(status_id)
-    iter = scraper.get_items()
+    gen = scraper.get_items()
     try:
-        tweet = await loop.run_in_executor(None, next(iter), None)
+        tweet = await loop.run_in_executor(None, gen.__next__)
     except Exception as e:
         logger.error(
             f"unable to retrieve tweet for profile {profile}, id {status_id}: {e}")
@@ -413,7 +415,8 @@ class Onboarding(BaseThread):
 
     def _data_retrival_steps(self):
         congrats = CongratsStep(self.user_id, self.guild_id, self.cache)
-        verify_twitter = VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+        verify_twitter = Step(
+            VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache))
         return (
             Step(
                 current=CreateUserWithWalletAddressStep(
