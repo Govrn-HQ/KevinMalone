@@ -31,9 +31,7 @@ class ReportStep(BaseStep):
             channel = message.channel
 
         guild = await gql.get_guild_by_discord_id(self.guild_id)
-        link = (
-            REPORTING_FORM_FMT % guild["id"]
-        )
+        link = REPORTING_FORM_FMT % guild["id"]
 
         msg = (
             f"Woohoo! Nice job! Community contributions are what keeps"
@@ -58,7 +56,8 @@ class ReportStep(BaseStep):
             contributions = await gql.get_contributions(
                 guild_id=guild.get("id"),
                 user_discord_id=user_id,
-                after_date=one_week.isoformat())
+                after_date=one_week.isoformat(),
+            )
             if len(contributions) > 0:
                 await channel.send(
                     f"Congrats {user.display_name} for reporting {len(contributions)} "

@@ -296,9 +296,7 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     """Returns the community's weekly csv given the guild name."""
     logger.info(f"retrieving contributions for guild {guild_id}...")
 
-    records = await get_contributions(
-        guild_id, user_discord_id=None, after_date=None
-    )
+    records = await get_contributions(guild_id, user_discord_id=None, after_date=None)
 
     logger.info(f"done retrieving contributions for guild {guild_id}")
 
