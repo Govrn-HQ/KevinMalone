@@ -120,7 +120,7 @@ fragment GuildFragment on Guild {
 """
 
 
-async def fetch_user_by_discord_id(discord_id):
+async def get_user_by_discord_id(discord_id):
     query = (
         GqlFragments.USER_FRAGMENT
         + """

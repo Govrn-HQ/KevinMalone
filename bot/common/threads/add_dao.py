@@ -8,7 +8,7 @@ from bot.common.threads.thread_builder import (
     Step,
 )
 from bot.common.graphql import (
-    fetch_user_by_discord_id,
+    get_user_by_discord_id,
     get_guild_by_discord_id,
     create_guild,
     update_guild_name,
@@ -76,7 +76,7 @@ class AddDaoGetOrCreate(BaseStep):
         guild = await get_guild_by_discord_id(dao_id)
         if guild:
             # Check if user is a member
-            user = await fetch_user_by_discord_id(user_id)
+            user = await get_user_by_discord_id(user_id)
             guild_name = guild.get("name")
 
             if user is not None and any(

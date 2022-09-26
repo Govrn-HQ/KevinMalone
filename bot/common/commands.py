@@ -5,7 +5,7 @@ import discord
 
 from bot.common.bot.bot import bot
 from bot.common.graphql import (
-    fetch_user_by_discord_id,
+    get_user_by_discord_id,
     get_guild_by_id,
     get_guild_by_discord_id,
 )
@@ -91,7 +91,7 @@ async def join(ctx):
     guild_discord_id = ctx.guild.id
 
     # TODO: a single query could be written for this
-    user = await fetch_user_by_discord_id(ctx.author.id)
+    user = await get_user_by_discord_id(ctx.author.id)
     guild = await get_guild_by_discord_id(guild_discord_id)
     guild_id = guild["id"]
 
@@ -362,7 +362,7 @@ async def add_dao(ctx):
 
 async def select_guild(ctx, response_embed, error_embed):
     await ctx.response.defer()
-    discord_rec = await fetch_user_by_discord_id(ctx.author.id)
+    discord_rec = await get_user_by_discord_id(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
     if not guild_ids:
         await ctx.followup.send(embed=error_embed)
