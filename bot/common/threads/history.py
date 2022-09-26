@@ -283,7 +283,7 @@ async def get_contributions(metadata, user_id, guild_id, days):
     date = date.isoformat()
     guild = await gql.get_guild_by_discord_id(guild_id)
     # todo: truncate
-    contributions = await gql.get_contributions_for_guild(
+    contributions = await gql.get_contributions(
         guild.get("id"), user_id, date
     )
     return contributions

@@ -152,7 +152,7 @@ query getUser($where: UserWhereInput!,) {
     return result
 
 
-async def get_contributions_for_guild(guild_id, user_discord_id, after_date):
+async def get_contributions(guild_id, user_discord_id, after_date):
     query = (
         GqlFragments.CONTRIBUTION_FRAGMENT
         + """
