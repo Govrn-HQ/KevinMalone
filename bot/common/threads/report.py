@@ -30,7 +30,7 @@ class ReportStep(BaseStep):
         if message:
             channel = message.channel
 
-        guild = await gql.fetch_guild_by_discord_id(self.guild_id)
+        guild = await gql.get_guild_by_discord_id(self.guild_id)
         link = (
             REPORTING_FORM_FMT % guild["id"]
         )
