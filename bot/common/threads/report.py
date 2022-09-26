@@ -1,4 +1,5 @@
 import logging
+import datetime
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -7,7 +8,7 @@ from bot.common.threads.thread_builder import (
     Step,
 )
 from bot.config import REPORTING_FORM_FMT
-from bot.common.graphql import get_guild_by_discord_id
+import bot.common.graphql as gql
 from bot.common.cache import build_congrats_key
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ class ReportStep(BaseStep):
         if message:
             channel = message.channel
 
-        guild = await get_guild_by_discord_id(self.guild_id)
+        guild = await gql.get_guild_by_discord_id(self.guild_id)
         link = (
             REPORTING_FORM_FMT % guild["id"]
             if self.reporting_link is None
@@ -46,27 +47,30 @@ class ReportStep(BaseStep):
             await channel.send(msg)
 
         if not await self.cache.get(build_congrats_key(user_id)):
-            fields = await get_guild_by_discord_id(self.guild_id)
+            fields = await gql.get_guild_by_discord_id(self.guild_id)
             congrats_channel_id = fields.get("congrats_channel_id")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
                 return None, {"msg": msg}
 
-            # channel = self.bot.get_channel(int(congrats_channel_id))
-            # user = self.bot.get_user(user_id)
-            # # get count of uses
-            # record = await fetch_user_by_discord_id(user_id, self.guild_id)
-            # fields = record.get("fields")
-            # # TODO: Pro-309
-            # # count = await get_contribution_count(fields.get("id"))
-            # if count > 0:
-            #     await channel.send(
-            #         f"Congrats {user.display_name} for reporting {count} "
-            #         "engagements this week!"
-            #     )
-            #     await self.cache.set(
-            #         build_congrats_key(user_id), "True", ex=60 * 60
-            #     )  # Expires in an hour
+            channel = self.bot.get_channel(int(congrats_channel_id))
+            user = self.bot.get_user(user_id)
+            # get count of uses
+            record = await gql.fetch_user_by_discord_id(user_id)
+            fields = record.get("fields")
+            one_week = datetime.now() - datetime.timedelta(weeks=1)
+            contributions = await gql.get_contributions(
+                guild_id=None,
+                user_discord_id=user_id,
+                after_date=one_week.isoformat())
+            if len(contributions) > 0:
+                await channel.send(
+                    f"Congrats {user.display_name} for reporting {len(contributions)} "
+                    "engagements this week!"
+                )
+                await self.cache.set(
+                    build_congrats_key(user_id), "True", ex=60 * 60
+                )  # Expires in an hour
 
         return None, {"msg": msg}
 
