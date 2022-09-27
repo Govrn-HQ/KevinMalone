@@ -5,7 +5,7 @@ import discord
 
 from bot.common.bot.bot import bot
 from bot.common.graphql import (
-    fetch_user_by_discord_id,
+    get_user_by_discord_id,
     get_guild_by_id,
     get_guild_by_discord_id,
 )
@@ -14,7 +14,7 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
 )
 from bot.common.threads.onboarding import Onboarding
-from bot.common.threads.report import ReportStep, get_reporting_link
+from bot.common.threads.report import ReportStep
 from bot.common.threads.update import UpdateProfile
 from bot.common.threads.add_dao import AddDao
 from bot.common.threads.history import History
@@ -71,19 +71,12 @@ async def report(ctx):
             ),
         )
 
-    reporting_form_link = await get_reporting_link(ctx.guild.id)
-
-    if reporting_form_link:
-        _, metadata = await ReportStep(
-            guild_id=ctx.guild.id,
-            cache=Redis,
-            bot=bot,
-            channel=ctx.channel,
-            reporting_link=reporting_form_link,
-        ).send(None, ctx.author.id)
-        # send message to congrats channel
-
-        await ctx.response.send_message(metadata.get("msg"), ephemeral=True)
+    _, metadata = await ReportStep(
+        guild_id=ctx.guild.id,
+        cache=Redis,
+        bot=bot,
+        channel=ctx.channel,
+    ).send(ctx.followup, ctx.author.id)
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
@@ -98,7 +91,7 @@ async def join(ctx):
     guild_discord_id = ctx.guild.id
 
     # TODO: a single query could be written for this
-    user = await fetch_user_by_discord_id(ctx.author.id)
+    user = await get_user_by_discord_id(ctx.author.id)
     guild = await get_guild_by_discord_id(guild_discord_id)
     guild_id = guild["id"]
 
@@ -371,7 +364,7 @@ async def add_dao(ctx):
 
 async def select_guild(ctx, response_embed, error_embed):
     await ctx.response.defer()
-    discord_rec = await fetch_user_by_discord_id(ctx.author.id)
+    discord_rec = await get_user_by_discord_id(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
     if not guild_ids:
         await ctx.followup.send(embed=error_embed)

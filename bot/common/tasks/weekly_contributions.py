@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from discord import EmbedField, File, Embed, Bot
 
 from bot.common.graphql import (
-    get_contributions_for_guild,
+    get_contributions,
     get_guild_by_discord_id,
     get_guilds,
 )
@@ -232,7 +232,7 @@ async def generate_guild_contribution_reports(
 async def create_all_contributions_dataframe() -> pd.DataFrame:
     """Returns a dataframe as below, but with every contribution"""
     beginning_of_time = datetime.now() - timedelta(weeks=52 * 20)
-    records = await get_contributions_for_guild(
+    records = await get_contributions(
         guild_id=None, user_discord_id=None, after_date=beginning_of_time.isoformat()
     )
 
@@ -296,9 +296,7 @@ async def create_guild_dataframe(guild_id: int) -> pd.DataFrame:
     """Returns the community's weekly csv given the guild name."""
     logger.info(f"retrieving contributions for guild {guild_id}...")
 
-    records = await get_contributions_for_guild(
-        guild_id, user_discord_id=None, after_date=None
-    )
+    records = await get_contributions(guild_id, user_discord_id=None, after_date=None)
 
     logger.info(f"done retrieving contributions for guild {guild_id}")
 

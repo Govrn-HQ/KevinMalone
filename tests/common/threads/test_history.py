@@ -48,7 +48,7 @@ async def test_display_history_step_user_not_found(mocker, thread_dependencies):
     user_id = "1"
     history_step = DisplayHistoryStep(None, cache, None, context)
 
-    mock_gql_query(mocker, method="fetch_user_by_discord_id", returns=None)
+    mock_gql_query(mocker, method="get_user_by_discord_id", returns=None)
     (sent_message, tmp) = await history_step.send(message, user_id)
 
     # Check prompt for joining
@@ -62,9 +62,9 @@ async def test_display_history_step_no_contributions(mocker, thread_dependencies
     user_id = "1"
     history_step = DisplayHistoryStep(None, cache, None, context)
 
-    mock_gql_query(mocker, "fetch_user_by_discord_id", returns={"id": "1"})
+    mock_gql_query(mocker, "get_user_by_discord_id", returns={"id": "1"})
     mock_gql_query(mocker, "get_guild_by_discord_id", returns={"id": "1"})
-    mock_gql_query(mocker, "get_contributions_for_guild", returns=None)
+    mock_gql_query(mocker, "get_contributions", returns=None)
     (sent_message, tmp) = await history_step.send(message, user_id)
     assert (
         DisplayHistoryStep.no_contributions_content == sent_message.content
@@ -77,9 +77,9 @@ async def test_display_history_step(mocker, thread_dependencies):
     user_id = "1"
     history_step = DisplayHistoryStep(None, cache, None, context)
 
-    mock_gql_query(mocker, "fetch_user_by_discord_id", returns={"id": "1"})
+    mock_gql_query(mocker, "get_user_by_discord_id", returns={"id": "1"})
     mock_gql_query(mocker, "get_guild_by_discord_id", returns={"id": "1"})
-    mock_gql_query(mocker, "get_contributions_for_guild", returns=default_contributions)
+    mock_gql_query(mocker, "get_contributions", returns=default_contributions)
     await cache.set(
         "1", json.dumps({"metadata": {}, "thread": "t", "step": "s", "guild_id": "1"})
     )

@@ -102,7 +102,7 @@ class DisplayHistoryStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        record = await gql.fetch_user_by_discord_id(user_id)
+        record = await gql.get_user_by_discord_id(user_id)
         logger.info(
             "user_id "
             + str(user_id)
@@ -283,7 +283,5 @@ async def get_contributions(metadata, user_id, guild_id, days):
     date = date.isoformat()
     guild = await gql.get_guild_by_discord_id(guild_id)
     # todo: truncate
-    contributions = await gql.get_contributions_for_guild(
-        guild.get("id"), user_id, date
-    )
+    contributions = await gql.get_contributions(guild.get("id"), user_id, date)
     return contributions

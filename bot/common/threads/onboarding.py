@@ -7,7 +7,7 @@ import asyncio
 import snscrape.modules.twitter as sntwitter
 from web3 import Web3
 from bot.common.graphql import (
-    fetch_user_by_discord_id,
+    get_user_by_discord_id,
     get_guild_by_discord_id,
     create_user as _create_user,
     create_guild_user,
@@ -70,7 +70,7 @@ class CheckIfUserExists(BaseStep):
         return None, None
 
     async def control_hook(self, message, user_id):
-        user = await fetch_user_by_discord_id(user_id)
+        user = await get_user_by_discord_id(user_id)
         if user:
             # Cache for the message send in the next step rather than retrieving
             # from the database
@@ -235,7 +235,7 @@ class CreateUserWithWalletAddressStep(BaseStep):
         # user creation is performed when supplying wallet address since this
         # is a mandatory field for the user record
         # TODO: wrap into a single CRUD
-        user = await fetch_user_by_discord_id(user_id)
+        user = await get_user_by_discord_id(user_id)
         user = await create_user(user_id, discord_display_name, guild.get("id"), wallet)
         user_db_id = user.get("id")
         await update_user_display_name(user_db_id, display_name)

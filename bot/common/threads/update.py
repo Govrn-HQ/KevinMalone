@@ -2,7 +2,7 @@ import discord
 import json
 
 from bot.common.graphql import (
-    fetch_user_by_discord_id,
+    get_user_by_discord_id,
     update_user_twitter_handle,
     update_user_display_name,
     update_user_wallet,
@@ -57,7 +57,7 @@ class UserUpdateFieldSelectStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        user = await fetch_user_by_discord_id(user_id)
+        user = await get_user_by_discord_id(user_id)
         if not user:
             raise Exception("No user for updating field")
         embed = discord.Embed(
@@ -135,7 +135,7 @@ class UpdateFieldStep(BaseStep):
         field = metadata.get("field")
         if not field:
             raise Exception("No field present to update")
-        record = await fetch_user_by_discord_id(user_id)
+        record = await get_user_by_discord_id(user_id)
         record_id = record["id"]
         value = message.content.strip()
 
