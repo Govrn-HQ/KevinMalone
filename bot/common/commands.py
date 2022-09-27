@@ -298,8 +298,10 @@ async def add_dao(ctx):
     embed = discord.Embed(
         colour=INFO_EMBED_COLOR,
         title="Add DAO",
-        description="Add a new guild so that you can report your contributions,"
-        " even if Kevin Malone hasn't been added to the server",
+        description=(
+            "Add a new guild so that you can report your contributions,"
+            " even if Kevin Malone hasn't been added to the server"
+        ),
     )
     sent_message = await ctx.response.send_message(embed=embed)
 
@@ -408,6 +410,14 @@ async def on_application_command_error(ctx, exception):
     ctx.response.is_done()
 
 
+nonexistant_thread_message = (
+    "Hey! Thanks for the %s, but it looks like you don't have a conversation"
+    " going with me right now..."
+    " my apologies if I forgot! Try starting another conversation by using"
+    " my slash commands! Just type a `/` to see a list of them."
+)
+
+
 @bot.event
 async def on_message(message):
     if message.author.bot is True:
@@ -420,7 +430,8 @@ async def on_message(message):
     # Check if user has open thread
     thread_key = await Redis.get(message.author.id)
     if not thread_key:
-        # TODO: It may make sense to send some sort of message here
+        msg = nonexistant_thread_message % "message"
+        await send_message_if_not_on_cooldown(message.channel, message.author.id, msg)
         return
 
     thread = await get_thread(message.author.id, thread_key)
@@ -446,11 +457,40 @@ async def on_raw_reaction_add(payload):
     # Check if user has open thread
     thread_key = await Redis.get(user.id)
     if not thread_key:
-        # TODO: It may make sense to send some sort of message here
+        msg = nonexistant_thread_message % "reaction"
+        await send_message_if_not_on_cooldown(channel, user.id, msg)
         return
 
     thread = await get_thread(user.id, thread_key)
     await thread.handle_reaction(reaction, user)
+
+
+# Storing as a separate key to prevent conflict with existing metadata
+cooldown_key = "%s_cooldown"
+
+
+async def send_message_if_not_on_cooldown(channel, user_id, msg):
+    if not await is_user_on_cooldown(user_id):
+        await channel.send(msg)
+        await write_inactive_thread_cooldown(user_id)
+    else:
+        logger.info(
+            f"user_id {user_id} has a cooldown entry for an inactive thread..."
+            " omitting the reply until cooldown expires"
+        )
+
+
+async def write_inactive_thread_cooldown(user_id):
+    # create an entry which expires in 15 mintues
+    key = cooldown_key % user_id
+    await Redis.set(key, "True", 60 * 15)
+    logger.info(f"wrote cooldown entry for user {user_id}")
+
+
+async def is_user_on_cooldown(user_id):
+    key = cooldown_key % user_id
+    val = await Redis.get(key)
+    return val is not None
 
 
 bot.on_application_command_error = on_application_command_error
