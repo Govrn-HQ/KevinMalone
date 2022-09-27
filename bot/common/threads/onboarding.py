@@ -1,4 +1,10 @@
+import random
+import string
 import discord
+import logging
+import re
+import asyncio
+import snscrape.modules.twitter as sntwitter
 from web3 import Web3
 from bot.common.graphql import (
     fetch_user_by_discord_id,
@@ -13,6 +19,9 @@ from bot.config import (
     NO_EMOJI,
     SKIP_EMOJI,
     INFO_EMBED_COLOR,
+    REQUESTED_TWEET_FMT,
+    TWEET_NONCE_LEGNTH,
+    TWITTER_URL_REGEXP,
 )
 from bot.common.threads.thread_builder import (
     BaseStep,
@@ -23,12 +32,17 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata_key,
     write_cache_metadata,
 )
-from bot.exceptions import InvalidWalletAddressException
+from bot.exceptions import InvalidWalletAddressException, ThreadTerminatingException
 
 
 DISCORD_USER_CACHE_KEY = "discord_user_previously_exists"
 USER_CACHE_KEY = "user_previously_exists"
 DISCORD_DISPLAY_NAME_CACHE_KEY = "discord_display_name"
+TWITTER_HANDLE_CACHE_KEY = "twitter_handle"
+REQUESTED_TWEET_CACHE_KEY = "requested_tweet"
+
+
+logger = logging.getLogger(__name__)
 
 
 def _handle_skip_emoji(raw_reaction, guild_id):
@@ -247,11 +261,123 @@ class AddUserTwitterStep(BaseStep):
 
     async def save(self, message, guild_id, user_id):
         twitter_handle = message.content.strip().replace("@", "")
-        user_db_id = await get_cache_metadata_key(user_id, self.cache, "user_db_id")
-        await update_user_twitter_handle(user_db_id, twitter_handle)
+        await write_cache_metadata(
+            user_id, self.cache, TWITTER_HANDLE_CACHE_KEY, twitter_handle
+        )
 
     async def handle_emoji(self, raw_reaction):
-        return _handle_skip_emoji(raw_reaction, self.guild_id)
+        # skips twitter verification
+        if SKIP_EMOJI in raw_reaction.emoji.name:
+            return StepKeys.ONBOARDING_CONGRATS.value, False
+        raise Exception("Reacted with the wrong emoji")
+
+
+class VerifyUserTwitterStep(BaseStep):
+    """Step to verify user's twitter profile"""
+
+    name = StepKeys.VERIFY_USER_TWITTER.value
+
+    def __init__(self, user_id, guild_id, cache):
+        super().__init__()
+        self.user_id = user_id
+        self.guild_id = guild_id
+        self.cache = cache
+
+    async def send(self, message, user_id):
+        embed_title = (
+            "To verify your twitter, please tweet the below message from your"
+            " selected account, and reply with the URL to the tweet"
+        )
+        nonce = self.get_nonce()
+        requested_tweet = REQUESTED_TWEET_FMT % nonce
+
+        # save requested tweet in cache
+        await write_cache_metadata(
+            user_id, self.cache, "requested_tweet", requested_tweet
+        )
+        embed = discord.Embed(
+            colour=INFO_EMBED_COLOR,
+            title=embed_title,
+            description=requested_tweet,
+        )
+
+        # send request to tweet a given message + nonce
+        sent_message = await message.channel.send(embed=embed)
+        return sent_message, None
+
+    async def save(self, message, guild_id, user_id):
+        await self.verify_message(message)
+        await self.save_authenticated_account()
+
+    async def verify_message(self, authentication_message):
+        twitter_handle = await get_cache_metadata_key(
+            self.user_id, self.cache, TWITTER_HANDLE_CACHE_KEY
+        )
+        tweet_url = authentication_message.content.strip()
+        profile, status_id = verify_twitter_url(tweet_url, twitter_handle)
+        tweet = await retrieve_tweet(profile, status_id)
+        requested_tweet = await get_cache_metadata_key(
+            self.user_id, self.cache, "requested_tweet"
+        )
+        verify_tweet_text(tweet.content, requested_tweet)
+
+    async def save_authenticated_account(self):
+        # retrieve and save handle from cache into airtable
+        user_record = await fetch_user_by_discord_id(self.user_id)
+        twitter_handle = await get_cache_metadata_key(
+            self.user_id, self.cache, TWITTER_HANDLE_CACHE_KEY
+        )
+        await update_user_twitter_handle(user_record["id"], twitter_handle)
+
+    def get_nonce(self):
+        return "".join(
+            random.choice(string.ascii_letters) for i in range(TWEET_NONCE_LEGNTH)
+        )
+
+
+def verify_twitter_url(tweet_url, expected_profile):
+    #  ensure the shared tweet matches the account and message
+    match = re.search(TWITTER_URL_REGEXP, tweet_url)
+
+    if match is None:
+        raise ThreadTerminatingException(
+            f"Tweet URL {tweet_url} was not in the expected format"
+        )
+
+    profile = match.group(1)
+
+    if profile != expected_profile:
+        errMsg = (
+            f"Tweet profile {profile} does not match the supplied"
+            f" handle {expected_profile}"
+        )
+        raise ThreadTerminatingException(errMsg)
+
+    status_id = match.group(2)
+
+    return profile, status_id
+
+
+async def retrieve_tweet(profile, status_id):
+    loop = asyncio.get_event_loop()
+    scraper = sntwitter.TwitterTweetScraper(status_id)
+    gen = scraper.get_items()
+    try:
+        tweet = await loop.run_in_executor(None, gen.__next__)
+    except Exception as e:
+        logger.error(
+            f"unable to retrieve tweet for profile {profile}, id {status_id}: {e}"
+        )
+        raise e
+    return tweet
+
+
+def verify_tweet_text(tweet_text, expected_tweet_text):
+    if tweet_text != expected_tweet_text:
+        raise ThreadTerminatingException(
+            f"Tweet text {tweet_text} doesn't match the verification"
+            f" tweet {expected_tweet_text}"
+        )
 
 
 class CongratsStep(BaseStep):
@@ -291,6 +417,10 @@ class Onboarding(BaseThread):
     name = ThreadKeys.ONBOARDING.value
 
     def _data_retrival_steps(self):
+        congrats = CongratsStep(self.user_id, self.guild_id, self.cache)
+        verify_twitter = Step(
+            VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+        )
         return (
             Step(
                 current=CreateUserWithWalletAddressStep(
@@ -298,7 +428,7 @@ class Onboarding(BaseThread):
                 )
             )
             .add_next_step(AddUserTwitterStep(guild_id=self.guild_id, cache=self.cache))
-            .add_next_step(CongratsStep(self.user_id, self.guild_id, self.cache))
+            .fork((verify_twitter.add_next_step(congrats).build(), congrats))
         )
 
     def get_profile_setup_steps(self):
