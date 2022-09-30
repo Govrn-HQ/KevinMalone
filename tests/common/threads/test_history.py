@@ -37,11 +37,6 @@ default_contributions = [
 ]
 
 
-@pytest.fixture
-def thread_dependencies():
-    return (MockCache(), MockContext(), MockMessage())
-
-
 @pytest.mark.asyncio
 async def test_display_history_step_user_not_found(mocker, thread_dependencies):
     (cache, context, message) = thread_dependencies

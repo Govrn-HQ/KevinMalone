@@ -19,6 +19,12 @@ class ReportStep(BaseStep):
 
     name = StepKeys.USER_DISPLAY_CONFIRM.value
 
+    report_message = (
+        "Woohoo! Nice job! Community contributions are what keeps"
+        " your community thriving 🌞. "
+        "Report your contributions via the form 👉 %s"
+    )
+
     def __init__(self, guild_id, cache, bot, channel=None):
         self.guild_id = guild_id
         self.cache = cache
@@ -33,11 +39,7 @@ class ReportStep(BaseStep):
         guild = await gql.get_guild_by_discord_id(self.guild_id)
         link = REPORTING_FORM_FMT % guild["id"]
 
-        msg = (
-            f"Woohoo! Nice job! Community contributions are what keeps"
-            " your community thriving 🌞. "
-            f"Report your contributions via the form 👉 {link}"
-        )
+        msg = ReportStep.report_message % link
         if message:
             await channel.send(msg)
 

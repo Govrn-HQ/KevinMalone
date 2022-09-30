@@ -1,9 +1,17 @@
+
 from datetime import timedelta, time, datetime
 from pytest_mock.plugin import MockerFixture
 import discord
+import pytest
 
 from bot.common.cache import Cache
 from bot.common.tasks.tasks import Cadence
+
+
+@pytest.fixture
+def thread_dependencies():
+    mock_bot = MockBot(MockChannel(), MockUser())
+    return (MockCache(), MockContext(), MockMessage(), mock_bot)
 
 
 # Add in memory implementation
@@ -38,6 +46,31 @@ class MockCadence(Cadence):
 
     def set_time_to_run(self, time_to_run):
         self.time_to_run = time_to_run
+
+
+class MockBot:
+    # channel = self.bot.get_channel(int(congrats_channel_id))
+    # user = self.bot.get_user(user_id)
+
+    def __init__(self, mock_channel=None, mock_user=None):
+        self.mock_channel = mock_channel
+        self.mock_user = mock_user
+
+    def get_channel(self, channel_id: int):
+        if self.mock_chanel:
+            return self.mock_channel
+        # throw ?
+        return MockChannel()
+
+    def get_user(self, user_id: int):
+        if self.mock_user:
+            return self.mock_user
+        return MockUser(user_id)
+
+
+class MockUser:
+    def __init__(self, display_name):
+        self.display_name = display_name
 
 
 class MockChannel:
