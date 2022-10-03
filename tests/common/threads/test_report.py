@@ -3,18 +3,13 @@ from bot.common.cache import build_congrats_key
 
 from tests.test_utils import mock_default_contributions
 from tests.test_utils import mock_gql_query
-from bot.common.threads.report import (
-    ReportStep
-)
+from bot.common.threads.report import ReportStep
 from bot.config import REPORTING_FORM_FMT
 
 
 @pytest.mark.asyncio
 async def test_reporting_step_happypath(mocker, thread_dependencies):
-    guild = {
-        "id": "1",
-        "congrats_channel": 123
-    }
+    guild = {"id": "1", "congrats_channel": 123}
     (cache, context, message, bot) = thread_dependencies
     bot.mock_user = None
     report = ReportStep("0", cache, bot)
@@ -27,16 +22,17 @@ async def test_reporting_step_happypath(mocker, thread_dependencies):
     link = REPORTING_FORM_FMT % guild["id"]
     expected_message = ReportStep.report_message % link
     expected_congrats = ReportStep.congrats_message % (
-        user_id, len(default_contributions)
+        user_id,
+        len(default_contributions),
     )
 
     # assert
     congrats_key = build_congrats_key(user_id)
     cache_entry = cache.get(congrats_key)
-    assert(expected_message == sent_message.content)
-    assert(len(bot.mock_channel.sent_messages) == 1)
-    assert(expected_congrats == bot.mock_channel.sent_messages[0].content)
-    assert(cache_entry)
+    assert expected_message == sent_message.content
+    assert len(bot.mock_channel.sent_messages) == 1
+    assert expected_congrats == bot.mock_channel.sent_messages[0].content
+    assert cache_entry
 
 
 @pytest.mark.asyncio
@@ -58,9 +54,9 @@ async def test_reporting_step_no_congrats(mocker, thread_dependencies):
     # assert
     congrats_key = build_congrats_key(user_id)
     cache_entry = await cache.get(congrats_key)
-    assert(expected_message == sent_message.content)
-    assert(len(bot.mock_channel.sent_messages) == 0)
-    assert(cache_entry is None)
+    assert expected_message == sent_message.content
+    assert len(bot.mock_channel.sent_messages) == 0
+    assert cache_entry is None
 
 
 @pytest.mark.asyncio
@@ -81,6 +77,6 @@ async def test_reporting_step_no_contibutions(mocker, thread_dependencies):
     # assert
     congrats_key = build_congrats_key(user_id)
     cache_entry = await cache.get(congrats_key)
-    assert(expected_message == sent_message.content)
-    assert(len(bot.mock_channel.sent_messages) == 0)
-    assert(cache_entry is None)
+    assert expected_message == sent_message.content
+    assert len(bot.mock_channel.sent_messages) == 0
+    assert cache_entry is None

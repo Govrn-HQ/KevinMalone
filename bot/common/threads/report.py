@@ -24,9 +24,7 @@ class ReportStep(BaseStep):
         " your community thriving 🌞. "
         "Report your contributions via the form 👉 %s"
     )
-    congrats_message = (
-        "Congrats %s for reporting %s engagements this week!"
-    )
+    congrats_message = "Congrats %s for reporting %s engagements this week!"
 
     def __init__(self, guild_id, cache, bot, channel=None):
         self.guild_id = guild_id
@@ -66,7 +64,8 @@ class ReportStep(BaseStep):
             )
             if len(contributions) > 0:
                 await channel.send(
-                    ReportStep.congrats_message % (user.display_name, len(contributions))
+                    ReportStep.congrats_message
+                    % (user.display_name, len(contributions))
                 )
                 await self.cache.set(
                     congrats_key, "True", ex=60 * 60
