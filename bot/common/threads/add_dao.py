@@ -26,22 +26,23 @@ from bot.exceptions import ThreadTerminatingException
 logger = logging.getLogger(__name__)
 
 
-class AddDaoPromptId(BaseStep):
+class AddDaoPromptIdStep(BaseStep):
     """Prompts the user to input the discord ID of the guild they wish to add"""
 
     name = StepKeys.ADD_DAO_PROMPT_ID.value
 
-    def __init__(self, cache):
+    add_dao_message = (
+        "What is the discord ID of the guild you'd like to add? "
+        "(You can find this by right-clicking the guild icon and clicking "
+        '"Copy ID")'
+    )
+
+    def __init__(self):
         super().__init__()
-        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What is the discord ID of the guild you'd like to add? "
-            "(You can find this by right-clicking the guild icon and clicking "
-            '"Copy ID")'
-        )
+        sent_message = await channel.send(AddDaoPromptIdStep.add_dao_message)
         return sent_message, None
 
 
@@ -210,7 +211,7 @@ class AddDao(BaseThread):
             )
         ).build()
         steps = (
-            Step(current=AddDaoPromptId(self.cache))
+            Step(current=AddDaoPromptIdStep(self.cache))
             .add_next_step(AddDaoGetOrCreate(self, self.cache))
             .fork([dao_not_added_steps, dao_previously_added_steps])
         )
