@@ -1,4 +1,6 @@
 from datetime import timedelta, time, datetime
+from unittest.mock import AsyncMock
+from deepdiff import DeepDiff
 from pytest_mock.plugin import MockerFixture
 import discord
 import pytest
@@ -137,9 +139,12 @@ def get_default_return_for_bot_method(method: str):
     pass
 
 
-def mock_gql_query(mocker: MockerFixture, method: str, returns=None):
+def mock_gql_query(mocker: MockerFixture, method: str, returns=None) -> AsyncMock:
     # TODO add type assertion for returns and method
-    mocker.patch(f"bot.common.graphql.{method}", return_value=returns)
+    module_path = f"bot.common.graphql.{method}"
+    mocker.patch(module_path, return_value=returns)
+    mocked_method = mocker._mocks[-1]
+    return mocked_method
 
 
 def mock_default_contributions(mocker: MockerFixture):
@@ -182,3 +187,8 @@ def assert_context_response(context: MockContext, message: str = None):
 # assert that a file was sent in response
 def assert_file_in_response(response: MockResponse):
     assert response.file is not None, "no file was present in response"
+
+
+def assert_dicts_equal(d1, d2):
+    ret = DeepDiff(d1, d2)
+    assert(ret == {})
