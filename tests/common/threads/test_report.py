@@ -15,6 +15,34 @@ from bot.common.threads.thread_builder import StepKeys
 
 
 @pytest.mark.asyncio
-async def test_reporting_step(mocker, thread_dependencies):
+async def test_reporting_step_happypath(mocker, thread_dependencies):
     (cache, context, message, bot) = thread_dependencies
-    report = ReportStep("0", cache)
+    report = ReportStep("0", cache, bot)
+    user_id = 1234
+    (step, metadata) = await report.send(message, user_id)
+
+
+@pytest.mark.asyncio
+async def test_reporting_step_no_congrats(mocker, thread_dependencies):
+    (cache, context, message, bot) = thread_dependencies
+    report = ReportStep("0", cache, bot)
+    user_id = 1234
+    (step, metadata) = await report.send(message, user_id)
+
+
+@pytest.mark.asyncio
+async def test_reporting_step_no_contibutions(mocker, thread_dependencies):
+    (cache, context, message, bot) = thread_dependencies
+    report = ReportStep("0", cache, bot)
+    user_id = 1234
+    (step, metadata) = await report.send(message, user_id)
+
+
+@pytest.mark.asyncio
+async def test_reporting_step_no_contibutions(mocker, thread_dependencies):
+    (cache, context, message, bot) = thread_dependencies
+    report = ReportStep("0", cache, bot)
+    user_id = 1234
+    (step, metadata) = await report.send(message, user_id)
+
+    # 
