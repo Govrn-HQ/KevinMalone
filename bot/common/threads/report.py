@@ -24,6 +24,9 @@ class ReportStep(BaseStep):
         " your community thriving 🌞. "
         "Report your contributions via the form 👉 %s"
     )
+    congrats_message = (
+        "Congrats %s for reporting %s engagements this week!"
+    )
 
     def __init__(self, guild_id, cache, bot, channel=None):
         self.guild_id = guild_id
@@ -40,8 +43,9 @@ class ReportStep(BaseStep):
         link = REPORTING_FORM_FMT % guild["id"]
 
         msg = ReportStep.report_message % link
+        sent_message = None
         if message:
-            await channel.send(msg)
+            sent_message = await channel.send(msg)
 
         congrats_key = build_congrats_key(user_id)
 
@@ -49,7 +53,7 @@ class ReportStep(BaseStep):
             congrats_channel_id = guild.get("congrats_channel")
             if not congrats_channel_id:
                 logger.warn("No congrats channel id!")
-                return None, {"msg": msg}
+                return sent_message, None
 
             channel = self.bot.get_channel(int(congrats_channel_id))
             user = self.bot.get_user(user_id)
@@ -62,14 +66,13 @@ class ReportStep(BaseStep):
             )
             if len(contributions) > 0:
                 await channel.send(
-                    f"Congrats {user.display_name} for reporting {len(contributions)} "
-                    "engagements this week!"
+                    ReportStep.congrats_message % (user.display_name, len(contributions))
                 )
                 await self.cache.set(
                     congrats_key, "True", ex=60 * 60
                 )  # Expires in an hour
 
-        return None, {"msg": msg}
+        return sent_message, None
 
 
 class Report(BaseThread):

@@ -2,7 +2,7 @@ import pytest
 import json
 
 from tests.test_utils import MockCache, MockContext, MockMessage
-from tests.test_utils import mock_gql_query
+from tests.test_utils import mock_gql_query, mock_default_contributions
 from tests.test_utils import (
     assert_message_content,
     assert_message_reaction,
@@ -19,22 +19,6 @@ from bot.common.threads.history import (
 )
 
 from bot.common.threads.thread_builder import StepKeys
-
-default_contributions = [
-    {
-        # TODO: extract these
-        "date_of_submission": "2022-09-21",
-        "date_of_engagement": "2022-09-21",
-        "name": "unit tests 1",
-        "status": {"name": "great"},
-    },
-    {
-        "date_of_submission": "2022-09-22",
-        "date_of_engagement": "2022-09-22",
-        "name": "unit tests 2",
-        "status": {"name": "ok"},
-    },
-]
 
 
 @pytest.mark.asyncio
@@ -74,7 +58,7 @@ async def test_display_history_step(mocker, thread_dependencies):
 
     mock_gql_query(mocker, "get_user_by_discord_id", returns={"id": "1"})
     mock_gql_query(mocker, "get_guild_by_discord_id", returns={"id": "1"})
-    mock_gql_query(mocker, "get_contributions", returns=default_contributions)
+    mock_default_contributions(mocker)
     await cache.set(
         "1", json.dumps({"metadata": {}, "thread": "t", "step": "s", "guild_id": "1"})
     )

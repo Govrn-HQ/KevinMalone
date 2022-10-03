@@ -22,7 +22,8 @@ class MockCache(Cache):
     async def get(self, key):
         return self.internal.get(key)
 
-    async def set(self, key, value):
+    # expiry accepted but not mocked
+    async def set(self, key, value, ex=None):
         self.internal[key] = value
 
     async def delete(self, key):
@@ -57,7 +58,7 @@ class MockBot:
         self.mock_user = mock_user
 
     def get_channel(self, channel_id: int):
-        if self.mock_chanel:
+        if self.mock_channel:
             return self.mock_channel
         # throw ?
         return MockChannel()
@@ -69,18 +70,19 @@ class MockBot:
 
 
 class MockUser:
-    def __init__(self, display_name):
+    def __init__(self, display_name=None):
         self.display_name = display_name
 
 
 class MockChannel:
     def __init__(self):
-        pass
+        self.sent_messages = []
 
     async def send(self, content: str = None, embed: discord.Embed = None):
         mock_message = MockMessage()
         mock_message.channel = self
         mock_message.content = content
+        self.sent_messages.append(mock_message)
         return mock_message
 
 
@@ -139,6 +141,25 @@ def get_default_return_for_bot_method(method: str):
 def mock_gql_query(mocker: MockerFixture, method: str, returns=None):
     # TODO add type assertion for returns and method
     mocker.patch(f"bot.common.graphql.{method}", return_value=returns)
+
+
+def mock_default_contributions(mocker: MockerFixture):
+    default_contributions = [
+        {
+            "date_of_submission": "2022-09-21",
+            "date_of_engagement": "2022-09-21",
+            "name": "unit tests 1",
+            "status": {"name": "great"},
+        },
+        {
+            "date_of_submission": "2022-09-22",
+            "date_of_engagement": "2022-09-22",
+            "name": "unit tests 2",
+            "status": {"name": "ok"},
+        },
+    ]
+    mock_gql_query(mocker, "get_contributions", returns=default_contributions)
+    return default_contributions
 
 
 # assert that a message has a particular emoji reaction
