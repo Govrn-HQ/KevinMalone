@@ -2,6 +2,7 @@ from datetime import timedelta, time, datetime
 from unittest.mock import AsyncMock
 from deepdiff import DeepDiff
 from pytest_mock.plugin import MockerFixture
+import json
 import discord
 import pytest
 
@@ -192,3 +193,19 @@ def assert_file_in_response(response: MockResponse):
 def assert_dicts_equal(d1, d2):
     ret = DeepDiff(d1, d2)
     assert ret == {}
+
+
+async def assert_cache_metadata_content(
+    user_id: str, cache: MockCache, key: str, expected_value: str = None
+):
+    cache_values = await cache.get(user_id)
+    cache_values = json.loads(cache_values)
+
+    assert (
+        cache_values["metadata"][key] is not None
+    ), f"{key} is expected to be stored in cached metadata"
+
+    if expected_value is not None:
+        assert (
+            cache_values["metadata"][key] == expected_value
+        ), f"key {key} is not expected value {expected_value}"

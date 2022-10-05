@@ -4,11 +4,16 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     get_cache_metadata,
     build_cache_value,
+    write_cache_metadata,
 )
-from bot.common.threads.add_dao import AddDaoPromptIdStep, AddDaoGetOrCreate
+from bot.common.threads.add_dao import (
+    AddDaoPromptIdStep,
+    AddDaoGetOrCreate,
+    AddDaoPromptName,
+)
 from bot.exceptions import ThreadTerminatingException
-from tests.test_utils import mock_gql_query
-from tests.test_utils import assert_dicts_equal
+from tests.test_utils import MockMessage, assert_message_content, mock_gql_query
+from tests.test_utils import assert_dicts_equal, assert_cache_metadata_content
 
 
 class MockThread:
@@ -130,3 +135,34 @@ async def test_add_dao_get_or_create_hook_create_dao(mocker, thread_dependencies
     assert actual_metadata["guild_id"] == dao_id
     assert actual_metadata.get("guild_name") is None
     create_guild.assert_called_once_with(dao_id)
+
+
+@pytest.mark.asyncio
+async def test_add_dao_prompt_name_send(mocker, thread_dependencies):
+    (cache, _, message, _) = thread_dependencies
+    user_id = "1234"
+    prompt_name_step = AddDaoPromptName(cache)
+    sent_message, _ = await prompt_name_step.send(message, user_id)
+    assert_message_content(sent_message, AddDaoPromptName.guild_name_prompt)
+
+
+@pytest.mark.asyncio
+async def test_add_dao_prompt_name_save(mocker, thread_dependencies):
+    (cache, _, message, _) = thread_dependencies
+    user_id = "1234"
+    dao_id = "12345"
+    dao_name = "test dao"
+    mock_message = MockMessage()
+    mock_message.content = dao_name
+    await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
+    await write_cache_metadata(user_id, cache, "guild_id", dao_id)
+    update_guild_name = mock_gql_query(mocker, "update_guild_name", None)
+
+    prompt_name_step = AddDaoPromptName(cache)
+    await prompt_name_step.save(mock_message, dao_id, user_id)
+
+    # assert gql query called w arguments
+    update_guild_name.assert_awaited_once_with(dao_id, dao_name)
+
+    # assert cache metadata
+    await assert_cache_metadata_content(user_id, cache, "guild_name", dao_name)

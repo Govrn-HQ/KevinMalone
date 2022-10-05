@@ -105,6 +105,8 @@ class AddDaoGetOrCreate(BaseStep):
 class AddDaoPromptName(BaseStep):
     """Prompts the user to input the name of the guild they wish to add"""
 
+    guild_name_prompt = "What is the friendly name of the guild you'd like to add?"
+
     name = StepKeys.ADD_DAO_PROMPT_NAME.value
 
     def __init__(self, cache):
@@ -113,9 +115,7 @@ class AddDaoPromptName(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What is the friendly name of the guild you'd like to add?"
-        )
+        sent_message = await channel.send(AddDaoPromptName.guild_name_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
