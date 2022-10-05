@@ -23,7 +23,7 @@ from bot.common.threads.thread_builder import StepKeys
 
 @pytest.mark.asyncio
 async def test_display_history_step_user_not_found(mocker, thread_dependencies):
-    (cache, context, message) = thread_dependencies
+    (cache, context, message, _) = thread_dependencies
     user_id = "1"
     history_step = DisplayHistoryStep(None, cache, None, context)
 
@@ -37,7 +37,7 @@ async def test_display_history_step_user_not_found(mocker, thread_dependencies):
 
 @pytest.mark.asyncio
 async def test_display_history_step_no_contributions(mocker, thread_dependencies):
-    (cache, context, message) = thread_dependencies
+    (cache, context, message, _) = thread_dependencies
     user_id = "1"
     history_step = DisplayHistoryStep(None, cache, None, context)
 
@@ -52,7 +52,7 @@ async def test_display_history_step_no_contributions(mocker, thread_dependencies
 
 @pytest.mark.asyncio
 async def test_display_history_step(mocker, thread_dependencies):
-    (cache, context, message) = thread_dependencies
+    (cache, context, message, _) = thread_dependencies
     user_id = "1"
     history_step = DisplayHistoryStep(None, cache, None, context)
 
@@ -73,7 +73,7 @@ async def test_display_history_step(mocker, thread_dependencies):
 
 @pytest.mark.asyncio
 async def test_get_contributions_csv_prompt(thread_dependencies):
-    (_, _, message) = thread_dependencies
+    (_, _, message, _) = thread_dependencies
 
     promptStep = GetContributionsCsvPromptStep()
     (sent_message, tmp) = await promptStep.send(message, "0")
