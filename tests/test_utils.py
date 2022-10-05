@@ -191,4 +191,4 @@ def assert_file_in_response(response: MockResponse):
 
 def assert_dicts_equal(d1, d2):
     ret = DeepDiff(d1, d2)
-    assert(ret == {})
+    assert ret == {}
