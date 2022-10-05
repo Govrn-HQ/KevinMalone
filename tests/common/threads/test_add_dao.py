@@ -1,4 +1,3 @@
-from re import A
 import pytest
 
 from bot.common.threads.thread_builder import (
