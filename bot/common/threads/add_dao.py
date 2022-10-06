@@ -7,12 +7,7 @@ from bot.common.threads.thread_builder import (
     StepKeys,
     Step,
 )
-from bot.common.graphql import (
-    get_user_by_discord_id,
-    get_guild_by_discord_id,
-    create_guild,
-    update_guild_name,
-)
+import bot.common.graphql as gql
 from bot.common.threads.thread_builder import (
     write_cache_metadata,
     get_cache_metadata_key,
@@ -26,22 +21,23 @@ from bot.exceptions import ThreadTerminatingException
 logger = logging.getLogger(__name__)
 
 
-class AddDaoPromptId(BaseStep):
+class AddDaoPromptIdStep(BaseStep):
     """Prompts the user to input the discord ID of the guild they wish to add"""
 
     name = StepKeys.ADD_DAO_PROMPT_ID.value
 
-    def __init__(self, cache):
+    add_dao_message = (
+        "What is the discord ID of the guild you'd like to add? "
+        "(You can find this by right-clicking the guild icon and clicking "
+        '"Copy ID")'
+    )
+
+    def __init__(self):
         super().__init__()
-        self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What is the discord ID of the guild you'd like to add? "
-            "(You can find this by right-clicking the guild icon and clicking "
-            '"Copy ID")'
-        )
+        sent_message = await channel.send(AddDaoPromptIdStep.add_dao_message)
         return sent_message, None
 
 
@@ -51,6 +47,12 @@ class AddDaoGetOrCreate(BaseStep):
     user down the join flow."""
 
     name = StepKeys.ADD_DAO_GET_OR_CREATE.value
+
+    previously_added_msg = (
+        "It looks like guild %s has already been added as "
+        "%s, and it looks like you're already a member! "
+        "You can report your contributions with /report!"
+    )
 
     def __init__(self, parent_thread, cache):
         self.parent_thread = parent_thread
@@ -73,21 +75,17 @@ class AddDaoGetOrCreate(BaseStep):
     async def control_hook(self, message, user_id):
         dao_id = str(int(message.content.strip()))
         self.parent_thread.guild_id = dao_id
-        guild = await get_guild_by_discord_id(dao_id)
+        guild = await gql.get_guild_by_discord_id(dao_id)
         if guild:
             # Check if user is a member
-            user = await get_user_by_discord_id(user_id)
+            user = await gql.get_user_by_discord_id(user_id)
             guild_name = guild.get("name")
 
             if user is not None and any(
                 guild_user.get("guild_id") == guild.get("id")
                 for guild_user in user.get("guild_users")
             ):
-                message = (
-                    f"It looks like guild {dao_id} has already been added as "
-                    f"{guild_name}, and it looks like you're already a member! "
-                    " You can report your contributions with /report!"
-                )
+                message = AddDaoGetOrCreate.previously_added_msg % (dao_id, guild_name)
                 raise ThreadTerminatingException(message)
 
             # guild exists, user does not, drop into /join flow
@@ -95,7 +93,7 @@ class AddDaoGetOrCreate(BaseStep):
             await write_cache_metadata(user_id, self.cache, "guild_name", guild_name)
             return StepKeys.ADD_DAO_PREVIOUSLY_ADDED_PROMPT.value
 
-        await create_guild(dao_id)
+        await gql.create_guild(dao_id)
 
         # add validated dao_id to metadata cache for lookup on next step
         await write_cache_metadata(user_id, self.cache, "guild_id", dao_id)
@@ -107,6 +105,8 @@ class AddDaoGetOrCreate(BaseStep):
 class AddDaoPromptName(BaseStep):
     """Prompts the user to input the name of the guild they wish to add"""
 
+    guild_name_prompt = "What is the friendly name of the guild you'd like to add?"
+
     name = StepKeys.ADD_DAO_PROMPT_NAME.value
 
     def __init__(self, cache):
@@ -115,16 +115,14 @@ class AddDaoPromptName(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What is the friendly name of the guild you'd like to add?"
-        )
+        sent_message = await channel.send(AddDaoPromptName.guild_name_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
         guild_name = message.content.strip()
         # retrieve dao_id from cache
         dao_id = await get_cache_metadata_key(user_id, self.cache, "guild_id")
-        await update_guild_name(dao_id, guild_name)
+        await gql.update_guild_name(dao_id, guild_name)
         await write_cache_metadata(user_id, self.cache, "guild_name", guild_name)
 
 
@@ -210,7 +208,7 @@ class AddDao(BaseThread):
             )
         ).build()
         steps = (
-            Step(current=AddDaoPromptId(self.cache))
+            Step(current=AddDaoPromptIdStep(self.cache))
             .add_next_step(AddDaoGetOrCreate(self, self.cache))
             .fork([dao_not_added_steps, dao_previously_added_steps])
         )

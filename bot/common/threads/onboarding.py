@@ -323,7 +323,7 @@ class VerifyUserTwitterStep(BaseStep):
 
     async def save_authenticated_account(self):
         # retrieve and save handle from cache into airtable
-        user_record = await fetch_user_by_discord_id(self.user_id)
+        user_record = await get_user_by_discord_id(self.user_id)
         twitter_handle = await get_cache_metadata_key(
             self.user_id, self.cache, TWITTER_HANDLE_CACHE_KEY
         )
