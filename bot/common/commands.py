@@ -116,16 +116,18 @@ async def join(ctx):
         await ctx.followup.send(embed=embed, ephemeral=True)
         return
 
-    embed = discord.Embed(
-        colour=INFO_EMBED_COLOR,
-        title="Welcome",
-        description="Welcome to the Govrn Ecosystem!  "
-        "We're excited to have you part of our movement."
-        "To help automate the gathering of your contributions"
+    welcome_content = (
+        "Welcome to the Govrn Ecosystem!"
+        " We're excited to have you as part of our movement."
+        " To help automate the gathering of your contributions"
         f" to {ctx.guild.name} we need some information."
-        "We use your IDs to automatically pull your contributions for you to "
-        f"easily submit to {ctx.guild.name}. "
-        "You can skip any requests by using the ⏭️  emoji!",
+        " We use your IDs to automatically pull your contributions for you to"
+        f" easily submit to {ctx.guild.name}."
+        " You can skip any requests by using the ⏭️  emoji!",
+    )
+
+    embed = discord.Embed(
+        colour=INFO_EMBED_COLOR, title="Welcome", description=welcome_content
     )
     logger.info(
         f"Key: {build_cache_value(ThreadKeys.ONBOARDING.value, '', ctx.guild.id)}"

@@ -107,7 +107,7 @@ class AssociateExistingUserWithGuild(BaseStep):
 
         channel = message.channel
         sent_message = await channel.send(
-            f'I found your profile "`{display_name}`" associated with wallet address '
+            f'I found your profile "`{display_name}`" associated with wallet address'
             f" {address} through your discord id, and associated it with {guild_name}."
             " You should be all good to start reporting those contributions with"
             " `/report`!"
