@@ -1,12 +1,7 @@
 import discord
 import json
 
-from bot.common.graphql import (
-    get_user_by_discord_id,
-    update_user_twitter_handle,
-    update_user_display_name,
-    update_user_wallet,
-)
+import bot.common.graphql as gql
 from bot.config import (
     Redis,
     INFO_EMBED_COLOR,
@@ -57,7 +52,7 @@ class UserUpdateFieldSelectStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        user = await get_user_by_discord_id(user_id)
+        user = await gql.get_user_by_discord_id(user_id)
         if not user:
             raise Exception("No user for updating field")
         embed = discord.Embed(
@@ -135,16 +130,16 @@ class UpdateFieldStep(BaseStep):
         field = metadata.get("field")
         if not field:
             raise Exception("No field present to update")
-        record = await get_user_by_discord_id(user_id)
+        record = await gql.get_user_by_discord_id(user_id)
         record_id = record["id"]
         value = message.content.strip()
 
         if field == "display_name":
-            return await update_user_display_name(record_id, value)
+            return await gql.update_user_display_name(record_id, value)
         elif field == "twitter":
-            return await update_user_twitter_handle(record_id, value)
+            return await gql.update_user_twitter_handle(record_id, value)
         elif field == "wallet":
-            return await update_user_wallet(record_id, value)
+            return await gql.update_user_wallet(record_id, value)
 
         raise ThreadTerminatingException(f"Unsupported field update {field}")
 

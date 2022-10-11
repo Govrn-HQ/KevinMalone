@@ -79,18 +79,23 @@ class MockUser:
 class MockChannel:
     def __init__(self):
         self.sent_messages = []
+        self.sent_embeds = []
 
     async def send(self, content: str = None, embed: discord.Embed = None):
         mock_message = MockMessage()
         mock_message.channel = self
         mock_message.content = content
         self.sent_messages.append(mock_message)
+        if embed:
+            mock_message.embed = embed
+            self.sent_embeds.append(embed)
         return mock_message
 
 
 class MockMessage:
     def __init__(self):
         self.reactions = []
+        self.embed = None
         self.content = None
         self.channel: MockChannel = MockChannel()
 
@@ -209,3 +214,11 @@ async def assert_cache_metadata_content(
         assert (
             cache_values["metadata"][key] == expected_value
         ), f"key {key} is not expected value {expected_value}"
+
+
+def assert_field_in_sent_embeds(channel: MockChannel, field: str):
+    for embed in channel.sent_embeds:
+        for _field in embed.fields:
+            if field == _field.name:
+                return
+    assert(False)
