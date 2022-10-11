@@ -132,6 +132,11 @@ class AddDaoPreviouslyAddedPrompt(BaseStep):
     name = StepKeys.ADD_DAO_PREVIOUSLY_ADDED_PROMPT.value
     trigger = True
 
+    guild_already_added_fmt = (
+        "It looks like guild %s has already been added as "
+        "%s, but you're not yet a member. Let's get that set up!"
+    )
+
     def __init__(self, cache):
         super().__init__()
         self.cache = cache
@@ -142,8 +147,8 @@ class AddDaoPreviouslyAddedPrompt(BaseStep):
 
         return (
             await message.channel.send(
-                f"It looks like guild {guild_id} has already been added as "
-                f"{guild_name}, but you're not yet a member. Let's get that set up!"
+                AddDaoPreviouslyAddedPrompt.guild_already_added_fmt
+                % (guild_id, guild_name)
             ),
             None,
         )
@@ -155,6 +160,12 @@ class AddDaoSuccess(BaseStep):
     name = StepKeys.ADD_DAO_SUCCESS.value
     trigger = True
 
+    success_message_fmt = (
+        "Thanks for adding %s as a new guild! Let's get "
+        "you set up with a profile for this guild. After setting it up, "
+        "you can report your contributions using the /report command."
+    )
+
     def __init__(self, cache):
         super().__init__()
         self.cache = cache
@@ -162,11 +173,7 @@ class AddDaoSuccess(BaseStep):
     async def send(self, message, user_id):
         guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
         return (
-            await message.channel.send(
-                f"Thanks for adding {guild_name} as a new guild! Let's get "
-                "you set up with a profile for this guild. After setting it up, "
-                "you can report your contributions using the /report command."
-            ),
+            await message.channel.send(AddDaoSuccess.success_message_fmt % guild_name),
             None,
         )
 
