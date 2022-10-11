@@ -12,7 +12,8 @@ from bot.common.tasks.tasks import Cadence
 
 @pytest.fixture
 def thread_dependencies():
-    mock_bot = MockBot(MockChannel(), MockUser())
+    channel = MockChannel()
+    mock_bot = MockBot(channel, MockUser())
     return (MockCache(), MockContext(), MockMessage(), mock_bot)
 
 
@@ -81,18 +82,18 @@ class MockChannel:
         self.sent_messages = []
 
     async def send(self, content: str = None, embed: discord.Embed = None):
-        mock_message = MockMessage()
-        mock_message.channel = self
+        mock_message = MockMessage(self)
         mock_message.content = content
         self.sent_messages.append(mock_message)
         return mock_message
 
 
 class MockMessage:
-    def __init__(self):
+    def __init__(self, channel=None):
+        self.id = None
         self.reactions = []
         self.content = None
-        self.channel: MockChannel = MockChannel()
+        self.channel: MockChannel = MockChannel() if channel is None else channel
 
     async def add_reaction(self, reaction: str):
         self.reactions.append(reaction)
