@@ -3,7 +3,6 @@ import json
 
 import bot.common.graphql as gql
 from bot.config import (
-    Redis,
     INFO_EMBED_COLOR,
     get_list_of_emojis,
 )
@@ -93,19 +92,19 @@ class UpdateProfileFieldEmojiStep(BaseStep):
     name = StepKeys.UPDATE_PROFILE_FIELD_EMOJI.value
     emoji = True
 
-    def __init__(self, cls):
+    def __init__(self, cache):
         super().__init__()
-        self.cls = cls
+        self.cache = cache
 
     async def handle_emoji(self, raw_reaction):
-        key_vals = await Redis.get(raw_reaction.user_id)
+        key_vals = await self.cache.get(raw_reaction.user_id)
         if not key_vals:
             return None, None
         values = json.loads(key_vals)
         values["metadata"] = {
             "field": values.get("metadata").get(raw_reaction.emoji.name)
         }
-        await Redis.set(
+        await self.cache.set(
             raw_reaction.user_id,
             build_cache_value(**values),
         )
@@ -117,13 +116,18 @@ class UpdateFieldStep(BaseStep):
 
     name = StepKeys.UPDATE_FIELD.value
 
+    update_prompt = "What value would you like to use instead"
+
+    def __init__(self, cache):
+        self.cache = cache
+
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send("What value would you like to use instead")
+        sent_message = await channel.send(UpdateFieldStep.update_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        key_vals = await Redis.get(user_id)
+        key_vals = await self.cache.get(user_id)
         if not key_vals:
             return
         metadata = json.loads(key_vals).get("metadata")

@@ -221,4 +221,4 @@ def assert_field_in_sent_embeds(channel: MockChannel, field: str):
         for _field in embed.fields:
             if field == _field.name:
                 return
-    assert(False)
+    assert False
