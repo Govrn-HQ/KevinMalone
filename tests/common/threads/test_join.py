@@ -255,14 +255,14 @@ async def test_add_user_twitter_step(mocker, thread_dependencies):
     mock_reaction = MockReaction(user_id, "‼️")
     try:
         await step.handle_emoji(mock_reaction)
-        assert(False)
+        assert False
     except Exception as e:
-        assert(AddUserTwitterStep.exception_message == f"{e}")
+        assert AddUserTwitterStep.exception_message == f"{e}"
 
     mock_reaction = MockReaction(user_id, SKIP_EMOJI)
     (next_step, skip) = await step.handle_emoji(mock_reaction)
-    assert(next_step == StepKeys.ONBOARDING_CONGRATS.value)
-    assert(not skip)
+    assert next_step == StepKeys.ONBOARDING_CONGRATS.value
+    assert not skip
 
 
 @pytest.mark.asyncio
@@ -276,4 +276,4 @@ async def test_verify_user_twitter_step(mocker, thread_dependencies):
 
     (sent_message, metadata) = await step.send(message, user_id)
     tweet = await get_cache_metadata_key(user_id, cache, "requested_tweet")
-    assert (sent_message.embed.description == tweet)
+    assert sent_message.embed.description == tweet
