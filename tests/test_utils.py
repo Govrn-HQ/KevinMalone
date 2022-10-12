@@ -71,6 +71,11 @@ class MockBot:
             return self.mock_user
         return MockUser(user_id)
 
+    async def fetch_user(self, user_id: int):
+        if self.mock_user:
+            return self.mock_user
+        return MockUser(user_id)
+
 
 class MockUser:
     def __init__(self, display_name=None):
