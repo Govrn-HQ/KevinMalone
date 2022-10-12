@@ -140,6 +140,17 @@ class MockResponse:
         self.file = file
 
 
+class MockEmoji:
+    def __init__(self, name):
+        self.name = name
+
+
+class MockReaction:
+    def __init__(self, user_id, reaction):
+        self.user_id = user_id
+        self.emoji = MockEmoji(reaction)
+
+
 def mock_bot_method(mocker: MockerFixture, method: str, returns=None):
     ret_value = None
     if returns is None:

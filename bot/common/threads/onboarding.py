@@ -151,6 +151,8 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM_EMOJI.value
     emoji = True
 
+    exception_msg = "Reacted with the wrong emoji"
+
     def __init__(self, cache, bot):
         self.cache = cache
         self.bot = bot
@@ -164,7 +166,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
             if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
             return StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value, None
-        raise Exception("Reacted with the wrong emoji")
+        raise Exception(UserDisplayConfirmationEmojiStep.exception_msg)
 
     async def save(self, message, guild_id, user_id):
         discord_display_name = await get_cache_metadata_key(
@@ -180,14 +182,14 @@ class UserDisplaySubmitStep(BaseStep):
 
     name = StepKeys.USER_DISPLAY_SUBMIT.value
 
+    display_name_prompt = "What would you like your display name to be?"
+
     def __init__(self, cache):
         self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What would you like your display name to be?"
-        )
+        sent_message = await channel.send(UserDisplaySubmitStep.display_name_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
@@ -203,6 +205,12 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
     name = StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value
 
+    wallet_prompt = (
+        "What Ethereum wallet address would you like to associate with this guild?"
+    )
+
+    invalid_wallet_exception_fmt = "%s is not a valid wallet address"
+
     def __init__(self, cache, guild_id):
         super().__init__()
         self.cache = cache
@@ -210,9 +218,7 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What Ethereum wallet address would you like to associate with this guild?"
-        )
+        sent_message = await channel.send(CreateUserWithWalletAddressStep.wallet_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
@@ -220,7 +226,7 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
         if not Web3.isAddress(wallet):
             raise InvalidWalletAddressException(
-                f"{wallet} is not a valid wallet address"
+                CreateUserWithWalletAddressStep.invalid_wallet_exception_fmt % wallet
             )
 
         display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
@@ -244,6 +250,9 @@ class AddUserTwitterStep(BaseStep):
 
     name = StepKeys.ADD_USER_TWITTER.value
 
+    handle_prompt = "What twitter handle would you like to associate with this guild!"
+    exception_message = "Reacted with the wrong emoji"
+
     def __init__(self, guild_id, cache):
         super().__init__()
         self.guild_id = guild_id
@@ -251,9 +260,7 @@ class AddUserTwitterStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What twitter handle would you like to associate with this guild!"
-        )
+        sent_message = await channel.send(AddUserTwitterStep.handle_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
@@ -266,7 +273,7 @@ class AddUserTwitterStep(BaseStep):
         # skips twitter verification
         if SKIP_EMOJI in raw_reaction.emoji.name:
             return StepKeys.ONBOARDING_CONGRATS.value, False
-        raise Exception("Reacted with the wrong emoji")
+        raise Exception(AddUserTwitterStep.exception_message)
 
 
 class VerifyUserTwitterStep(BaseStep):
