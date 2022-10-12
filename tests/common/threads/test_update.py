@@ -106,7 +106,7 @@ async def test_update_profile_field(mocker, thread_dependencies):
 async def test_update_field_step(mocker, thread_dependencies):
     (cache, context, message, bot) = thread_dependencies
     step = UpdateFieldStep(cache)
-    (sent_message, metadata) = await step.send(message)
+    (sent_message, metadata) = await step.send(message, "1234")
     assert_message_content(sent_message, UpdateFieldStep.update_prompt)
 
 
