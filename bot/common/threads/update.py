@@ -1,14 +1,8 @@
 import discord
 import json
 
-from bot.common.graphql import (
-    get_user_by_discord_id,
-    update_user_twitter_handle,
-    update_user_display_name,
-    update_user_wallet,
-)
+import bot.common.graphql as gql
 from bot.config import (
-    Redis,
     INFO_EMBED_COLOR,
     get_list_of_emojis,
 )
@@ -57,7 +51,7 @@ class UserUpdateFieldSelectStep(BaseStep):
         self.cls = cls
 
     async def send(self, message, user_id):
-        user = await get_user_by_discord_id(user_id)
+        user = await gql.get_user_by_discord_id(user_id)
         if not user:
             raise Exception("No user for updating field")
         embed = discord.Embed(
@@ -98,19 +92,19 @@ class UpdateProfileFieldEmojiStep(BaseStep):
     name = StepKeys.UPDATE_PROFILE_FIELD_EMOJI.value
     emoji = True
 
-    def __init__(self, cls):
+    def __init__(self, cache):
         super().__init__()
-        self.cls = cls
+        self.cache = cache
 
     async def handle_emoji(self, raw_reaction):
-        key_vals = await Redis.get(raw_reaction.user_id)
+        key_vals = await self.cache.get(raw_reaction.user_id)
         if not key_vals:
             return None, None
         values = json.loads(key_vals)
         values["metadata"] = {
             "field": values.get("metadata").get(raw_reaction.emoji.name)
         }
-        await Redis.set(
+        await self.cache.set(
             raw_reaction.user_id,
             build_cache_value(**values),
         )
@@ -122,29 +116,34 @@ class UpdateFieldStep(BaseStep):
 
     name = StepKeys.UPDATE_FIELD.value
 
+    update_prompt = "What value would you like to use instead"
+
+    def __init__(self, cache):
+        self.cache = cache
+
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send("What value would you like to use instead")
+        sent_message = await channel.send(UpdateFieldStep.update_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
-        key_vals = await Redis.get(user_id)
+        key_vals = await self.cache.get(user_id)
         if not key_vals:
             return
         metadata = json.loads(key_vals).get("metadata")
         field = metadata.get("field")
         if not field:
             raise Exception("No field present to update")
-        record = await get_user_by_discord_id(user_id)
+        record = await gql.get_user_by_discord_id(user_id)
         record_id = record["id"]
         value = message.content.strip()
 
         if field == "display_name":
-            return await update_user_display_name(record_id, value)
+            return await gql.update_user_display_name(record_id, value)
         elif field == "twitter":
-            return await update_user_twitter_handle(record_id, value)
+            return await gql.update_user_twitter_handle(record_id, value)
         elif field == "wallet":
-            return await update_user_wallet(record_id, value)
+            return await gql.update_user_wallet(record_id, value)
 
         raise ThreadTerminatingException(f"Unsupported field update {field}")
 
