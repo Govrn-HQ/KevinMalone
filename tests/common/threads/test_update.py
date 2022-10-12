@@ -13,8 +13,6 @@ from tests.test_utils import (
     mock_gql_query,
 )
 from bot.common.threads.thread_builder import (
-    StepKeys,
-    get_cache_metadata,
     build_cache_value,
     write_cache_metadata,
 )
