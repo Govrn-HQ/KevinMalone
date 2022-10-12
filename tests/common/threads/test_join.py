@@ -1,9 +1,7 @@
 import pytest
-from bot.common.graphql import create_guild
 
 from bot.common.threads.thread_builder import (
     StepKeys,
-    get_cache_metadata,
     build_cache_value,
     get_cache_metadata_key,
     write_cache_metadata,
@@ -24,14 +22,12 @@ from bot.config import NO_EMOJI, SKIP_EMOJI, YES_EMOJI
 from bot.exceptions import InvalidWalletAddressException
 
 from tests.test_utils import (
-    MockMessage,
-    MockEmoji,
     MockReaction,
     assert_message_content,
     assert_message_reaction,
     mock_gql_query,
 )
-from tests.test_utils import assert_dicts_equal, assert_cache_metadata_content
+from tests.test_utils import assert_cache_metadata_content
 
 
 @pytest.mark.asyncio
