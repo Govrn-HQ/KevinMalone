@@ -309,7 +309,7 @@ class Onboarding(BaseThread):
         congrats = CongratsStep(self.user_id, self.guild_id, self.cache)
         verify_twitter = Step(
             VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
-        )
+        ).build()
         return (
             Step(
                 current=CreateUserWithWalletAddressStep(
