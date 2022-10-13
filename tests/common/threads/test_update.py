@@ -3,6 +3,7 @@ import pytest
 from bot.common.threads.update import (
     UpdateProfileFieldEmojiStep,
     UserUpdateFieldSelectStep,
+    UpdateFieldPromptStep,
     UpdateFieldStep,
 )
 from bot.config import get_list_of_emojis
@@ -14,9 +15,11 @@ from tests.test_utils import (
     mock_gql_query,
 )
 from bot.common.threads.thread_builder import (
+    StepKeys,
     build_cache_value,
     write_cache_metadata,
 )
+from bot.exceptions import ThreadTerminatingException
 
 
 @pytest.mark.asyncio
@@ -94,11 +97,11 @@ async def test_update_profile_field(mocker, thread_dependencies):
 
 
 @pytest.mark.asyncio
-async def test_update_field_step(mocker, thread_dependencies):
+async def test_update_field_prompt_step(mocker, thread_dependencies):
     (cache, context, message, bot) = thread_dependencies
-    step = UpdateFieldStep(cache)
+    step = UpdateFieldPromptStep()
     (sent_message, metadata) = await step.send(message, "1234")
-    assert_message_content(sent_message, UpdateFieldStep.update_prompt)
+    assert_message_content(sent_message, UpdateFieldPromptStep.update_prompt)
 
 
 @pytest.mark.asyncio
@@ -106,7 +109,6 @@ async def test_update_field_step_save(mocker, thread_dependencies):
     (cache, context, message, bot) = thread_dependencies
     step = UpdateFieldStep(cache)
     user_id = "1234"
-    guild_id = "12345"
     mock_user = {"id": "01"}
 
     mock_gql_query(mocker, "get_user_by_discord_id", mock_user)
@@ -115,17 +117,43 @@ async def test_update_field_step_save(mocker, thread_dependencies):
     mocked_wallet = mock_gql_query(mocker, "update_user_wallet", mock_user)
 
     await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
+
     await write_cache_metadata(user_id, cache, "field", "display_name")
     message.content = "test_display_name"
-    await step.save(message, guild_id, user_id)
+    await step.send(message, user_id)
     mocked_display.assert_called_once_with(mock_user["id"], message.content)
-
-    await write_cache_metadata(user_id, cache, "field", "twitter")
-    message.content = "test_twitter"
-    await step.save(message, guild_id, user_id)
-    mocked_twitter.assert_called_once_with(mock_user["id"], message.content)
 
     await write_cache_metadata(user_id, cache, "field", "wallet")
     message.content = "test_wallet"
-    await step.save(message, guild_id, user_id)
+    await step.send(message, user_id)
     mocked_wallet.assert_called_once_with(mock_user["id"], message.content)
+
+    await write_cache_metadata(user_id, cache, "field", "twitter")
+    message.content = "test_twitter"
+    await step.send(message, user_id)
+    mocked_twitter.assert_not_called()
+
+    await write_cache_metadata(user_id, cache, "field", "junk!")
+    message.content = "grbge"
+
+    try:
+        await step.send(message, user_id)
+        assert(False)
+    except ThreadTerminatingException as e:
+        assert(f"{e}" == "Unsupported field update junk!")
+
+
+@pytest.mark.asyncio
+async def test_update_field_control_hook(mocker, thread_dependencies):
+    (cache, context, message, bot) = thread_dependencies
+    user_id = "1234"
+    await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
+    step = UpdateFieldStep(cache)
+
+    await write_cache_metadata(user_id, cache, "field", "twitter")
+    next_step = await step.control_hook(message, user_id)
+    assert(next_step == StepKeys.VERIFY_USER_TWITTER.value)
+
+    await write_cache_metadata(user_id, cache, "field", "wallet")
+    next_step = await step.control_hook(message, user_id)
+    assert(next_step == StepKeys.CONGRATS_UPDATE_FIELD.value)

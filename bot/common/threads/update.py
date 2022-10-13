@@ -104,7 +104,7 @@ class UpdateFieldPromptStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(UpdateFieldStep.update_prompt)
+        sent_message = await channel.send(UpdateFieldPromptStep.update_prompt)
         return sent_message, None
 
 
@@ -117,7 +117,7 @@ class UpdateFieldStep(BaseStep):
         self.cache = cache
 
     async def send(self, message, user_id):
-        field = get_cache_metadata_key(user_id, self.cache, "field")
+        field = await get_cache_metadata_key(user_id, self.cache, "field")
         if not field:
             raise Exception("No field present to update")
         record = await gql.get_user_by_discord_id(user_id)
@@ -138,7 +138,7 @@ class UpdateFieldStep(BaseStep):
         return None, None
 
     async def control_hook(self, message, user_id):
-        field = get_cache_metadata_key(user_id, self.cache, "field")
+        field = await get_cache_metadata_key(user_id, self.cache, "field")
 
         if field == "twitter":
             return StepKeys.VERIFY_USER_TWITTER.value

@@ -75,6 +75,7 @@ class StepKeys(Enum):
     SELECT_GUILD_EMOJI = "select_guild_emoji"
     USER_UPDATE_FIELD_SELECT = "user_update_select"
     UPDATE_PROFILE_FIELD_EMOJI = "update_profile_field_emoji"
+    UPDATE_FIELD_PROMPT = "update_field_prompt"
     UPDATE_FIELD = "update_field"
     CONGRATS_UPDATE_FIELD = "congrats_update_field"
     DISPLAY_NAME_REQUEST = "display_name_request"
