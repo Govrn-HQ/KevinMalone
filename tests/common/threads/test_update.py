@@ -7,6 +7,7 @@ from bot.common.threads.update import (
 )
 from bot.config import get_list_of_emojis
 from tests.test_utils import (
+    MockReaction,
     assert_cache_metadata_content,
     assert_field_in_sent_embeds,
     assert_message_content,
@@ -51,14 +52,6 @@ async def test_user_update_field_selection(mocker, thread_dependencies):
 
 @pytest.mark.asyncio
 async def test_update_profile_field(mocker, thread_dependencies):
-    class MockEmoji:
-        def __init__(self, name):
-            self.name = name
-
-    class MockReaction:
-        def __init__(self, user_id, reaction):
-            self.user_id = user_id
-            self.emoji = MockEmoji(reaction)
 
     (cache, context, message, bot) = thread_dependencies
     user_id = "1234"

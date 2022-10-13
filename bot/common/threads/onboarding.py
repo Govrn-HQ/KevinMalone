@@ -6,14 +6,7 @@ import re
 import asyncio
 import snscrape.modules.twitter as sntwitter
 from web3 import Web3
-from bot.common.graphql import (
-    get_user_by_discord_id,
-    get_guild_by_discord_id,
-    create_user as _create_user,
-    create_guild_user,
-    update_user_display_name,
-    update_user_twitter_handle,
-)
+import bot.common.graphql as gql
 from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
@@ -52,8 +45,8 @@ def _handle_skip_emoji(raw_reaction, guild_id):
 
 
 async def create_user(discord_id, discord_name, guild_id, wallet):
-    user = await _create_user(discord_id, discord_name, wallet)
-    await create_guild_user(user.get("id"), guild_id)
+    user = await gql.create_user(discord_id, discord_name, wallet)
+    await gql.create_guild_user(user.get("id"), guild_id)
     return user
 
 
@@ -70,7 +63,7 @@ class CheckIfUserExists(BaseStep):
         return None, None
 
     async def control_hook(self, message, user_id):
-        user = await get_user_by_discord_id(user_id)
+        user = await gql.get_user_by_discord_id(user_id)
         if user:
             # Cache for the message send in the next step rather than retrieving
             # from the database
@@ -90,6 +83,13 @@ class AssociateExistingUserWithGuild(BaseStep):
 
     name = StepKeys.ASSOCIATE_EXISTING_USER_WITH_GUILD.value
 
+    associate_msg_fmt = (
+        'I found your profile "`%s`" associated with wallet address'
+        " %s through your discord id, and associated it with %s."
+        " You should be all good to start reporting those contributions with"
+        " `/report`!"
+    )
+
     def __init__(self, cache, guild_id):
         super().__init__()
         self.cache = cache
@@ -97,9 +97,9 @@ class AssociateExistingUserWithGuild(BaseStep):
 
     async def send(self, message, user_id):
         # discord user + user exist, guild user does not
-        guild = await get_guild_by_discord_id(self.guild_id)
+        guild = await gql.get_guild_by_discord_id(self.guild_id)
         user_db_id = await get_cache_metadata_key(user_id, self.cache, "user_db_id")
-        await create_guild_user(user_db_id, guild["id"])
+        await gql.create_guild_user(user_db_id, guild["id"])
 
         guild_name = await get_cache_metadata_key(user_id, self.cache, "guild_name")
         display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
@@ -107,10 +107,8 @@ class AssociateExistingUserWithGuild(BaseStep):
 
         channel = message.channel
         sent_message = await channel.send(
-            f'I found your profile "`{display_name}`" associated with wallet address'
-            f" {address} through your discord id, and associated it with {guild_name}."
-            " You should be all good to start reporting those contributions with"
-            " `/report`!"
+            AssociateExistingUserWithGuild.associate_msg_fmt
+            % (display_name, address, guild_name)
         )
         return sent_message, None
 
@@ -129,7 +127,7 @@ class UserDisplayConfirmationStep(BaseStep):
         self.bot = bot
 
     @property
-    def emojis():
+    def emojis(self):
         return [YES_EMOJI, NO_EMOJI]
 
     async def send(self, message, user_id):
@@ -139,7 +137,6 @@ class UserDisplayConfirmationStep(BaseStep):
             user_id, self.cache, DISCORD_DISPLAY_NAME_CACHE_KEY, discord_display_name
         )
         channel = message.channel
-        print(dir(user))
         sent_message = await channel.send(f"{self.msg} `{discord_display_name}`")
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
@@ -154,6 +151,8 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
     name = StepKeys.USER_DISPLAY_CONFIRM_EMOJI.value
     emoji = True
 
+    exception_msg = "Reacted with the wrong emoji"
+
     def __init__(self, cache, bot):
         self.cache = cache
         self.bot = bot
@@ -167,7 +166,7 @@ class UserDisplayConfirmationEmojiStep(BaseStep):
             if raw_reaction.emoji.name == NO_EMOJI:
                 return StepKeys.USER_DISPLAY_SUBMIT.value, None
             return StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value, None
-        raise Exception("Reacted with the wrong emoji")
+        raise Exception(UserDisplayConfirmationEmojiStep.exception_msg)
 
     async def save(self, message, guild_id, user_id):
         discord_display_name = await get_cache_metadata_key(
@@ -183,14 +182,14 @@ class UserDisplaySubmitStep(BaseStep):
 
     name = StepKeys.USER_DISPLAY_SUBMIT.value
 
+    display_name_prompt = "What would you like your display name to be?"
+
     def __init__(self, cache):
         self.cache = cache
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What would you like your display name to be?"
-        )
+        sent_message = await channel.send(UserDisplaySubmitStep.display_name_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
@@ -206,6 +205,12 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
     name = StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value
 
+    wallet_prompt = (
+        "What Ethereum wallet address would you like to associate with this guild?"
+    )
+
+    invalid_wallet_exception_fmt = "%s is not a valid wallet address"
+
     def __init__(self, cache, guild_id):
         super().__init__()
         self.cache = cache
@@ -213,9 +218,7 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What Ethereum wallet address would you like to associate with this guild?"
-        )
+        sent_message = await channel.send(CreateUserWithWalletAddressStep.wallet_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
@@ -223,22 +226,22 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
         if not Web3.isAddress(wallet):
             raise InvalidWalletAddressException(
-                f"{wallet} is not a valid wallet address"
+                CreateUserWithWalletAddressStep.invalid_wallet_exception_fmt % wallet
             )
 
         display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
         discord_display_name = await get_cache_metadata_key(
             user_id, self.cache, DISCORD_DISPLAY_NAME_CACHE_KEY
         )
-        guild = await get_guild_by_discord_id(guild_id)
+        guild = await gql.get_guild_by_discord_id(guild_id)
 
         # user creation is performed when supplying wallet address since this
         # is a mandatory field for the user record
         # TODO: wrap into a single CRUD
-        user = await get_user_by_discord_id(user_id)
+        user = await gql.get_user_by_discord_id(user_id)
         user = await create_user(user_id, discord_display_name, guild.get("id"), wallet)
         user_db_id = user.get("id")
-        await update_user_display_name(user_db_id, display_name)
+        await gql.update_user_display_name(user_db_id, display_name)
         await write_cache_metadata(user_id, self.cache, "user_db_id", user_db_id)
 
 
@@ -247,6 +250,9 @@ class AddUserTwitterStep(BaseStep):
 
     name = StepKeys.ADD_USER_TWITTER.value
 
+    handle_prompt = "What twitter handle would you like to associate with this guild!"
+    exception_message = "Reacted with the wrong emoji"
+
     def __init__(self, guild_id, cache):
         super().__init__()
         self.guild_id = guild_id
@@ -254,9 +260,7 @@ class AddUserTwitterStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(
-            "What twitter handle would you like to associate with this guild!"
-        )
+        sent_message = await channel.send(AddUserTwitterStep.handle_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
@@ -269,7 +273,7 @@ class AddUserTwitterStep(BaseStep):
         # skips twitter verification
         if SKIP_EMOJI in raw_reaction.emoji.name:
             return StepKeys.ONBOARDING_CONGRATS.value, False
-        raise Exception("Reacted with the wrong emoji")
+        raise Exception(AddUserTwitterStep.exception_message)
 
 
 class VerifyUserTwitterStep(BaseStep):
@@ -323,11 +327,11 @@ class VerifyUserTwitterStep(BaseStep):
 
     async def save_authenticated_account(self):
         # retrieve and save handle from cache into airtable
-        user_record = await get_user_by_discord_id(self.user_id)
+        user_record = await gql.get_user_by_discord_id(self.user_id)
         twitter_handle = await get_cache_metadata_key(
             self.user_id, self.cache, TWITTER_HANDLE_CACHE_KEY
         )
-        await update_user_twitter_handle(user_record["id"], twitter_handle)
+        await gql.update_user_twitter_handle(user_record["id"], twitter_handle)
 
     def get_nonce(self):
         return "".join(

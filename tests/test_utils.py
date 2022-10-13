@@ -71,6 +71,11 @@ class MockBot:
             return self.mock_user
         return MockUser(user_id)
 
+    async def fetch_user(self, user_id: int):
+        if self.mock_user:
+            return self.mock_user
+        return MockUser(user_id)
+
 
 class MockUser:
     def __init__(self, display_name=None):
@@ -133,6 +138,17 @@ class MockResponse:
         self.ephemeral = ephemeral
         self.embed = embed
         self.file = file
+
+
+class MockEmoji:
+    def __init__(self, name):
+        self.name = name
+
+
+class MockReaction:
+    def __init__(self, user_id, reaction):
+        self.user_id = user_id
+        self.emoji = MockEmoji(reaction)
 
 
 def mock_bot_method(mocker: MockerFixture, method: str, returns=None):
