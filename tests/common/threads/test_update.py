@@ -1,4 +1,10 @@
+from unittest.mock import AsyncMock
 import pytest
+from pytest_mock import MockerFixture
+from bot.common.threads.shared_steps import (
+    TWITTER_HANDLE_CACHE_KEY,
+    VerifyUserTwitterStep,
+)
 
 from bot.common.threads.update import (
     UpdateProfileFieldEmojiStep,
@@ -17,6 +23,7 @@ from tests.test_utils import (
 from bot.common.threads.thread_builder import (
     StepKeys,
     build_cache_value,
+    get_cache_metadata_key,
     write_cache_metadata,
 )
 from bot.exceptions import ThreadTerminatingException
@@ -138,9 +145,9 @@ async def test_update_field_step_save(mocker, thread_dependencies):
 
     try:
         await step.send(message, user_id)
-        assert(False)
+        assert False
     except ThreadTerminatingException as e:
-        assert(f"{e}" == "Unsupported field update junk!")
+        assert f"{e}" == "Unsupported field update junk!"
 
 
 @pytest.mark.asyncio
@@ -152,8 +159,51 @@ async def test_update_field_control_hook(mocker, thread_dependencies):
 
     await write_cache_metadata(user_id, cache, "field", "twitter")
     next_step = await step.control_hook(message, user_id)
-    assert(next_step == StepKeys.VERIFY_USER_TWITTER.value)
+    assert next_step == StepKeys.VERIFY_USER_TWITTER.value
 
     await write_cache_metadata(user_id, cache, "field", "wallet")
     next_step = await step.control_hook(message, user_id)
-    assert(next_step == StepKeys.CONGRATS_UPDATE_FIELD.value)
+    assert next_step == StepKeys.CONGRATS_UPDATE_FIELD.value
+
+
+@pytest.mark.asyncio
+async def test_verify_user_twitter_step(mocker, thread_dependencies):
+    (cache, context, message, bot) = thread_dependencies
+    user_id = "1234"
+    guild_id = "12345"
+    mock_user_record = {"id": "01"}
+    mock_twitter_profile = "test_profile"
+    mock_status_id = "5350301918403100841"
+    tweet_url = f"https://twitter.com/{mock_twitter_profile}/status/{mock_status_id}"
+    await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
+
+    step = VerifyUserTwitterStep(user_id, guild_id, cache)
+    (sent_message, metadata) = await step.send(message, user_id)
+
+    requested_tweet = await get_cache_metadata_key(user_id, cache, "requested_tweet")
+    mocked_retrieve_tweet = mock_tweet_retrieval(mocker, requested_tweet)
+    get_user = mock_gql_query(mocker, "get_user_by_discord_id", mock_user_record)
+    update_user = mock_gql_query(mocker, "update_user_twitter_handle", None)
+
+    message.content = tweet_url
+    await write_cache_metadata(
+        user_id, cache, TWITTER_HANDLE_CACHE_KEY, mock_twitter_profile
+    )
+    await step.save(message, guild_id, user_id)
+
+    assert_message_content(sent_message)
+    mocked_retrieve_tweet.assert_called_once_with(mock_twitter_profile, mock_status_id)
+    get_user.assert_called_once_with(user_id)
+    update_user.assert_called_once_with(mock_user_record["id"], mock_twitter_profile)
+
+
+def mock_tweet_retrieval(mocker: MockerFixture, mocked_tweet: str) -> AsyncMock:
+    class MockTweet:
+        def __init__(self, content):
+            self.content = content
+
+    mock_tweet = MockTweet(mocked_tweet)
+    module_path = "bot.common.threads.shared_steps.retrieve_tweet"
+    mocker.patch(module_path, return_value=mock_tweet)
+    mocked_method = mocker._mocks[-1]
+    return mocked_method

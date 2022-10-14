@@ -177,9 +177,9 @@ class UpdateProfile(BaseThread):
         steps = (
             Step(current=SelectGuildEmojiStep(cls=self))
             .add_next_step(UserUpdateFieldSelectStep(cls=self))
-            .add_next_step(UpdateProfileFieldEmojiStep(cls=self))
+            .add_next_step(UpdateProfileFieldEmojiStep(self.cache))
             .add_next_step(UpdateFieldPromptStep())
             .add_next_step(UpdateFieldStep(self.cache))
-            .fork(CongratsFieldUpdateStep(), twitter_update)
+            .fork([CongratsFieldUpdateStep(), twitter_update])
         )
         return steps.build()
