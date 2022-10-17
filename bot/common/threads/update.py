@@ -2,6 +2,7 @@ import discord
 import json
 
 import bot.common.graphql as gql
+from bot.common.threads.onboarding import TWITTER_HANDLE_CACHE_KEY
 from bot.config import (
     INFO_EMBED_COLOR,
     get_list_of_emojis,
@@ -13,32 +14,12 @@ from bot.common.threads.thread_builder import (
     ThreadKeys,
     BaseThread,
     build_cache_value,
+    get_cache_metadata_key,
+    write_cache_metadata,
 )
 
-from bot.common.threads.shared_steps import SelectGuildEmojiStep
+from bot.common.threads.shared_steps import SelectGuildEmojiStep, VerifyUserTwitterStep
 from bot.exceptions import ThreadTerminatingException
-
-
-class UpdateProfile(BaseThread):
-    """A thread to update a Govrn Guild Profile
-
-    The current steps allow the user to select a guild
-    then select the field they want to update; then
-    update that field with a new value; then congradulate
-    them.
-    """
-
-    name = ThreadKeys.UPDATE_PROFILE.value
-
-    async def get_steps(self):
-        steps = (
-            Step(current=SelectGuildEmojiStep(cls=self))
-            .add_next_step(UserUpdateFieldSelectStep(cls=self))
-            .add_next_step(UpdateProfileFieldEmojiStep(cls=self))
-            .add_next_step(UpdateFieldStep())
-            .add_next_step(CongratsFieldUpdateStep())
-        )
-        return steps.build()
 
 
 class UserUpdateFieldSelectStep(BaseStep):
@@ -111,27 +92,32 @@ class UpdateProfileFieldEmojiStep(BaseStep):
         return None, None
 
 
-class UpdateFieldStep(BaseStep):
-    """Asks the user which field to update and then saves the response"""
+class UpdateFieldPromptStep(BaseStep):
+    """Asks the user which field to update"""
 
-    name = StepKeys.UPDATE_FIELD.value
+    name = StepKeys.UPDATE_FIELD_PROMPT.value
 
     update_prompt = "What value would you like to use instead"
+
+    def __init__(self):
+        pass
+
+    async def send(self, message, user_id):
+        channel = message.channel
+        sent_message = await channel.send(UpdateFieldPromptStep.update_prompt)
+        return sent_message, None
+
+
+class UpdateFieldStep(BaseStep):
+    """Updates the selected field based on user response"""
+
+    name = StepKeys.UPDATE_FIELD.value
 
     def __init__(self, cache):
         self.cache = cache
 
     async def send(self, message, user_id):
-        channel = message.channel
-        sent_message = await channel.send(UpdateFieldStep.update_prompt)
-        return sent_message, None
-
-    async def save(self, message, guild_id, user_id):
-        key_vals = await self.cache.get(user_id)
-        if not key_vals:
-            return
-        metadata = json.loads(key_vals).get("metadata")
-        field = metadata.get("field")
+        field = await get_cache_metadata_key(user_id, self.cache, "field")
         if not field:
             raise Exception("No field present to update")
         record = await gql.get_user_by_discord_id(user_id)
@@ -139,13 +125,25 @@ class UpdateFieldStep(BaseStep):
         value = message.content.strip()
 
         if field == "display_name":
-            return await gql.update_user_display_name(record_id, value)
-        elif field == "twitter":
-            return await gql.update_user_twitter_handle(record_id, value)
+            await gql.update_user_display_name(record_id, value)
         elif field == "wallet":
-            return await gql.update_user_wallet(record_id, value)
+            await gql.update_user_wallet(record_id, value)
+        elif field == "twitter":
+            await write_cache_metadata(
+                user_id, self.cache, TWITTER_HANDLE_CACHE_KEY, value
+            )
+        else:
+            raise ThreadTerminatingException(f"Unsupported field update {field}")
 
-        raise ThreadTerminatingException(f"Unsupported field update {field}")
+        return None, None
+
+    async def control_hook(self, message, user_id):
+        field = await get_cache_metadata_key(user_id, self.cache, "field")
+
+        if field == "twitter":
+            return StepKeys.VERIFY_USER_TWITTER.value
+
+        return StepKeys.CONGRATS_UPDATE_FIELD.value
 
 
 class CongratsFieldUpdateStep(BaseStep):
@@ -157,3 +155,31 @@ class CongratsFieldUpdateStep(BaseStep):
         channel = message.channel
         sent_message = await channel.send("Thank you! Your profile has been updated")
         return sent_message, None
+
+
+class UpdateProfile(BaseThread):
+    """A thread to update a Govrn Guild Profile
+
+    The current steps allow the user to select a guild
+    then select the field they want to update; then
+    update that field with a new value; then congradulate
+    them.
+    """
+
+    name = ThreadKeys.UPDATE_PROFILE.value
+
+    async def get_steps(self):
+        twitter_update = (
+            Step(
+                VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
+            ).add_next_step(CongratsFieldUpdateStep())
+        ).build()
+        steps = (
+            Step(current=SelectGuildEmojiStep(cls=self))
+            .add_next_step(UserUpdateFieldSelectStep(cls=self))
+            .add_next_step(UpdateProfileFieldEmojiStep(self.cache))
+            .add_next_step(UpdateFieldPromptStep())
+            .add_next_step(UpdateFieldStep(self.cache))
+            .fork([CongratsFieldUpdateStep(), twitter_update])
+        )
+        return steps.build()
