@@ -15,11 +15,7 @@ from bot.common.threads.thread_builder import (
     Step,
     build_cache_value,
 )
-from bot.common.graphql import (
-    get_guild_by_discord_id,
-    fetch_user_by_discord_id,
-    get_contributions_for_guild,
-)
+import bot.common.graphql as gql
 from bot.config import (
     YES_EMOJI,
     NO_EMOJI,
@@ -79,6 +75,15 @@ def get_contribution_rows(contributions):
 class DisplayHistoryStep(BaseStep):
     """Displays history of a given user"""
 
+    onboard_prompt_content = (
+        "Looks like you're not yet onboarded to the guild! "
+        "Complete the intial onboarding /join command before running `/history`"
+    )
+    no_contributions_content = (
+        "Looks like you don't have any contribution history. "
+        "You can start reporting your contributions with /report!"
+    )
+
     name = StepKeys.DISPLAY_POINTS.value
     trigger = True
 
@@ -97,7 +102,7 @@ class DisplayHistoryStep(BaseStep):
         # end flow in control hook if this is in a discord server
         self.end_flow = not is_in_dms
 
-        record = await fetch_user_by_discord_id(user_id)
+        record = await gql.get_user_by_discord_id(user_id)
         logger.info(
             "user_id "
             + str(user_id)
@@ -108,22 +113,26 @@ class DisplayHistoryStep(BaseStep):
         )
         if record is None:
             self.end_flow = True
-            content = "Looks like you're not yet onboarded to the guild! "
-            "Complete the intial onboarding /join command before running `/history`"
             if is_in_dms:
-                return await message.channel.send(content), None
+                return (
+                    await message.channel.send(
+                        DisplayHistoryStep.onboard_prompt_content
+                    ),
+                    None,
+                )
             else:
                 return (
                     await self.context.response.send_message(
-                        content=content, ephemeral=True
+                        content=DisplayHistoryStep.onboard_prompt_content,
+                        ephemeral=True,
                     ),
                     None,
                 )
 
         cache_entry = await self.cache.get(user_id)
-        cache_values = json.loads(cache_entry)
         metadata = None
         if cache_entry:
+            cache_values = json.loads(cache_entry)
             metadata = cache_values.get("metadata")
 
         contributions = await get_contributions(
@@ -132,10 +141,7 @@ class DisplayHistoryStep(BaseStep):
 
         if contributions is None:
             self.end_flow = True
-            msg = (
-                "Looks like you don't have any contribution history. "
-                "You can start reporting your contributions with /report!"
-            )
+            msg = DisplayHistoryStep.no_contributions_content
             if is_in_dms:
                 return await message.channel.send(msg), None
             else:
@@ -187,14 +193,15 @@ class DisplayHistoryStep(BaseStep):
             return StepKeys.END.value
 
 
-class GetContributionsCsvPropmt(BaseStep):
+class GetContributionsCsvPromptStep(BaseStep):
     """Prompts user if they'd like a csv representation of their history"""
 
     name = StepKeys.POINTS_CSV_PROMPT.value
+    prompt = "Would you like a .csv file of your contributions?"
 
     async def send(self, message, user_id):
         sent_message = await message.channel.send(
-            content="Would you like a .csv file of your contributions?"
+            content=GetContributionsCsvPromptStep.prompt
         )
         await sent_message.add_reaction(YES_EMOJI)
         await sent_message.add_reaction(NO_EMOJI)
@@ -202,7 +209,7 @@ class GetContributionsCsvPropmt(BaseStep):
         return sent_message, None
 
 
-class GetContributionsCsvPropmtEmoji(BaseStep):
+class GetContributionsCsvPromptStepEmoji(BaseStep):
     """Accepts user emoji reaction to if they want a contributions csv"""
 
     name = StepKeys.POINTS_CSV_PROMPT_EMOJI.value
@@ -221,7 +228,7 @@ class GetContributionsCsvPropmtEmoji(BaseStep):
         raise Exception("Reacted with the wrong emoji")
 
 
-class GetContributionsCsvPropmtAccept(BaseStep):
+class GetContributionsCsvPromptStepAccept(BaseStep):
     """Creates a contributions csv and sends to the user on emoji acceptance"""
 
     name = StepKeys.POINTS_CSV_PROMPT_ACCEPT.value
@@ -254,11 +261,13 @@ class History(BaseThread):
             )
         )
 
-        history_csv_accept = Step(current=GetContributionsCsvPropmtAccept(self.cache))
+        history_csv_accept = Step(
+            current=GetContributionsCsvPromptStepAccept(self.cache)
+        )
 
         return (
-            display_history_step.add_next_step(GetContributionsCsvPropmt())
-            .add_next_step(GetContributionsCsvPropmtEmoji())
+            display_history_step.add_next_step(GetContributionsCsvPromptStep())
+            .add_next_step(GetContributionsCsvPromptStepEmoji())
             .add_next_step(history_csv_accept)
             .build()
         )
@@ -272,7 +281,7 @@ async def get_contributions(metadata, user_id, guild_id, days):
     td = timedelta(weeks=52 * 20) if days == "all" else timedelta(days=int(days or "1"))
     date = datetime.now() - td
     date = date.isoformat()
-    guild = await get_guild_by_discord_id(guild_id)
+    guild = await gql.get_guild_by_discord_id(guild_id)
     # todo: truncate
-    contributions = await get_contributions_for_guild(guild.get("id"), user_id, date)
+    contributions = await gql.get_contributions(guild.get("id"), user_id, date)
     return contributions
