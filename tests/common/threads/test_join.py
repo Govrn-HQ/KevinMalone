@@ -46,7 +46,9 @@ async def test_check_if_user_exists(mocker, thread_dependencies):
     await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
     mock_gql_query(mocker, "get_user_by_discord_id", mock_user)
     next_step_key = await step.control_hook(None, user_id)
-    await assert_cache_metadata_content(user_id, cache, "display_name", test_display_name)
+    await assert_cache_metadata_content(
+        user_id, cache, "display_name", test_display_name
+    )
     await assert_cache_metadata_content(user_id, cache, "wallet_address", address)
     assert next_step_key == StepKeys.ASSOCIATE_EXISTING_USER_WITH_GUILD.value
 
