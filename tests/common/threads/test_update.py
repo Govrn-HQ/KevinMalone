@@ -80,7 +80,7 @@ async def test_update_profile_field(mocker, thread_dependencies):
     step_name, skip = await step.handle_emoji(raw_reaction)
     assert step_name is None
     assert skip is None
-    assert_cache_metadata_content(user_id, cache, "field", "display_name")
+    await assert_cache_metadata_content(user_id, cache, "field", "display_name")
 
     await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
     for key in metadata:
@@ -90,7 +90,7 @@ async def test_update_profile_field(mocker, thread_dependencies):
     step_name, skip = await step.handle_emoji(raw_reaction)
     assert step_name is None
     assert skip is None
-    assert_cache_metadata_content(user_id, cache, "field", "twitter")
+    await assert_cache_metadata_content(user_id, cache, "field", "twitter")
 
     await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
     for key in metadata:
@@ -100,7 +100,7 @@ async def test_update_profile_field(mocker, thread_dependencies):
     step_name, skip = await step.handle_emoji(raw_reaction)
     assert step_name is None
     assert skip is None
-    assert_cache_metadata_content(user_id, cache, "field", "wallet")
+    await assert_cache_metadata_content(user_id, cache, "field", "wallet")
 
 
 @pytest.mark.asyncio
