@@ -87,7 +87,7 @@ class MockChannel:
         self.sent_messages = []
         self.sent_embeds = []
 
-    async def send(self, content: str = None, embed: discord.Embed = None):
+    async def send(self, content: str = None, embed: discord.Embed = None, ephemeral=False):
         mock_message = MockMessage(self)
         mock_message.content = content
         self.sent_messages.append(mock_message)
