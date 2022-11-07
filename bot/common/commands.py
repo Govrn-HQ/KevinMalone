@@ -70,7 +70,7 @@ async def report(ctx):
                 metadata={**metadata, "thread_name": ThreadKeys.REPORT.value},
             ),
         )
-    await ctx.response.defer()
+
     _, metadata = await ReportStep(
         guild_id=ctx.guild.id,
         cache=Redis,

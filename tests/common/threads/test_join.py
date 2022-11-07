@@ -46,10 +46,8 @@ async def test_check_if_user_exists(mocker, thread_dependencies):
     await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
     mock_gql_query(mocker, "get_user_by_discord_id", mock_user)
     next_step_key = await step.control_hook(None, user_id)
-    await assert_cache_metadata_content(
-        user_id, cache, "display_name", test_display_name
-    )
-    await assert_cache_metadata_content(user_id, cache, "wallet_address", address)
+    assert_cache_metadata_content(user_id, cache, "display_name", test_display_name)
+    assert_cache_metadata_content(user_id, cache, "wallet_address", address)
     assert next_step_key == StepKeys.ASSOCIATE_EXISTING_USER_WITH_GUILD.value
 
 
@@ -124,7 +122,7 @@ async def test_user_display_confirmation(mocker, thread_dependencies):
     )
     assert_message_reaction(sent_message, YES_EMOJI)
     assert_message_reaction(sent_message, NO_EMOJI)
-    await assert_cache_metadata_content(
+    assert_cache_metadata_content(
         user_id, cache, DISCORD_DISPLAY_NAME_CACHE_KEY, user_id
     )
 
@@ -181,7 +179,7 @@ async def test_user_display_submit_step(mocker, thread_dependencies):
     await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
     message.content = user_id
     await step.save(message, guild_id, user_id)
-    await assert_cache_metadata_content(user_id, cache, "display_name", user_id)
+    assert_cache_metadata_content(user_id, cache, "display_name", user_id)
 
 
 @pytest.mark.asyncio
@@ -227,7 +225,7 @@ async def test_create_user_wallet_address_step(mocker, thread_dependencies):
     create_user.assert_called_once_with(user_id, test_display_name, wallet)
     create_guild_user.assert_called_once_with(mock_user["id"], mock_guild["id"])
     update_display.assert_called_once_with(mock_user["id"], test_display_name)
-    await assert_cache_metadata_content(user_id, cache, "user_db_id", mock_user["id"])
+    assert_cache_metadata_content(user_id, cache, "user_db_id", mock_user["id"])
 
 
 @pytest.mark.asyncio
@@ -246,7 +244,7 @@ async def test_add_user_twitter_step(mocker, thread_dependencies):
     fake_twitter = "@fake_twitter_handle"
     message.content = fake_twitter
     await step.save(message, guild_id, user_id)
-    await assert_cache_metadata_content(
+    assert_cache_metadata_content(
         user_id, cache, TWITTER_HANDLE_CACHE_KEY, fake_twitter.replace("@", "")
     )
 

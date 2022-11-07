@@ -1,6 +1,5 @@
-import datetime
-import discord
 import logging
+import datetime
 from bot.common.threads.thread_builder import (
     BaseThread,
     ThreadKeys,
@@ -35,7 +34,7 @@ class ReportStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = self.channel
-        if message and message.channel and not self.channel:
+        if message and message.channel:
             channel = message.channel
 
         guild = await gql.get_guild_by_discord_id(self.guild_id)
@@ -44,10 +43,7 @@ class ReportStep(BaseStep):
         msg = ReportStep.report_message % link
         sent_message = None
         if message:
-            if channel is discord.DMChannel:
-                sent_message = await channel.send(msg)
-            else:
-                sent_message = await channel.send(msg, ephemeral=True)
+            sent_message = await channel.send(msg)
 
         congrats_key = build_congrats_key(user_id)
 
