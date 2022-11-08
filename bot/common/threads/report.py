@@ -32,7 +32,7 @@ class ReportStep(BaseStep):
         self.cache = cache
         self.bot = bot
 
-    async def send(self, message, user_id, interaction=None):
+    async def send(self, message, user_id, ctx=None):
         guild = await gql.get_guild_by_discord_id(self.guild_id)
         link = REPORTING_FORM_FMT % guild["id"]
 
@@ -40,8 +40,8 @@ class ReportStep(BaseStep):
         sent_message = None
 
         # slash command in a guild
-        if interaction:
-            await interaction.send(msg, ephemeral=True)
+        if ctx:
+            await ctx.send_followup(msg)
         else:
             await message.channel.send(msg)
 

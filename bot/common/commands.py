@@ -70,12 +70,12 @@ async def report(ctx: discord.ApplicationContext):
                 metadata={**metadata, "thread_name": ThreadKeys.REPORT.value},
             ),
         )
-    await ctx.response.defer()
+    await ctx.response.defer(ephemeral=True)
     _, metadata = await ReportStep(
         guild_id=ctx.guild.id,
         cache=Redis,
         bot=bot
-    ).send(None, ctx.author.id, ctx.followup)
+    ).send(None, ctx.author.id, ctx)
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
