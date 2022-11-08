@@ -74,9 +74,8 @@ async def report(ctx: discord.ApplicationContext):
     _, metadata = await ReportStep(
         guild_id=ctx.guild.id,
         cache=Redis,
-        bot=bot,
-        channel=ctx.channel,
-    ).send(ctx.followup, ctx.author.id)
+        bot=bot
+    ).send(None, ctx.author.id, ctx.followup)
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")

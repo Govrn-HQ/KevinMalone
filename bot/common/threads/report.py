@@ -27,27 +27,23 @@ class ReportStep(BaseStep):
     )
     congrats_message = "Congrats %s for reporting %s engagements this week!"
 
-    def __init__(self, guild_id, cache, bot, channel=None):
+    def __init__(self, guild_id, cache, bot):
         self.guild_id = guild_id
         self.cache = cache
         self.bot = bot
-        self.channel = channel
 
-    async def send(self, message, user_id):
-        channel = self.channel
-        if message and message.channel and not self.channel:
-            channel = message.channel
-
+    async def send(self, message, user_id, interaction=None):
         guild = await gql.get_guild_by_discord_id(self.guild_id)
         link = REPORTING_FORM_FMT % guild["id"]
 
         msg = ReportStep.report_message % link
         sent_message = None
-        if message:
-            if channel is discord.DMChannel:
-                sent_message = await channel.send(msg)
-            else:
-                sent_message = await channel.send(msg, ephemeral=True)
+
+        # slash command in a guild
+        if interaction:
+            await interaction.send(msg, ephemeral=True)
+        else:
+            await message.channel.send(msg)
 
         congrats_key = build_congrats_key(user_id)
 
