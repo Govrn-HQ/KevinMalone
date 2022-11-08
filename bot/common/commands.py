@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
     guild_id=GUILD_IDS,
     description="Send users link to report engagement",
 )
-async def report(ctx):
+async def report(ctx: discord.ApplicationContext):
     is_guild = bool(ctx.guild)
     if not is_guild:
         # Open report thread
@@ -80,7 +80,7 @@ async def report(ctx):
 
 
 @bot.slash_command(guild_id=GUILD_IDS, description="Get started with Govrn")
-async def join(ctx):
+async def join(ctx: discord.ApplicationContext):
     is_guild = bool(ctx.guild)
     if not is_guild:
         raise NotGuildException("Command was executed outside of a guild")
@@ -166,7 +166,7 @@ async def join(ctx):
 @bot.slash_command(
     guild_id=GUILD_IDS, description="Update your profile for a given community"
 )
-async def update(ctx):
+async def update(ctx: discord.ApplicationContext):
     is_guild = bool(ctx.guild)
     if is_guild:
         await ctx.respond("Please run this command in a DM channel", ephemeral=True)
@@ -210,7 +210,7 @@ async def update(ctx):
     description="Send user history for a given community",
 )
 async def history(
-    ctx,
+    ctx: discord.ApplicationContext,
     days: Option(
         str,
         "Days of contribution",  # noqa: F722
@@ -282,7 +282,7 @@ async def history(
 @bot.slash_command(
     guild_id=GUILD_IDS, description="Add a new guild to report contributions"
 )
-async def add_dao(ctx):
+async def add_dao(ctx: discord.ApplicationContext):
     is_guild = bool(ctx.guild)
 
     # Requiring DMs for now to keep things simple
@@ -364,7 +364,7 @@ async def add_dao(ctx):
 #
 
 
-async def select_guild(ctx, response_embed, error_embed):
+async def select_guild(ctx: discord.ApplicationContext, response_embed, error_embed):
     await ctx.response.defer()
     discord_rec = await get_user_by_discord_id(ctx.author.id)
     guild_ids = discord_rec.get("guild_users")
@@ -398,7 +398,7 @@ async def select_guild(ctx, response_embed, error_embed):
 
 # Event listners
 @bot.event
-async def on_application_command_error(ctx, exception):
+async def on_application_command_error(ctx: discord.ApplicationContext, exception):
     err = ErrorHandler(exception)
     logger.info(f"Command error type {type(exception)}")
     await ctx.response.send_message(err.msg)
