@@ -4,7 +4,7 @@ from bot.common.cache import build_congrats_key
 from tests.test_utils import (
     mock_default_contributions,
     mock_gql_query,
-    assert_message_content
+    assert_message_content,
 )
 from bot.common.threads.report import ReportStep
 from bot.config import REPORTING_FORM_FMT
