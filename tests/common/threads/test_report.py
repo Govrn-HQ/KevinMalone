@@ -1,8 +1,11 @@
 import pytest
 from bot.common.cache import build_congrats_key
 
-from tests.test_utils import mock_default_contributions
-from tests.test_utils import mock_gql_query
+from tests.test_utils import (
+    mock_default_contributions,
+    mock_gql_query,
+    assert_message_content
+)
 from bot.common.threads.report import ReportStep
 from bot.config import REPORTING_FORM_FMT
 
@@ -29,7 +32,7 @@ async def test_reporting_step_happypath(mocker, thread_dependencies):
     # assert
     congrats_key = build_congrats_key(user_id)
     cache_entry = cache.get(congrats_key)
-    assert expected_message == sent_message.content
+    assert_message_content(sent_message, expected_message)
     assert len(bot.mock_channel.sent_messages) == 1
     assert expected_congrats == bot.mock_channel.sent_messages[0].content
     assert cache_entry
@@ -54,7 +57,7 @@ async def test_reporting_step_no_congrats(mocker, thread_dependencies):
     # assert
     congrats_key = build_congrats_key(user_id)
     cache_entry = await cache.get(congrats_key)
-    assert expected_message == sent_message.content
+    assert_message_content(sent_message, expected_message)
     assert len(bot.mock_channel.sent_messages) == 0
     assert cache_entry is None
 
@@ -77,6 +80,6 @@ async def test_reporting_step_no_contibutions(mocker, thread_dependencies):
     # assert
     congrats_key = build_congrats_key(user_id)
     cache_entry = await cache.get(congrats_key)
-    assert expected_message == sent_message.content
+    assert_message_content(sent_message, expected_message)
     assert len(bot.mock_channel.sent_messages) == 0
     assert cache_entry is None

@@ -41,9 +41,9 @@ class ReportStep(BaseStep):
 
         # slash command in a guild
         if ctx:
-            await ctx.send_followup(msg)
+            sent_message = await ctx.send_followup(msg)
         else:
-            await message.channel.send(msg)
+            sent_message = await message.channel.send(msg)
 
         congrats_key = build_congrats_key(user_id)
 
