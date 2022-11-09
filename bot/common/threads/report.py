@@ -1,5 +1,4 @@
 import datetime
-import discord
 import logging
 from bot.common.threads.thread_builder import (
     BaseThread,
