@@ -215,7 +215,7 @@ class AddDao(BaseThread):
             )
         ).build()
         steps = (
-            Step(current=AddDaoPromptIdStep(self.cache))
+            Step(current=AddDaoPromptIdStep())
             .add_next_step(AddDaoGetOrCreate(self, self.cache))
             .fork([dao_not_added_steps, dao_previously_added_steps])
         )
