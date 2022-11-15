@@ -17,8 +17,12 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata_key,
     write_cache_metadata,
 )
-
-from bot.common.threads.shared_steps import SelectGuildEmojiStep, VerifyUserTwitterStep
+from bot.common.threads.shared_steps import (
+    SelectGuildEmojiStep,
+    VerifyUserTwitterStep,
+    VerifyUserWalletStep,
+    WALLET_CACHE_KEY
+)
 from bot.exceptions import ThreadTerminatingException
 
 
@@ -127,7 +131,9 @@ class UpdateFieldStep(BaseStep):
         if field == "display_name":
             await gql.update_user_display_name(record_id, value)
         elif field == "wallet":
-            await gql.update_user_wallet(record_id, value)
+            await write_cache_metadata(
+                user_id, self.cache, WALLET_CACHE_KEY, value
+            )
         elif field == "twitter":
             await write_cache_metadata(
                 user_id, self.cache, TWITTER_HANDLE_CACHE_KEY, value
@@ -142,6 +148,8 @@ class UpdateFieldStep(BaseStep):
 
         if field == "twitter":
             return StepKeys.VERIFY_USER_TWITTER.value
+        if field == "wallet":
+            return StepKeys.VERIFY_USER_WALLET.value
 
         return StepKeys.CONGRATS_UPDATE_FIELD.value
 
@@ -174,12 +182,17 @@ class UpdateProfile(BaseThread):
                 VerifyUserTwitterStep(self.user_id, self.guild_id, self.cache)
             ).add_next_step(CongratsFieldUpdateStep())
         ).build()
+        wallet_update = (
+            Step(
+                VerifyUserWalletStep(self.cache, update=True)
+            ).add_next_step(CongratsFieldUpdateStep())
+        ).build()
         steps = (
             Step(current=SelectGuildEmojiStep(cls=self))
             .add_next_step(UserUpdateFieldSelectStep(cls=self))
             .add_next_step(UpdateProfileFieldEmojiStep(self.cache))
             .add_next_step(UpdateFieldPromptStep())
             .add_next_step(UpdateFieldStep(self.cache))
-            .fork([CongratsFieldUpdateStep(), twitter_update])
+            .fork([CongratsFieldUpdateStep(), twitter_update, wallet_update])
         )
         return steps.build()

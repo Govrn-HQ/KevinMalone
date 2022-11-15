@@ -17,7 +17,11 @@ from bot.common.threads.thread_builder import (
     get_cache_metadata_key,
     write_cache_metadata,
 )
-from bot.common.threads.shared_steps import VerifyUserTwitterStep
+from bot.common.threads.shared_steps import (
+    VerifyUserTwitterStep,
+    VerifyUserWalletStep,
+    WALLET_CACHE_KEY,
+)
 from bot.exceptions import InvalidWalletAddressException
 
 
@@ -35,12 +39,6 @@ def _handle_skip_emoji(raw_reaction, guild_id):
     if SKIP_EMOJI in raw_reaction.emoji.name:
         return None, True
     raise Exception("Reacted with the wrong emoji")
-
-
-async def create_user(discord_id, discord_name, guild_id, wallet):
-    user = await gql.create_user(discord_id, discord_name, wallet)
-    await gql.create_guild_user(user.get("id"), guild_id)
-    return user
 
 
 class CheckIfUserExists(BaseStep):
@@ -193,7 +191,7 @@ class UserDisplaySubmitStep(BaseStep):
         return _handle_skip_emoji(raw_reaction, self.guild_id)
 
 
-class CreateUserWithWalletAddressStep(BaseStep):
+class PromptUserWalletAddressStep(BaseStep):
     """Step to submit wallet address for the govrn profile"""
 
     name = StepKeys.CREATE_USER_WITH_WALLET_ADDRESS.value
@@ -211,31 +209,19 @@ class CreateUserWithWalletAddressStep(BaseStep):
 
     async def send(self, message, user_id):
         channel = message.channel
-        sent_message = await channel.send(CreateUserWithWalletAddressStep.wallet_prompt)
+        sent_message = await channel.send(PromptUserWalletAddressStep.wallet_prompt)
         return sent_message, None
 
     async def save(self, message, guild_id, user_id):
+        # Save the supplied wallet address to cache
         wallet = message.content.strip()
 
         if not Web3.isAddress(wallet):
             raise InvalidWalletAddressException(
-                CreateUserWithWalletAddressStep.invalid_wallet_exception_fmt % wallet
+                PromptUserWalletAddressStep.invalid_wallet_exception_fmt % wallet
             )
 
-        display_name = await get_cache_metadata_key(user_id, self.cache, "display_name")
-        discord_display_name = await get_cache_metadata_key(
-            user_id, self.cache, DISCORD_DISPLAY_NAME_CACHE_KEY
-        )
-        guild = await gql.get_guild_by_discord_id(guild_id)
-
-        # user creation is performed when supplying wallet address since this
-        # is a mandatory field for the user record
-        # TODO: wrap into a single CRUD
-        user = await gql.get_user_by_discord_id(user_id)
-        user = await create_user(user_id, discord_display_name, guild.get("id"), wallet)
-        user_db_id = user.get("id")
-        await gql.update_user_display_name(user_db_id, display_name)
-        await write_cache_metadata(user_id, self.cache, "user_db_id", user_db_id)
+        await write_cache_metadata(user_id, self.cache, WALLET_CACHE_KEY)
 
 
 class AddUserTwitterStep(BaseStep):
@@ -312,10 +298,11 @@ class Onboarding(BaseThread):
         ).build()
         return (
             Step(
-                current=CreateUserWithWalletAddressStep(
+                current=PromptUserWalletAddressStep(
                     cache=self.cache, guild_id=self.guild_id
                 )
             )
+            .add_next_step(VerifyUserWalletStep(cache=self.cache, update=False))
             .add_next_step(AddUserTwitterStep(guild_id=self.guild_id, cache=self.cache))
             .fork((verify_twitter.add_next_step(congrats).build(), congrats))
         )

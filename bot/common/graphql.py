@@ -143,15 +143,41 @@ query getUser($where: UserWhereInput!,) {
     )
     if result:
         res = result.get("result")
-        print("Fetch")
-        print(result)
-        print(discord_id)
         if len(res):
             return res[0]
         return None
     return result
 
 
+async def get_user_by_wallet(wallet):
+    query = (
+        GqlFragments.USER_FRAGMENT
+        + """
+query getUser($where: UserWhereInput!) {
+    result: users(
+        where: $where
+    ) {
+        ...UserFragment
+    }
+}
+        """
+    )
+    result = await execute_query(
+        query,
+        {
+            "where": {
+                "address": {"equals": wallet}
+            }
+        }
+    )
+    if result:
+        res = result.get("result")
+        if len(res):
+            return res[0]
+        return None
+    return result
+
+        
 async def get_contributions(guild_id, user_discord_id, after_date):
     query = (
         GqlFragments.CONTRIBUTION_FRAGMENT

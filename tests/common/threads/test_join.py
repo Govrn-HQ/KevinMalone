@@ -15,7 +15,7 @@ from bot.common.threads.onboarding import (
     UserDisplayConfirmationStep,
     UserDisplayConfirmationEmojiStep,
     UserDisplaySubmitStep,
-    CreateUserWithWalletAddressStep,
+    PromptUserWalletAddressStep,
     VerifyUserTwitterStep,
 )
 from bot.config import NO_EMOJI, SKIP_EMOJI, YES_EMOJI
@@ -195,9 +195,9 @@ async def test_create_user_wallet_address_step(mocker, thread_dependencies):
     mock_guild = {"id": "1", "name": "test_guild_name"}
     mock_user = {"id": "01", "display_name": test_display_name, "address": wallet}
 
-    step = CreateUserWithWalletAddressStep(cache, guild_id)
+    step = PromptUserWalletAddressStep(cache, guild_id)
     (sent_message, metadata) = await step.send(message, user_id)
-    assert_message_content(sent_message, CreateUserWithWalletAddressStep.wallet_prompt)
+    assert_message_content(sent_message, PromptUserWalletAddressStep.wallet_prompt)
     assert metadata is None
 
     message.content = "0xF"
@@ -206,8 +206,7 @@ async def test_create_user_wallet_address_step(mocker, thread_dependencies):
         assert False
     except InvalidWalletAddressException as e:
         assert (
-            f"{e}"
-            == CreateUserWithWalletAddressStep.invalid_wallet_exception_fmt % "0xF"
+            f"{e}" == PromptUserWalletAddressStep.invalid_wallet_exception_fmt % "0xF"
         )
 
     message.content = wallet
