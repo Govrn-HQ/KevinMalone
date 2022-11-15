@@ -22,18 +22,10 @@ from bot.common.threads.shared_steps import (
     VerifyUserTwitterStep,
     VerifyUserWalletStep,
     WALLET_CACHE_KEY,
-    WALLET_VERIFICATION_MESSAGE_CACHE_KEY
+    WALLET_VERIFICATION_MESSAGE_CACHE_KEY,
 )
-from bot.config import (
-    NO_EMOJI, 
-    SKIP_EMOJI, 
-    YES_EMOJI,
-    REQUESTED_SIGNED_MESSAGE
-)
-from bot.exceptions import (
-    InvalidWalletAddressException,
-    ThreadTerminatingException
-)
+from bot.config import NO_EMOJI, SKIP_EMOJI, YES_EMOJI, REQUESTED_SIGNED_MESSAGE
+from bot.exceptions import InvalidWalletAddressException, ThreadTerminatingException
 
 from tests.test_utils import (
     MockReaction,
@@ -285,18 +277,17 @@ async def test_verify_user_wallet_send(mocker, thread_dependencies):
     sent_message, _ = await step.send(message, user_id)
 
     verification_message = await get_cache_metadata_key(
-        user_id,
-        cache,
-        WALLET_VERIFICATION_MESSAGE_CACHE_KEY)
+        user_id, cache, WALLET_VERIFICATION_MESSAGE_CACHE_KEY
+    )
     expected_msg = REQUESTED_SIGNED_MESSAGE[:-3]
-    assert(verification_message.startswith(expected_msg))
+    assert verification_message.startswith(expected_msg)
 
     # Two embeds should have been sent for instructions and the message
     # Not asserting the content since this will likely change
-    assert(len(message.channel.sent_embeds) == 2)
+    assert len(message.channel.sent_embeds) == 2
     # Assert the sent message's content matches what's in the cache
-    assert(sent_message.embed.description.startswith(expected_msg))
-    assert(sent_message.embed.description == verification_message)
+    assert sent_message.embed.description.startswith(expected_msg)
+    assert sent_message.embed.description == verification_message
 
 
 @pytest.mark.asyncio
@@ -335,26 +326,24 @@ async def test_verify_user_wallet_step(mocker, thread_dependencies):
     try:
         msg.content = "junk"
         await step.save(msg, guild_id, user_id)
-        assert(False)
+        assert False
     except ThreadTerminatingException:
         pass
 
     try:
         signed_wrong_message = web3.auto.w3.eth.account.sign_message(
-            eth_account.messages.encode_defunct(text="wrong message"),
-            private_k
+            eth_account.messages.encode_defunct(text="wrong message"), private_k
         )
         msg.content = signed_wrong_message.signature.hex()[2:]
         await step.save(msg, guild_id, user_id)
-        assert(False)
+        assert False
     except ThreadTerminatingException:
         pass
 
     verification_message = sent_message.embed.description
     # sign the message with our pk
     signed_message = web3.auto.w3.eth.account.sign_message(
-        eth_account.messages.encode_defunct(text=verification_message),
-        private_k
+        eth_account.messages.encode_defunct(text=verification_message), private_k
     )
     msg.content = signed_message.signature.hex()[2:]
     await step.save(msg, guild_id, user_id)
