@@ -227,7 +227,7 @@ async def test_create_user_wallet_address_step(mocker, thread_dependencies):
     create_user.assert_called_once_with(user_id, test_display_name, wallet)
     create_guild_user.assert_called_once_with(mock_user["id"], mock_guild["id"])
     update_display.assert_called_once_with(mock_user["id"], test_display_name)
-    assert_cache_metadata_content(user_id, cache, "user_db_id", mock_user["id"])
+    await assert_cache_metadata_content(user_id, cache, "user_db_id", mock_user["id"])
 
 
 @pytest.mark.asyncio
