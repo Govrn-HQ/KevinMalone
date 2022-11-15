@@ -88,9 +88,8 @@ class VerifyUserWalletStep(BaseStep):
 
     async def send(self, message, user_id):
         # Send and save nonce
-        # nonce = get_nonce()
-        # requested_message = REQUESTED_SIGNED_MESSAGE % nonce
-        requested_message = "Kevin Malone told me to sign this message with this number BUfovrOPXChtEvbHynum"
+        nonce = get_nonce()
+        requested_message = REQUESTED_SIGNED_MESSAGE % nonce
 
         await write_cache_metadata(
             user_id,
