@@ -221,7 +221,7 @@ class PromptUserWalletAddressStep(BaseStep):
                 PromptUserWalletAddressStep.invalid_wallet_exception_fmt % wallet
             )
 
-        await write_cache_metadata(user_id, self.cache, WALLET_CACHE_KEY)
+        await write_cache_metadata(user_id, self.cache, WALLET_CACHE_KEY, wallet)
 
 
 class AddUserTwitterStep(BaseStep):
