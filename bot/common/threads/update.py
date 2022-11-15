@@ -21,7 +21,7 @@ from bot.common.threads.shared_steps import (
     SelectGuildEmojiStep,
     VerifyUserTwitterStep,
     VerifyUserWalletStep,
-    WALLET_CACHE_KEY
+    WALLET_CACHE_KEY,
 )
 from bot.exceptions import ThreadTerminatingException
 
@@ -131,9 +131,7 @@ class UpdateFieldStep(BaseStep):
         if field == "display_name":
             await gql.update_user_display_name(record_id, value)
         elif field == "wallet":
-            await write_cache_metadata(
-                user_id, self.cache, WALLET_CACHE_KEY, value
-            )
+            await write_cache_metadata(user_id, self.cache, WALLET_CACHE_KEY, value)
         elif field == "twitter":
             await write_cache_metadata(
                 user_id, self.cache, TWITTER_HANDLE_CACHE_KEY, value
@@ -183,9 +181,9 @@ class UpdateProfile(BaseThread):
             ).add_next_step(CongratsFieldUpdateStep())
         ).build()
         wallet_update = (
-            Step(
-                VerifyUserWalletStep(self.cache, update=True)
-            ).add_next_step(CongratsFieldUpdateStep())
+            Step(VerifyUserWalletStep(self.cache, update=True)).add_next_step(
+                CongratsFieldUpdateStep()
+            )
         ).build()
         steps = (
             Step(current=SelectGuildEmojiStep(cls=self))

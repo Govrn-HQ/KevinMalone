@@ -162,14 +162,7 @@ query getUser($where: UserWhereInput!) {
 }
         """
     )
-    result = await execute_query(
-        query,
-        {
-            "where": {
-                "address": {"equals": wallet}
-            }
-        }
-    )
+    result = await execute_query(query, {"where": {"address": {"equals": wallet}}})
     if result:
         res = result.get("result")
         if len(res):
@@ -177,7 +170,7 @@ query getUser($where: UserWhereInput!) {
         return None
     return result
 
-        
+
 async def get_contributions(guild_id, user_discord_id, after_date):
     query = (
         GqlFragments.CONTRIBUTION_FRAGMENT
