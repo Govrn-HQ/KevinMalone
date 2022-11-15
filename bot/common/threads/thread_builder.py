@@ -205,6 +205,10 @@ class BaseThread:
         if not hasattr(self, "step"):
             raise Exception("Class was never awaited and step is not set!")
 
+    async def get_root_hash(self):
+        steps = await self.get_steps()
+        return hashlib.sha256(steps.current.name.encode()).hexdigest()
+
     async def send(self, message):
         """Run the send method on a step
 
