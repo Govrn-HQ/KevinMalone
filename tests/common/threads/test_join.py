@@ -312,6 +312,8 @@ async def test_verify_user_wallet_step(mocker, thread_dependencies):
 
     mock_gql_query(mocker, "get_guild_by_discord_id", mock_guild)
     mock_gql_query(mocker, "get_user_by_discord_id", mock_user)
+    mock_gql_query(mocker, "get_user_by_wallet", None)
+    mock_gql_query(mocker, "update_user_wallet", None)
     create_user = mock_gql_query(mocker, "create_user", mock_user)
     create_guild_user = mock_gql_query(mocker, "create_guild_user", None)
     update_display = mock_gql_query(mocker, "update_user_display_name", None)
