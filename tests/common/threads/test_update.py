@@ -133,7 +133,7 @@ async def test_update_field_step_save(mocker, thread_dependencies):
     await write_cache_metadata(user_id, cache, "field", "wallet")
     message.content = "test_wallet"
     await step.send(message, user_id)
-    mocked_wallet.assert_called_once_with(mock_user["id"], message.content)
+    mocked_wallet.assert_not_called()
 
     await write_cache_metadata(user_id, cache, "field", "twitter")
     message.content = "test_twitter"
@@ -163,7 +163,7 @@ async def test_update_field_control_hook(mocker, thread_dependencies):
 
     await write_cache_metadata(user_id, cache, "field", "wallet")
     next_step = await step.control_hook(message, user_id)
-    assert next_step == StepKeys.CONGRATS_UPDATE_FIELD.value
+    assert next_step == StepKeys.VERIFY_USER_WALLET.value
 
 
 @pytest.mark.asyncio

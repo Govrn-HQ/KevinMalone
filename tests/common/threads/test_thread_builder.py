@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, AsyncMock
 
 
 class EmojiLogic(BaseStep):
+    name = "emoji"
     emoji = True
 
     async def handle_emoji(self, raw_reaction):
@@ -99,8 +100,8 @@ class EmojiThread(BaseThread):
         return Step(current=EmojiLogic)
 
 
-def get_root_hash():
-    return hashlib.sha256("".encode()).hexdigest()
+def get_root_hash(cls):
+    return hashlib.sha256(cls.name.encode()).hexdigest()
 
 
 # Test find step #
@@ -111,7 +112,7 @@ async def test_find_single_step():
     """
     Find a step in a thread with a single step
     """
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(MockLogic)
 
     steps = await SingleThread(
         user_id="", current_step=root_hash, message_id="", guild_id=""
@@ -125,7 +126,7 @@ async def test_find_mulitple_step_no_forks():
     """
     Find a step in a thread with no forks and multiple steps
     """
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(MockLogic)
 
     steps = await MultiThread(
         user_id="", current_step=root_hash, message_id="", guild_id=""
@@ -140,7 +141,7 @@ async def test_find_mulitple_step_single_fork():
     """
     Find a step in a thread with with a single fork
     """
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(MockLogic)
 
     steps = await SingleForkThread(
         user_id="", current_step=root_hash, message_id="", guild_id=""
@@ -155,7 +156,7 @@ async def test_find_mulitple_step_multiple_fork():
     """
     Find a step in a thread with multiple forks
     """
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(MockLogic)
 
     steps = await MultiForkThread(
         user_id="", current_step=root_hash, message_id="", guild_id=""
@@ -175,7 +176,7 @@ async def test_find_mulitple_step_multiple_fork():
 
 @pytest.mark.asyncio
 async def test_thread_steps():
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(MockLogic)
 
     thread = await MultiForkThread(
         user_id="", current_step=root_hash, message_id="", guild_id=""
@@ -185,7 +186,7 @@ async def test_thread_steps():
 
 @pytest.mark.asyncio
 async def test_thread_send_raise():
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(MockLogic)
 
     thread = MultiForkThread(
         user_id="", current_step=root_hash, message_id="", guild_id=""
@@ -202,7 +203,7 @@ async def test_thread_send_emoji_step():
     """
     Throw an error if we try to send on an emoji step
     """
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(EmojiLogic)
     thread = EmojiThread(user_id="", current_step=root_hash, message_id="", guild_id="")
     with pytest.raises(Exception):
         await thread.send()
@@ -242,7 +243,7 @@ async def test_thread_send_previous_step_no_skip():
         async def get_steps(self):
             return Step(current=SendLogic()).add_next_step(EmojiLogic()).build()
 
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(SendLogic)
 
     cache = MockCache()
     thread = await MockThread(
@@ -295,7 +296,7 @@ async def test_thread_send_previous_step_skip(mocker):
         async def get_steps(self):
             return Step(current=EmojiLogic())
 
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(EmojiLogic)
     thread = await MockThread(
         user_id="",
         current_step=root_hash,
@@ -340,7 +341,7 @@ async def test_thread_send_no_previous_step_skip(mocker):
             return Step(current=SendLogic()).add_next_step(EmojiLogic()).build()
 
     cache = MockCache()
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(SendLogic)
     thread = await MockThread(
         user_id="1",
         current_step=root_hash,
@@ -399,7 +400,7 @@ async def test_thread_metadata_none(mocker):
             )
 
     cache = MockCache()
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(FirstLogic)
     thread = await MockThread(
         user_id="1",
         current_step=root_hash,
@@ -459,7 +460,7 @@ async def test_thread_metadata_set(mocker):
             )
 
     cache = MockCache()
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(FirstLogic)
     thread = await MockThread(
         user_id="1",
         current_step=root_hash,
@@ -522,7 +523,7 @@ async def test_thread_control_hook_end(mocker):
             )
 
     cache = MockCache()
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(FirstLogic)
     thread = await MockThread(
         user_id="1",
         current_step=root_hash,
@@ -591,7 +592,7 @@ async def test_thread_override_step_and_step(mocker):
             )
 
     cache = MockCache()
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(FirstLogic)
     thread = await MockThread(
         user_id="1",
         current_step=root_hash,
@@ -657,7 +658,7 @@ async def test_thread_trigger(mocker):
             )
 
     cache = MockCache()
-    root_hash = get_root_hash()
+    root_hash = get_root_hash(FirstLogic)
     thread = await MockThread(
         user_id="1",
         current_step=root_hash,
