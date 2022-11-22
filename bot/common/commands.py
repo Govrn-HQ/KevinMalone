@@ -1,6 +1,5 @@
 from discord.commands import Option
 import logging
-import hashlib
 import discord
 
 from bot.common.bot.bot import bot
