@@ -157,8 +157,6 @@ class BaseThread:
         discord_bot=None,
         context=None,
     ):
-        if not current_step:
-            raise Exception(f"No step for {current_step}")
         if cache is None:
             cache = RedisCache()
         self.user_id = user_id
@@ -198,7 +196,14 @@ class BaseThread:
 
     async def _init_steps(self):
         self.steps = await self.get_steps()
-        self.step = self.find_step(self.steps, self.current_step)
+        # assign the current_step hash to root of the tree if no overriding
+        # current_step is provided when constructing the thread
+        if self.current_step is None:
+            self.current_step = self.steps.hash_
+        step = self.find_step(self.steps, self.current_step)
+        if step is None:
+            raise Exception(f"Not able to find step for {self.current_step}!")
+        self.step = step
         return self
 
     def _check_step(self):
