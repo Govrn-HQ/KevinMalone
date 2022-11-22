@@ -13,7 +13,7 @@ async def get_jump_thread(parent_thread, message, user_id):
         user_id,
         build_cache_value(
             parent_thread.command_name,
-            "0x0",
+            None,
             parent_thread.guild_id,
             message.id,
         ),
