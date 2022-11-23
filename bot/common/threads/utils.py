@@ -1,5 +1,4 @@
 import json
-import hashlib
 from bot.common.threads.thread_builder import ThreadKeys, build_cache_value
 from bot.common.threads.onboarding import Onboarding  # noqa: E402
 from bot.common.threads.update import UpdateProfile  # noqa: E402
@@ -14,13 +13,16 @@ async def get_jump_thread(parent_thread, message, user_id):
         user_id,
         build_cache_value(
             parent_thread.command_name,
-            hashlib.sha256("".encode()).hexdigest(),
+            None,
             parent_thread.guild_id,
             message.id,
         ),
         parent_thread.cache,
     )
     # this is dangerous
+    thread.current_step = await thread.get_root_hash()
+    await thread._init_steps()
+    parent_thread.current_step = await thread.get_root_hash()
     parent_thread.get_steps = thread.get_steps
     parent_thread.step = thread.step
     parent_thread.name = thread.name

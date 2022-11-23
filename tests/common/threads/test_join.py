@@ -1,5 +1,6 @@
 import pytest
-
+import web3.auto
+import eth_account.messages
 from bot.common.threads.thread_builder import (
     StepKeys,
     build_cache_value,
@@ -15,14 +16,20 @@ from bot.common.threads.onboarding import (
     UserDisplayConfirmationStep,
     UserDisplayConfirmationEmojiStep,
     UserDisplaySubmitStep,
-    CreateUserWithWalletAddressStep,
-    VerifyUserTwitterStep,
+    PromptUserWalletAddressStep,
 )
-from bot.config import NO_EMOJI, SKIP_EMOJI, YES_EMOJI
-from bot.exceptions import InvalidWalletAddressException
+from bot.common.threads.shared_steps import (
+    VerifyUserTwitterStep,
+    VerifyUserWalletStep,
+    WALLET_CACHE_KEY,
+    WALLET_VERIFICATION_MESSAGE_CACHE_KEY,
+)
+from bot.config import NO_EMOJI, SKIP_EMOJI, YES_EMOJI, REQUESTED_SIGNED_MESSAGE
+from bot.exceptions import InvalidWalletAddressException, ThreadTerminatingException
 
 from tests.test_utils import (
     MockReaction,
+    MockMessage,
     assert_message_content,
     assert_message_reaction,
     mock_gql_query,
@@ -191,13 +198,10 @@ async def test_create_user_wallet_address_step(mocker, thread_dependencies):
     guild_id = "12345"
     # random addr on etherscan
     wallet = "0xcd4A15841a4906fF78D3F2Aa8E55936F1A7Ae4a5"
-    test_display_name = "test_display_name"
-    mock_guild = {"id": "1", "name": "test_guild_name"}
-    mock_user = {"id": "01", "display_name": test_display_name, "address": wallet}
 
-    step = CreateUserWithWalletAddressStep(cache, guild_id)
+    step = PromptUserWalletAddressStep(cache, guild_id)
     (sent_message, metadata) = await step.send(message, user_id)
-    assert_message_content(sent_message, CreateUserWithWalletAddressStep.wallet_prompt)
+    assert_message_content(sent_message, PromptUserWalletAddressStep.wallet_prompt)
     assert metadata is None
 
     message.content = "0xF"
@@ -206,28 +210,13 @@ async def test_create_user_wallet_address_step(mocker, thread_dependencies):
         assert False
     except InvalidWalletAddressException as e:
         assert (
-            f"{e}"
-            == CreateUserWithWalletAddressStep.invalid_wallet_exception_fmt % "0xF"
+            f"{e}" == PromptUserWalletAddressStep.invalid_wallet_exception_fmt % "0xF"
         )
 
     message.content = wallet
     await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
-    await write_cache_metadata(user_id, cache, "display_name", test_display_name)
-    await write_cache_metadata(
-        user_id, cache, DISCORD_DISPLAY_NAME_CACHE_KEY, test_display_name
-    )
-    mock_gql_query(mocker, "get_guild_by_discord_id", mock_guild)
-    mock_gql_query(mocker, "get_user_by_discord_id", mock_user)
-    create_user = mock_gql_query(mocker, "create_user", mock_user)
-    create_guild_user = mock_gql_query(mocker, "create_guild_user", None)
-    update_display = mock_gql_query(mocker, "update_user_display_name", None)
-
     await step.save(message, guild_id, user_id)
-
-    create_user.assert_called_once_with(user_id, test_display_name, wallet)
-    create_guild_user.assert_called_once_with(mock_user["id"], mock_guild["id"])
-    update_display.assert_called_once_with(mock_user["id"], test_display_name)
-    await assert_cache_metadata_content(user_id, cache, "user_db_id", mock_user["id"])
+    await assert_cache_metadata_content(user_id, cache, WALLET_CACHE_KEY, wallet)
 
 
 @pytest.mark.asyncio
@@ -275,3 +264,93 @@ async def test_verify_user_twitter_step(mocker, thread_dependencies):
     (sent_message, metadata) = await step.send(message, user_id)
     tweet = await get_cache_metadata_key(user_id, cache, "requested_tweet")
     assert sent_message.embed.description == tweet
+
+
+@pytest.mark.asyncio
+async def test_verify_user_wallet_send(mocker, thread_dependencies):
+    (cache, context, message, bot) = thread_dependencies
+    user_id = "1234"
+    await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
+
+    step = VerifyUserWalletStep(cache, False)
+
+    sent_message, _ = await step.send(message, user_id)
+
+    verification_message = await get_cache_metadata_key(
+        user_id, cache, WALLET_VERIFICATION_MESSAGE_CACHE_KEY
+    )
+    expected_msg = REQUESTED_SIGNED_MESSAGE[:-3]
+    assert verification_message.startswith(expected_msg)
+
+    # Two embeds should have been sent for instructions and the message
+    # Not asserting the content since this will likely change
+    assert len(message.channel.sent_embeds) == 2
+    # Assert the sent message's content matches what's in the cache
+    assert sent_message.embed.description.startswith(expected_msg)
+    assert sent_message.embed.description == verification_message
+
+
+@pytest.mark.asyncio
+async def test_verify_user_wallet_step(mocker, thread_dependencies):
+    (cache, context, message, bot) = thread_dependencies
+    user_id = "1234"
+    guild_id = "12345"
+    # public/private pair that has been published previously
+    wallet = "0x63FaC9201494f0bd17B9892B9fae4d52fe3BD377"
+    private_k = "8da4ef21b864d2cc526dbdb2a120bd2874c36c9d0a1fb7f8c63d7f7a8b41de8f"
+    test_display_name = "test_display_name"
+    mock_guild = {"id": "1", "name": "test_guild_name"}
+    mock_user = {"id": "01", "display_name": test_display_name, "address": wallet}
+
+    message.content = wallet
+    await cache.set(user_id, build_cache_value("t", "s", "1", "1"))
+    await write_cache_metadata(user_id, cache, "display_name", test_display_name)
+    await write_cache_metadata(
+        user_id, cache, DISCORD_DISPLAY_NAME_CACHE_KEY, test_display_name
+    )
+    await write_cache_metadata(user_id, cache, WALLET_CACHE_KEY, wallet)
+
+    mock_gql_query(mocker, "get_guild_by_discord_id", mock_guild)
+    mock_gql_query(mocker, "get_user_by_discord_id", mock_user)
+    mock_gql_query(mocker, "get_user_by_wallet", None)
+    mock_gql_query(mocker, "update_user_wallet", None)
+    create_user = mock_gql_query(mocker, "create_user", mock_user)
+    create_guild_user = mock_gql_query(mocker, "create_guild_user", None)
+    update_display = mock_gql_query(mocker, "update_user_display_name", None)
+
+    step = VerifyUserWalletStep(cache, update=False)
+    msg = MockMessage(message.channel)
+
+    # this will store the expected message in the cache
+    sent_message, _ = await step.send(message, user_id)
+
+    # Invalid signature should fail
+    try:
+        msg.content = "junk"
+        await step.save(msg, guild_id, user_id)
+        assert False
+    except ThreadTerminatingException:
+        pass
+
+    try:
+        signed_wrong_message = web3.auto.w3.eth.account.sign_message(
+            eth_account.messages.encode_defunct(text="wrong message"), private_k
+        )
+        msg.content = signed_wrong_message.signature.hex()[2:]
+        await step.save(msg, guild_id, user_id)
+        assert False
+    except ThreadTerminatingException:
+        pass
+
+    verification_message = sent_message.embed.description
+    # sign the message with our pk
+    signed_message = web3.auto.w3.eth.account.sign_message(
+        eth_account.messages.encode_defunct(text=verification_message), private_k
+    )
+    msg.content = signed_message.signature.hex()[2:]
+    await step.save(msg, guild_id, user_id)
+
+    create_user.assert_called_once_with(user_id, test_display_name, wallet)
+    create_guild_user.assert_called_once_with(mock_user["id"], mock_guild["id"])
+    update_display.assert_called_once_with(mock_user["id"], test_display_name)
+    await assert_cache_metadata_content(user_id, cache, "user_db_id", mock_user["id"])

@@ -69,6 +69,8 @@ class StepKeys(Enum):
     USER_DISPLAY_SUBMIT = "user_display_submit"
     ADD_USER_TWITTER = "add_user_twitter"
     VERIFY_USER_TWITTER = "verify_user_twitter"
+    ADD_USER_WALLET = "add_user_wallet"
+    VERIFY_USER_WALLET = "verify_user_wallet"
     ONBOARDING_CONGRATS = "onboarding_congrats"
     CREATE_USER_WITH_WALLET_ADDRESS = "create_user_with_wallet_address"
     ADD_USER_DISCOURSE = "add_user_discourse"
@@ -155,8 +157,6 @@ class BaseThread:
         discord_bot=None,
         context=None,
     ):
-        if not current_step:
-            raise Exception(f"No step for {current_step}")
         if cache is None:
             cache = RedisCache()
         self.user_id = user_id
@@ -196,12 +196,23 @@ class BaseThread:
 
     async def _init_steps(self):
         self.steps = await self.get_steps()
-        self.step = self.find_step(self.steps, self.current_step)
+        # assign the current_step hash to root of the tree if no overriding
+        # current_step is provided when constructing the thread
+        if self.current_step is None:
+            self.current_step = self.steps.hash_
+        step = self.find_step(self.steps, self.current_step)
+        if step is None:
+            raise Exception(f"Not able to find step for {self.current_step}!")
+        self.step = step
         return self
 
     def _check_step(self):
         if not hasattr(self, "step"):
             raise Exception("Class was never awaited and step is not set!")
+
+    async def get_root_hash(self):
+        steps = await self.get_steps()
+        return hashlib.sha256(steps.current.name.encode()).hexdigest()
 
     async def send(self, message):
         """Run the send method on a step
@@ -385,7 +396,10 @@ class Step:
     current: BaseStep
     next_steps: Optional[Dict[str, BaseStep]] = field(default_factory=dict)
     previous_step: Optional[BaseStep] = field(default=None)
-    hash_: str = hashlib.sha256("".encode()).hexdigest()
+    hash_: str = field(default=None)
+
+    def __post_init__(self):
+        self.hash_ = hashlib.sha256(self.current.name.encode()).hexdigest()
 
     def add_next_step(self, step):
         """Add a new Step after the current

@@ -1,6 +1,5 @@
 from discord.commands import Option
 import logging
-import hashlib
 import discord
 
 from bot.common.bot.bot import bot
@@ -55,7 +54,7 @@ async def report(ctx: discord.ApplicationContext):
         message, metadata = await select_guild(ctx, embed, error_embed)
         thread = await GuildSelect(
             ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
+            None,
             message.id,
             "",
         )
@@ -142,7 +141,7 @@ async def join(ctx: discord.ApplicationContext):
 
     thread = await Onboarding(
         ctx.author.id,
-        hashlib.sha256("".encode()).hexdigest(),
+        None,
         message.id,
         ctx.guild.id,
     )
@@ -186,7 +185,7 @@ async def update(ctx: discord.ApplicationContext):
             return
         thread = await UpdateProfile(
             ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
+            None,
             message.id,
             "",
         )
@@ -230,7 +229,7 @@ async def history(
         message, metadata = await select_guild(ctx, embed, error_embed)
         thread = await GuildSelect(
             ctx.author.id,
-            hashlib.sha256("".encode()).hexdigest(),
+            None,
             message.id,
             "",
             cache=Redis,
@@ -254,7 +253,7 @@ async def history(
 
     thread = await History(
         ctx.author.id,
-        hashlib.sha256("".encode()).hexdigest(),
+        None,
         None,
         ctx.guild.id,
         cache=Redis,
@@ -299,7 +298,7 @@ async def add_dao(ctx: discord.ApplicationContext):
 
     thread = await AddDao(
         ctx.author.id,
-        hashlib.sha256("".encode()).hexdigest(),
+        None,
         sent_message.id,
         None,
         cache=Redis,
@@ -341,7 +340,7 @@ async def add_dao(ctx: discord.ApplicationContext):
 #                return
 #            thread = await GuildSelect(
 #                ctx.author.id,
-#                hashlib.sha256("".encode()).hexdigest(),
+#                None,
 #                message.id,
 #                "",
 #            )
