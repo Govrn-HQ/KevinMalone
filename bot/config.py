@@ -3,7 +3,11 @@ import aioredis
 from bot import constants
 
 GUILD_IDS = [747131845317230695, 799328534988193793]
-REDIS_URL = constants.Bot.redis_url
+
+IS_DEV = constants.Bot.is_dev
+REDIS_URL = constants.Bot.redis_tls_url
+if IS_DEV:
+    REDIS_URL = constants.Bot.redis_url
 
 YES_EMOJI = "\U0001F44D"
 NO_EMOJI = "\U0001F44E"
