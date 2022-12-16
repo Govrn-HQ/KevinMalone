@@ -4,7 +4,6 @@ bot:
   prefix: "/"
   token: !ENV "API_TOKEN"
   redis_url: !ENV "REDIS_URL"
-  redis_tls_url: !ENV "REDIS_TLS_URL"
   is_dev: !ENV "IS_DEV"
   govrn_guild_id: !ENV "GOVRN_GUILD_ID"
   protocol_url: !ENV "PROTOCOL_URL"
