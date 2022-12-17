@@ -276,7 +276,7 @@ query listGuilds(
 async def create_guild_user(user_id: str, guild_db_id: str):
     query = """
 mutation createGuildUser($data: GuildUserCreateInput!) {
-  createGuildUser(data: $data) {
+  createOneGuildUser(data: $data) {
     guild_id
     user_id
   }
@@ -299,7 +299,7 @@ mutation createGuildUser($data: GuildUserCreateInput!) {
 async def create_guild(guild_id):
     query = """
 mutation createGuild($data: GuildCreateInput!) {
-  createGuild(data: $data) {
+  createOneGuild(data: $data) {
     id
     discord_id
   }
@@ -321,7 +321,7 @@ mutation createGuild($data: GuildCreateInput!) {
 async def create_user(discord_id, discord_name, wallet):
     query = """
 mutation createUser($data: UserCreateInput!) {
-  createUser(data: $data) {
+  createOneUser(data: $data) {
     id
   }
 }
@@ -374,7 +374,7 @@ async def update_user(data, where):
         GqlFragments.USER_FRAGMENT
         + """
 mutation updateUser($data: UserUpdateInput!, $where: UserWhereUniqueInput!) {
-  updateUser(data: $data, where: $where) {
+  updateOneUser(data: $data, where: $where) {
     ...UserFragment
   }
 }
@@ -419,7 +419,7 @@ async def update_user_wallet(id, wallet):
 async def update_guild_name(guild_discord_id, guild_name):
     query = """
 mutation updateGuild($data: GuildUpdateInput!, $where: GuildWhereUniqueInput!) {
-  updateGuild(data: $data, where: $where) {
+  updateOneGuild(data: $data, where: $where) {
     id
   }
 }
